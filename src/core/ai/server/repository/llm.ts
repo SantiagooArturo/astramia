@@ -1,8 +1,12 @@
 import "server-only";
 import { getLogger } from "@logtape/logtape";
 import { generateText, type ModelMessage, streamText } from "ai";
-import { gatewayCostMetadataSchema } from "@/core/ai/domain/schemas";
-import type { AiPurpose, AiReasoning, AiUsage } from "@/core/ai/domain/types";
+import type {
+    AiReasoning,
+    AiUsage,
+    AiUsageContext,
+} from "@/core/ai/domain/types";
+import { toAiUsage } from "@/core/ai/domain/usage";
 import { db } from "@/server/drizzle/db";
 import { aiUsage } from "@/server/drizzle/schemas/ai-usage-schema";
 
@@ -13,7 +17,7 @@ const logger = getLogger(["server", "ai"]);
  * `maxOutputTokens`: a budget sized for the text alone gets cut mid-sentence
  * (the paid reading once came back at ~70 words). Callers size both.
  */
-function isCut(ctx: UsageContext, finishReason: string): boolean {
+function isCut(ctx: AiUsageContext, finishReason: string): boolean {
     if (finishReason !== "length") return false;
     logger.warn("{purpose} hit maxOutputTokens; text is cut", {
         purpose: ctx.purpose,
@@ -21,32 +25,7 @@ function isCut(ctx: UsageContext, finishReason: string): boolean {
     return true;
 }
 
-/** Who to bill a call to in `ai_usage`. */
-export interface UsageContext {
-    purpose: AiPurpose;
-    userId: string | null;
-    referenceId: string | null;
-}
-
-interface CallOutcome {
-    usage: {
-        inputTokens: number | undefined;
-        outputTokens: number | undefined;
-    };
-    providerMetadata: unknown;
-}
-
-export function toAiUsage(model: string, outcome: CallOutcome): AiUsage {
-    const cost = gatewayCostMetadataSchema.safeParse(outcome.providerMetadata);
-    return {
-        model,
-        inputTokens: outcome.usage.inputTokens ?? null,
-        outputTokens: outcome.usage.outputTokens ?? null,
-        costUsd: cost.success ? cost.data.gateway.cost : null,
-    };
-}
-
-async function recordUsage(ctx: UsageContext, usage: AiUsage): Promise<void> {
+async function recordUsage(ctx: AiUsageContext, usage: AiUsage): Promise<void> {
     await db.insert(aiUsage).values({
         ...ctx,
         model: usage.model,
@@ -66,7 +45,7 @@ export async function generate(params: {
     prompt: string;
     maxOutputTokens: number;
     reasoning: AiReasoning;
-    usage: UsageContext;
+    usage: AiUsageContext;
 }): Promise<string> {
     const result = await generateText({
         model: params.model,
@@ -92,7 +71,7 @@ export function stream(params: {
     messages: ModelMessage[];
     maxOutputTokens: number;
     reasoning: AiReasoning;
-    usage: UsageContext;
+    usage: AiUsageContext;
     onText: (text: string) => Promise<void>;
 }) {
     const result = streamText({

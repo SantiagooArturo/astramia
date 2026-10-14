@@ -1,11 +1,19 @@
 import type { z } from "zod";
 import type {
+    aspectNameSchema,
+    aspectSchema,
     chatMessageSchema,
     chatTurnSchema,
     createReadingSchema,
+    natalChartSchema,
+    natalPlacementSchema,
     quizAnswerSchema,
+    readingBlockSchema,
+    readingProfileSchema,
     readingSchema,
     readingTopicSchema,
+    skyEventSchema,
+    venusOutlookSchema,
 } from "./schemas";
 
 export type ReadingTopic = z.infer<typeof readingTopicSchema>;
@@ -14,3 +22,11 @@ export type CreateReading = z.infer<typeof createReadingSchema>;
 export type Reading = z.infer<typeof readingSchema>;
 export type ChatMessage = z.infer<typeof chatMessageSchema>;
 export type ChatTurn = z.infer<typeof chatTurnSchema>;
+export type ReadingProfile = z.infer<typeof readingProfileSchema>;
+export type NatalPlacement = z.infer<typeof natalPlacementSchema>;
+export type AspectName = z.infer<typeof aspectNameSchema>;
+export type Aspect = z.infer<typeof aspectSchema>;
+export type NatalChart = z.infer<typeof natalChartSchema>;
+export type SkyEvent = z.infer<typeof skyEventSchema>;
+export type VenusOutlook = z.infer<typeof venusOutlookSchema>;
+export type ReadingBlock = z.infer<typeof readingBlockSchema>;

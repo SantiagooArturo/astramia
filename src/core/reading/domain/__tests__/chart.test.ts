@@ -3,10 +3,10 @@ import {
     approximateDate,
     aspectsBetween,
     dominantElement,
-    type NatalPlacement,
     natalChart,
     venusOutlook,
 } from "../chart";
+import type { NatalPlacement } from "../types";
 
 const at = (
     body: string,

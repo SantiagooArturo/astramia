@@ -1,6 +1,4 @@
-export type ReadingBlock =
-    | { kind: "heading"; text: string }
-    | { kind: "paragraph"; text: string };
+import type { ReadingBlock } from "./types";
 
 /**
  * The model's Markdown subset → blocks. Line-based, so a "## Título" glued to

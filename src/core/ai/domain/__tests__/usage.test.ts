@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toAiUsage } from "../llm";
+import { toAiUsage } from "../usage";
 
 describe("toAiUsage", () => {
     it("reads tokens and the gateway's cost (sent as a string)", () => {

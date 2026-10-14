@@ -13,6 +13,14 @@ import {
     longitudeToSign,
     MONTHS_ES,
 } from "@/core/landing/domain/zodiac";
+import type {
+    Aspect,
+    AspectName,
+    NatalChart,
+    NatalPlacement,
+    SkyEvent,
+    VenusOutlook,
+} from "./types";
 
 /**
  * Everything the model may say about the sky is computed here, so a reading
@@ -22,14 +30,6 @@ import {
 /** Lima is UTC−5 all year; the launch market. Unknown birth time → noon. */
 const DEFAULT_UTC_OFFSET_HOURS = -5;
 const DAY_MS = 24 * 60 * 60 * 1000;
-
-export interface NatalPlacement {
-    body: string;
-    sign: string;
-    degree: string;
-    element: Element;
-    longitude: number;
-}
 
 function localInstant(birthDate: string, time: string): Date {
     const [hours, minutes] = time.split(":").map(Number);
@@ -69,13 +69,6 @@ export function sunSignOf(birthDate: string): string {
     return getSunSign(m, d)?.name ?? "desconocido";
 }
 
-export type AspectName =
-    | "conjunción"
-    | "sextil"
-    | "cuadratura"
-    | "trígono"
-    | "oposición";
-
 /** Major aspects with the usual orbs for a love reading. */
 const ASPECTS: { name: AspectName; angle: number; orb: number }[] = [
     { name: "conjunción", angle: 0, orb: 8 },
@@ -84,14 +77,6 @@ const ASPECTS: { name: AspectName; angle: number; orb: number }[] = [
     { name: "trígono", angle: 120, orb: 6 },
     { name: "oposición", angle: 180, orb: 8 },
 ];
-
-export interface Aspect {
-    a: string;
-    b: string;
-    name: AspectName;
-    /** Degrees away from exact. */
-    orb: number;
-}
 
 /** Aspects between every pair of placements, tightest first. */
 export function aspectsBetween(placements: NatalPlacement[]): Aspect[] {
@@ -126,18 +111,6 @@ export function dominantElement(placements: NatalPlacement[]): Element | null {
     return ranked.length === 1 || ranked[0][1] > ranked[1][1]
         ? ranked[0][0]
         : null;
-}
-
-export interface NatalChart {
-    placements: NatalPlacement[];
-    aspects: Aspect[];
-    dominantElement: Element | null;
-    moonPhase: string;
-    /**
-     * Without a birth time the Moon (≈13°/day) may change sign that day:
-     * the sign at midnight and at the end of the day. `null` when certain.
-     */
-    moonRange: { early: string; late: string } | null;
 }
 
 export function natalChart(
@@ -176,17 +149,6 @@ export function approximateDate(date: Date): string {
     const day = date.getUTCDate();
     const part = day <= 10 ? "principios" : day <= 20 ? "mediados" : "finales";
     return `${part} de ${MONTHS_ES[date.getUTCMonth()]}`;
-}
-
-export interface SkyEvent {
-    when: string;
-    text: string;
-}
-
-export interface VenusOutlook {
-    sign: string;
-    retrograde: boolean;
-    events: SkyEvent[];
 }
 
 /** Signed daily motion in degrees, wrapping through 0° Aries. */

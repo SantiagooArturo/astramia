@@ -12,6 +12,13 @@ export const aiReasoningSchema = z.enum([
     "high",
 ]);
 
+/** Who a call is billed to in `ai_usage`. */
+export const aiUsageContextSchema = z.object({
+    purpose: aiPurposeSchema,
+    userId: z.string().nullable(),
+    referenceId: z.string().nullable(),
+});
+
 /** The slice of a call's outcome we keep for cost accounting. */
 export const aiUsageSchema = z.object({
     model: z.string(),

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { Element } from "@/core/landing/domain/zodiac";
 import { PRIVACY_COMMITMENTS } from "@/core/legal/domain/policies";
 import { describeAnswer, LOVE_QUIZ } from "./quiz";
 
@@ -86,3 +87,67 @@ export const chatTurnSchema = z.object({
 });
 
 export const createdReadingSchema = z.object({ id: z.string() });
+
+/** What the prompts know about the person (a reading row minus bookkeeping). */
+export const readingProfileSchema = z.object({
+    birthDate: z.string(),
+    birthTime: z.string().nullable(),
+    birthPlace: z.string().nullable(),
+    answers: z.array(quizAnswerSchema),
+});
+
+/*
+ * Computed by `chart.ts` and handed to the prompts so the model interprets
+ * facts instead of inventing them. Never parsed from input; the element type
+ * stays defined once, in the zodiac.
+ */
+
+export const natalPlacementSchema = z.object({
+    body: z.string(),
+    sign: z.string(),
+    degree: z.string(),
+    element: z.custom<Element>(),
+    longitude: z.number(),
+});
+
+export const aspectNameSchema = z.enum([
+    "conjunción",
+    "sextil",
+    "cuadratura",
+    "trígono",
+    "oposición",
+]);
+
+export const aspectSchema = z.object({
+    a: z.string(),
+    b: z.string(),
+    name: aspectNameSchema,
+    /** Degrees away from exact. */
+    orb: z.number(),
+});
+
+export const natalChartSchema = z.object({
+    placements: z.array(natalPlacementSchema),
+    aspects: z.array(aspectSchema),
+    dominantElement: z.custom<Element>().nullable(),
+    moonPhase: z.string(),
+    /**
+     * Without a birth time the Moon (≈13°/day) may change sign that day:
+     * the sign at midnight and at the end of the day. `null` when certain.
+     */
+    moonRange: z.object({ early: z.string(), late: z.string() }).nullable(),
+});
+
+export const skyEventSchema = z.object({ when: z.string(), text: z.string() });
+
+export const venusOutlookSchema = z.object({
+    sign: z.string(),
+    retrograde: z.boolean(),
+    events: z.array(skyEventSchema),
+});
+
+/** The reading's Markdown subset, parsed into blocks for rendering. */
+export const readingBlockSchema = z.discriminatedUnion("kind", [
+    z.object({ kind: z.literal("heading"), text: z.string() }),
+    z.object({ kind: z.literal("paragraph"), text: z.string() }),
+]);

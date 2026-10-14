@@ -16,11 +16,11 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 import { aiReasoningSchema } from "@/core/ai/domain/schemas";
 import type { AiPurpose } from "@/core/ai/domain/types";
+import { toAiUsage } from "@/core/ai/domain/usage";
 import { natalChart, venusOutlook } from "@/core/reading/domain/chart";
-import type { ReadingProfile } from "@/core/reading/domain/prompts";
 import * as currentPrompts from "@/core/reading/domain/prompts";
 import { describeAnswer } from "@/core/reading/domain/quiz";
-import type { QuizAnswer } from "@/core/reading/domain/types";
+import type { QuizAnswer, ReadingProfile } from "@/core/reading/domain/types";
 
 type Profile = ReadingProfile & { name: string; chatQuestion: string };
 
@@ -188,15 +188,12 @@ async function call(
         maxOutputTokens,
         reasoning,
     });
-    const gateway = z
-        .object({ gateway: z.object({ cost: z.coerce.number() }) })
-        .safeParse(result.providerMetadata);
     return {
         text: result.text.trim(),
         finishReason: result.finishReason,
         outputTokens: result.usage.outputTokens,
         reasoningTokens: result.usage.outputTokenDetails?.reasoningTokens,
-        costUsd: gateway.success ? gateway.data.gateway.cost : 0,
+        costUsd: toAiUsage(MODELS[task], result).costUsd ?? 0,
         seconds: (Date.now() - started) / 1000,
     };
 }
@@ -296,12 +293,9 @@ async function judge(
         system: `Eres editora de un producto de astrología de pago en español latinoamericano, exigente con la calidad literaria y con la precisión. Evalúas sin piedad: un 5 es excepcional y raro; un texto correcto pero genérico es un 2. Juzgas solo contra los datos dados: cualquier dato astrológico que no esté en ellos es un invento.`,
         prompt: `<datos>\n${groundTruth(profile)}\n</datos>\n\n<gancho_gratuito>\n${teaser}\n</gancho_gratuito>\n\n<lectura_pagada>\n${reading}\n</lectura_pagada>\n\n<chat>\nPregunta: ${profile.chatQuestion}\nRespuesta: ${chat}\n</chat>`,
     });
-    const gateway = z
-        .object({ gateway: z.object({ cost: z.coerce.number() }) })
-        .safeParse(result.providerMetadata);
     return {
         verdict: result.output as Verdict,
-        costUsd: gateway.success ? gateway.data.gateway.cost : 0,
+        costUsd: toAiUsage(JUDGE, result).costUsd ?? 0,
     };
 }
 

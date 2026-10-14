@@ -1,5 +1,8 @@
-import type { ReadingProfile } from "@/core/reading/domain/prompts";
-import type { ChatMessage, Reading } from "@/core/reading/domain/types";
+import type {
+    ChatMessage,
+    Reading,
+    ReadingProfile,
+} from "@/core/reading/domain/types";
 import type {
     ChatMessageRow,
     ReadingRow,
