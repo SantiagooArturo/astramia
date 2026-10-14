@@ -18,6 +18,9 @@ tsconfig.tsbuildinfo
 
 # drizzle
 .pglite
+
+# prompt evals
+.eval
 drizzle/**/*.sql.bak
 
 # os / editor

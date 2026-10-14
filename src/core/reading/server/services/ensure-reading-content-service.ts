@@ -2,7 +2,7 @@ import "server-only";
 import { getLogger } from "@logtape/logtape";
 import { ServerConfig } from "@/config/server-config";
 import { generate } from "@/core/ai/server/repository/llm";
-import { READING_PROMPT } from "@/core/reading/domain/prompts";
+import { AI_TASKS, READING_PROMPT } from "@/core/reading/domain/prompts";
 import type { Reading } from "@/core/reading/domain/types";
 import {
     AppErrors,
@@ -48,8 +48,12 @@ export async function ensureReadingContentService(
             const content = await generate({
                 model: ServerConfig.ai.models.reading,
                 system: READING_PROMPT.system,
-                prompt: READING_PROMPT.prompt(toProfile(row), row.teaser),
-                maxOutputTokens: 2500,
+                prompt: READING_PROMPT.prompt(
+                    toProfile(row),
+                    row.teaser,
+                    new Date(),
+                ),
+                ...AI_TASKS.reading,
                 usage: { purpose: "reading", userId, referenceId: id },
             });
             await saveReadingContent(id, content.trim());

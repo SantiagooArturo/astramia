@@ -2,24 +2,23 @@ import "server-only";
 import { getLogger } from "@logtape/logtape";
 import { generateText, type ModelMessage, streamText } from "ai";
 import { gatewayCostMetadataSchema } from "@/core/ai/domain/schemas";
-import type { AiPurpose, AiUsage } from "@/core/ai/domain/types";
+import type { AiPurpose, AiReasoning, AiUsage } from "@/core/ai/domain/types";
 import { db } from "@/server/drizzle/db";
 import { aiUsage } from "@/server/drizzle/schemas/ai-usage-schema";
 
 const logger = getLogger(["server", "ai"]);
 
 /**
- * No hidden reasoning. On thinking models (Gemini 2.5 Flash) it is billed as
- * output and counts against `maxOutputTokens`: with it the paid reading came
- * back cut at ~70 words; without it the text is whole, at half the cost.
+ * On thinking models hidden reasoning is billed as output and counts against
+ * `maxOutputTokens`: a budget sized for the text alone gets cut mid-sentence
+ * (the paid reading once came back at ~70 words). Callers size both.
  */
-const REASONING = "none";
-
-function warnIfCut(ctx: UsageContext, finishReason: string): void {
-    if (finishReason === "length")
-        logger.warn("{purpose} hit maxOutputTokens; text is cut", {
-            purpose: ctx.purpose,
-        });
+function isCut(ctx: UsageContext, finishReason: string): boolean {
+    if (finishReason !== "length") return false;
+    logger.warn("{purpose} hit maxOutputTokens; text is cut", {
+        purpose: ctx.purpose,
+    });
+    return true;
 }
 
 /** Who to bill a call to in `ai_usage`. */
@@ -66,6 +65,7 @@ export async function generate(params: {
     system: string;
     prompt: string;
     maxOutputTokens: number;
+    reasoning: AiReasoning;
     usage: UsageContext;
 }): Promise<string> {
     const result = await generateText({
@@ -73,10 +73,12 @@ export async function generate(params: {
         system: params.system,
         prompt: params.prompt,
         maxOutputTokens: params.maxOutputTokens,
-        reasoning: REASONING,
+        reasoning: params.reasoning,
     });
     await recordUsage(params.usage, toAiUsage(params.model, result));
-    warnIfCut(params.usage, result.finishReason);
+    // A cut text is never shown or stored; callers' error paths retry.
+    if (isCut(params.usage, result.finishReason))
+        throw new Error(`${params.usage.purpose} was cut by maxOutputTokens`);
     return result.text;
 }
 
@@ -89,6 +91,7 @@ export function stream(params: {
     system: string;
     messages: ModelMessage[];
     maxOutputTokens: number;
+    reasoning: AiReasoning;
     usage: UsageContext;
     onText: (text: string) => Promise<void>;
 }) {
@@ -97,7 +100,7 @@ export function stream(params: {
         system: params.system,
         messages: params.messages,
         maxOutputTokens: params.maxOutputTokens,
-        reasoning: REASONING,
+        reasoning: params.reasoning,
         onError: ({ error }) => {
             logger.error("{purpose} stream failed: {error}", {
                 purpose: params.usage.purpose,
@@ -107,7 +110,8 @@ export function stream(params: {
         onFinish: async (event) => {
             // Billed first: the tokens were spent even if saving the reply fails.
             await recordUsage(params.usage, toAiUsage(params.model, event));
-            warnIfCut(params.usage, event.finishReason);
+            // Already streamed to the browser: log it, keep the turn.
+            isCut(params.usage, event.finishReason);
             await params.onText(event.text);
         },
     });

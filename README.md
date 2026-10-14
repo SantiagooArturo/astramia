@@ -112,6 +112,26 @@ AI calls go through the Vercel AI Gateway (`AI_MODEL_*` are gateway ids), so
 switching model or provider is an env change; every call is logged in
 `ai_usage` with tokens and USD cost.
 
+### Prompts
+
+`src/core/reading/domain/prompts.ts` holds every prompt and `AI_TASKS` (token
+budget and reasoning level per call; reasoning tokens count against the
+budget). The model never computes astrology: `chart.ts` hands it the natal
+placements, aspects, an honest "uncertain Moon" when there's no birth time,
+and Venus's real dates for the next months, so it interprets instead of
+inventing. Change a prompt, then measure it:
+
+```bash
+pnpm eval:prompts --rpm=5                       # free Gateway tier: 5 req/min
+pnpm eval:prompts --model=google/gemini-3.8-flash --label=g38
+```
+
+It runs teaser → reading → chat over six varied profiles, a Gemini judge
+scores them with a rubric (specificity, hook, rigor, voice, form of address…)
+next to mechanical checks (cuts, voseo, banned phrases, cost, latency), and
+writes the texts to `.eval/` for reading them yourself. The judge is lenient
+with high scores; its lists of inventions and clichés are the useful part.
+
 ## Scripts
 
 `pnpm dev | build | start` · `pnpm test` · `pnpm check` (Biome) ·

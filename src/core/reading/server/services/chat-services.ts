@@ -1,7 +1,7 @@
 import "server-only";
 import { ServerConfig } from "@/config/server-config";
 import { stream } from "@/core/ai/server/repository/llm";
-import { chatSystemPrompt } from "@/core/reading/domain/prompts";
+import { AI_TASKS, chatSystemPrompt } from "@/core/reading/domain/prompts";
 import { CHAT_LIMITS } from "@/core/reading/domain/schemas";
 import type { ChatMessage } from "@/core/reading/domain/types";
 import {
@@ -60,7 +60,7 @@ export async function sendChatMessageService(
         return ok(
             stream({
                 model: ServerConfig.ai.models.chat,
-                system: chatSystemPrompt(toProfile(row), row.content),
+                system: chatSystemPrompt(toProfile(row), row.content, askedAt),
                 messages: [
                     ...history.map((m) => ({
                         role: m.role,
@@ -68,7 +68,7 @@ export async function sendChatMessageService(
                     })),
                     { role: "user" as const, content: text },
                 ],
-                maxOutputTokens: 800,
+                ...AI_TASKS.chat,
                 usage: { purpose: "chat", userId, referenceId: readingId },
                 onText: (reply) =>
                     addChatTurn(readingId, { content: text, askedAt }, reply),

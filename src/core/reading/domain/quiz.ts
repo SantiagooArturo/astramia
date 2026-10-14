@@ -1,8 +1,20 @@
 /**
  * The love-reading questionnaire. Fixed options keep it one-tap on a phone
  * and give the model clean signals. `OFFER.questions` counts these.
+ *
+ * `trato` comes first: Spanish needs a grammatical gender, and without it
+ * the model defaults to one and gets it wrong for many readers.
  */
 export const LOVE_QUIZ = [
+    {
+        id: "trato",
+        question: "Para empezar, ¿cómo quieres que te hable?",
+        options: [
+            { id: "femenino", label: "En femenino" },
+            { id: "masculino", label: "En masculino" },
+            { id: "neutro", label: "Sin género" },
+        ],
+    },
     {
         id: "situacion",
         question: "¿Dónde está tu corazón ahora mismo?",

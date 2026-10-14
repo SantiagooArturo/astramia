@@ -13,7 +13,8 @@
         "test": "vitest run",
         "db:generate": "drizzle-kit generate",
         "db:migrate": "tsx --env-file=.env scripts/migrate.ts",
-        "db:studio": "drizzle-kit studio"
+        "db:studio": "drizzle-kit studio",
+        "eval:prompts": "tsx scripts/eval-prompts.ts"
     },
     "dependencies": {
         "@ai-sdk/react": "^4.0.143",

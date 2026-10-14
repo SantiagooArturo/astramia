@@ -2,7 +2,7 @@ import "server-only";
 import { ServerConfig } from "@/config/server-config";
 import { generate } from "@/core/ai/server/repository/llm";
 import { sunSignOf } from "@/core/reading/domain/chart";
-import { TEASER_PROMPT } from "@/core/reading/domain/prompts";
+import { AI_TASKS, TEASER_PROMPT } from "@/core/reading/domain/prompts";
 import { DAILY_READING_LIMIT } from "@/core/reading/domain/schemas";
 import type { CreateReading } from "@/core/reading/domain/types";
 import {
@@ -39,7 +39,7 @@ export async function createReadingService(
             model: ServerConfig.ai.models.teaser,
             system: TEASER_PROMPT.system,
             prompt: TEASER_PROMPT.prompt(profile),
-            maxOutputTokens: 300,
+            ...AI_TASKS.teaser,
             usage: { purpose: "teaser", userId, referenceId: id },
         });
 
