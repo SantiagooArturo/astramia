@@ -17,6 +17,7 @@ tsconfig.tsbuildinfo
 .env*.local
 
 # drizzle
+.pglite
 drizzle/**/*.sql.bak
 
 # os / editor

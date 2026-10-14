@@ -81,6 +81,33 @@ Mercado Pago:
 Orders keep their `provider`, so the old gateway's refunds and late webhooks
 still land. No migration, no service or UI change.
 
+Check that the new gateway charges the catalog currency as-is
+(`PRODUCTS` in `src/core/payment/domain/catalog.ts`): payments are only applied
+when amount *and* currency match the order. Mercado Pago Perú accepts a USD
+preference but converts it and reports the payment in PEN, so the catalog
+prices in soles.
+
+### Local end-to-end (real Mercado Pago test checkout)
+
+```bash
+npx -p @electric-sql/pglite -p @electric-sql/pglite-socket pglite-server --db=./.pglite --max-connections=20
+# .env: DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5432/postgres?sslmode=disable"
+#       NEXT_PUBLIC_APP_URL="https://localhost:3000"
+pnpm db:migrate
+next dev --experimental-https    # add --experimental-https-ca <bundle> behind a TLS-inspecting proxy
+```
+
+- Mercado Pago only auto-returns to an **https** `back_urls.success`; over
+  http the preference is created without `auto_return` and the buyer stays
+  on Mercado Pago's receipt.
+- Webhooks need a public https URL (`notification_url` is only sent on
+  https); locally the return URL does the sync.
+- Peru test card: Visa `4009 1753 3280 6176`, `11/30`, CVV `123`, DNI
+  `123456789`; holder `APRO` approves, `OTHE` rejects (it may stay
+  `in_process` for a while).
+- Next replaces `NODE_EXTRA_CA_CERTS` when serving https, hence the `-ca` flag
+  when outbound TLS needs a custom CA.
+
 AI calls go through the Vercel AI Gateway (`AI_MODEL_*` are gateway ids), so
 switching model or provider is an env change; every call is logged in
 `ai_usage` with tokens and USD cost.
