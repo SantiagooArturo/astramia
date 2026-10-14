@@ -56,6 +56,35 @@ then wire the domain router into `src/server/router.ts` with `.use(<domain>Route
 **A router isn't live until it's `.use()`d in `server/router.ts`.**
 Regenerate + apply migrations: `pnpm db:generate && pnpm db:migrate`.
 
+## Astramia flow
+
+`/lectura/amor` (quiz, anonymous Better Auth session) → `POST /readings`
+writes a free teaser → `/lectura/r/:id` shows it with the rest blurred →
+`POST /readings/:id/checkout` opens the hosted checkout → the gateway's webhook
+(`/payments/webhooks/:provider`) or the return URL syncs the payment → the
+paid order unlocks the reading, whose full text is written on first open, and
+opens the 2-hour chat (`POST /readings/:id/chat`, streamed with the AI SDK).
+
+### Switching payment gateway
+
+Services only know the `PaymentGateway` interface
+(`src/core/payment/server/repository/gateways/payment-gateway.ts`). To move off
+Mercado Pago:
+
+1. Add `gateways/<name>.ts` implementing the interface (checkout, webhook
+   verification, return URL, fetch payment) and register it in `gateways/index.ts`.
+2. Add `<name>` to `paymentProviderSchema` and to `PAYMENT_PROVIDER` in `src/config/env.ts`.
+3. Set `PAYMENT_PROVIDER=<name>` plus its credentials, point the gateway's
+   webhook at `/api/v1/payments/webhooks/<name>`, and set `ACTIVE_PROCESSOR`
+   in `src/core/legal/domain/business.ts` so the legal copy names it.
+
+Orders keep their `provider`, so the old gateway's refunds and late webhooks
+still land. No migration, no service or UI change.
+
+AI calls go through the Vercel AI Gateway (`AI_MODEL_*` are gateway ids), so
+switching model or provider is an env change; every call is logged in
+`ai_usage` with tokens and USD cost.
+
 ## Scripts
 
 `pnpm dev | build | start` · `pnpm test` · `pnpm check` (Biome) ·

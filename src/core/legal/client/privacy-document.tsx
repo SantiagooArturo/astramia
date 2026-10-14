@@ -4,6 +4,7 @@ import {
     BUSINESS,
     formatList,
     PAYMENT_PROCESSOR,
+    PROCESSOR_IS_MERCHANT_OF_RECORD,
     sellerLine,
     sellerName,
 } from "../domain/business";
@@ -210,13 +211,14 @@ const SECTIONS: LegalSection[] = [
                     items={[
                         <>
                             <strong>Procesador de pagos:</strong>{" "}
-                            {PAYMENT_PROCESSOR} procesa tu pago como comerciante
-                            registrado (Merchant of Record) y procesador
-                            certificado PCI-DSS. Los datos de tu tarjeta se
-                            ingresan directamente en {PAYMENT_PROCESSOR} y no se
-                            almacenan en nuestros servidores.{" "}
-                            {PAYMENT_PROCESSOR} trata los datos de la
-                            transacción conforme a su propia política de
+                            {PAYMENT_PROCESSOR} procesa tu pago como{" "}
+                            {PROCESSOR_IS_MERCHANT_OF_RECORD
+                                ? "comerciante registrado (Merchant of Record) y procesador certificado PCI-DSS."
+                                : "procesador certificado PCI-DSS."}{" "}
+                            Los datos de tu tarjeta se ingresan directamente en{" "}
+                            {PAYMENT_PROCESSOR} y no se almacenan en nuestros
+                            servidores. {PAYMENT_PROCESSOR} trata los datos de
+                            la transacción conforme a su propia política de
                             privacidad.
                         </>,
                         <>

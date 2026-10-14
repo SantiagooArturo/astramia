@@ -16,6 +16,7 @@
         "db:studio": "drizzle-kit studio"
     },
     "dependencies": {
+        "@ai-sdk/react": "^4.0.143",
         "@base-ui/react": "^1.6.0",
         "@better-auth-ui/core": "^1.6.27",
         "@better-auth-ui/react": "^1.6.27",
@@ -35,6 +36,7 @@
         "@tanstack/react-pacer": "^0.22.1",
         "@tanstack/react-query": "^5.100.13",
         "@tanstack/react-table": "^8.21.3",
+        "ai": "^7.0.140",
         "better-auth": "^1.6.18",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",

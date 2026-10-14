@@ -1,7 +1,7 @@
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { getLogger } from "@logtape/logtape";
 import { APIError, betterAuth } from "better-auth";
-import { openAPI } from "better-auth/plugins";
+import { anonymous, openAPI } from "better-auth/plugins";
 import { headers } from "next/headers";
 import { cache } from "react";
 import { ServerConfig } from "@/config/server-config";
@@ -14,13 +14,22 @@ export const auth = betterAuth({
     baseURL: ServerConfig.baseUrl,
     basePath: "/api/v1/auth",
     secret: ServerConfig.betterAuthSecret,
-    session: { freshAge: 0 },
+    // Long-lived: anonymous buyers keep their reading through this cookie.
+    session: { freshAge: 0, expiresIn: 60 * 60 * 24 * 90 },
+    rateLimit: {
+        customRules: {
+            // Every anonymous account can trigger a paid teaser call.
+            "/sign-in/anonymous": { window: 60 * 60, max: 5 },
+        },
+    },
     emailAndPassword: {
         enabled: true,
         // Starter keeps verification off so sign-up works with no email provider.
         requireEmailVerification: false,
     },
     plugins: [
+        // Visitors take the quiz without signing up; see core/reading.
+        anonymous(),
         openAPI({ disableDefaultReference: !ServerConfig.isDevelopment }),
     ],
     database: drizzleAdapter(db, { provider: "pg", schema: authSchema }),

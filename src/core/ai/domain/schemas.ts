@@ -1,0 +1,17 @@
+import { z } from "zod";
+
+/** What a model call was for; the unit cost is reported by. */
+export const aiPurposeSchema = z.enum(["teaser", "reading", "chat"]);
+
+/** The slice of a call's outcome we keep for cost accounting. */
+export const aiUsageSchema = z.object({
+    model: z.string(),
+    inputTokens: z.number().int().nonnegative().nullable(),
+    outputTokens: z.number().int().nonnegative().nullable(),
+    costUsd: z.number().nonnegative().nullable(),
+});
+
+/** AI Gateway reports cost per generation under `providerMetadata.gateway`. */
+export const gatewayCostMetadataSchema = z.object({
+    gateway: z.object({ cost: z.coerce.number().nonnegative() }),
+});

@@ -1,7 +1,6 @@
 /**
  * Commercial policies shared by the legal pages and the landing, so the
  * refund window shown next to the price never drifts from the Terms.
- * Waffo enforces a 14-day refund window on one-time products.
  */
 
 export const REFUND_POLICY = {

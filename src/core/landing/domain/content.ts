@@ -1,16 +1,22 @@
+import { PAYMENT_PROCESSOR } from "@/core/legal/domain/business";
 import { REFUND_POLICY } from "@/core/legal/domain/policies";
+import { formatPrice, PRODUCTS } from "@/core/payment/domain/catalog";
+import { LOVE_QUIZ } from "@/core/reading/domain/quiz";
+import { CHAT_LIMITS } from "@/core/reading/domain/schemas";
 
 /**
  * Landing copy + product facts. Single source so pricing/session length
  * never drift between sections.
  */
 
+const UNLOCK_PRICE = PRODUCTS.reading_unlock.price;
+
 export const OFFER = {
-    price: "US$5.99",
-    priceAmount: 5.99,
-    currency: "USD",
-    chatHours: 2,
-    questions: 5,
+    price: formatPrice(UNLOCK_PRICE),
+    priceAmount: UNLOCK_PRICE.amountCents / 100,
+    currency: UNLOCK_PRICE.currency,
+    chatHours: CHAT_LIMITS.hours,
+    questions: LOVE_QUIZ.length,
 } as const;
 
 /** Entry point of the purchase flow (cuestionario → pago → lectura). */
@@ -235,7 +241,7 @@ export const FAQS: Faq[] = [
     },
     {
         question: "¿Y si no me convence?",
-        answer: `Si es tu primera compra, tienes ${REFUND_POLICY.firstPurchaseDays} días para pedir el reembolso completo, sin explicar por qué. Si tu lectura no llegó o hubo una falla técnica, tienes ${REFUND_POLICY.technicalIssueDays} días. El pago lo procesa Waffo Pancake y el dinero vuelve a tu misma tarjeta.`,
+        answer: `Si es tu primera compra, tienes ${REFUND_POLICY.firstPurchaseDays} días para pedir el reembolso completo, sin explicar por qué. Si tu lectura no llegó o hubo una falla técnica, tienes ${REFUND_POLICY.technicalIssueDays} días. El pago lo procesa ${PAYMENT_PROCESSOR} y el dinero vuelve a tu misma tarjeta.`,
     },
     {
         question: "¿La lectura la escribe una persona o una IA?",
