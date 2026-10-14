@@ -2,7 +2,11 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { ServerConfig } from "@/config/server-config";
-import type { PaymentStatus } from "@/core/payment/domain/types";
+import { BUSINESS } from "@/core/legal/domain/business";
+import type {
+    CheckoutRequest,
+    PaymentStatus,
+} from "@/core/payment/domain/types";
 import type { PaymentGateway, WebhookDelivery } from "./payment-gateway";
 
 const API_URL = "https://api.mercadopago.com";
@@ -106,6 +110,35 @@ function dataIdOf(delivery: WebhookDelivery): string | null {
     }
 }
 
+/** Checkout Pro preference body for a gateway-agnostic checkout request. */
+export function toMercadoPagoPreference(request: CheckoutRequest) {
+    return {
+        items: [
+            {
+                id: request.productId,
+                title: request.title,
+                quantity: 1,
+                unit_price: request.price.amountCents / 100,
+                currency_id: request.price.currency,
+            },
+        ],
+        external_reference: request.orderId,
+        payer: request.payerEmail ? { email: request.payerEmail } : undefined,
+        back_urls: {
+            success: request.successUrl,
+            failure: request.failureUrl,
+            pending: request.pendingUrl,
+        },
+        // Mercado Pago rejects the preference (`invalid_auto_return`) unless the
+        // success URL is https; on http (local dev) the buyer clicks "Volver".
+        auto_return: request.successUrl.startsWith("https://")
+            ? "approved"
+            : undefined,
+        notification_url: request.notificationUrl,
+        statement_descriptor: BUSINESS.billingDescriptor,
+    };
+}
+
 /** Checkout Pro adapter: hosted checkout + payment webhooks. */
 export const mercadoPagoGateway: PaymentGateway = {
     provider: "mercadopago",
@@ -114,29 +147,7 @@ export const mercadoPagoGateway: PaymentGateway = {
         const body = await call("/checkout/preferences", {
             method: "POST",
             headers: { "X-Idempotency-Key": request.orderId },
-            body: JSON.stringify({
-                items: [
-                    {
-                        id: request.productId,
-                        title: request.title,
-                        quantity: 1,
-                        unit_price: request.price.amountCents / 100,
-                        currency_id: request.price.currency,
-                    },
-                ],
-                external_reference: request.orderId,
-                payer: request.payerEmail
-                    ? { email: request.payerEmail }
-                    : undefined,
-                back_urls: {
-                    success: request.successUrl,
-                    failure: request.failureUrl,
-                    pending: request.pendingUrl,
-                },
-                auto_return: "approved",
-                notification_url: request.notificationUrl,
-                statement_descriptor: "ASTRAMIA",
-            }),
+            body: JSON.stringify(toMercadoPagoPreference(request)),
         });
         const preference = preferenceResponseSchema.parse(body);
         return {

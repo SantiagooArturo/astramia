@@ -1,6 +1,10 @@
 import { PAYMENT_PROCESSOR } from "@/core/legal/domain/business";
 import { REFUND_POLICY } from "@/core/legal/domain/policies";
-import { formatPrice, PRODUCTS } from "@/core/payment/domain/catalog";
+import {
+    formatPrice,
+    PRODUCTS,
+    priceParts,
+} from "@/core/payment/domain/catalog";
 import { LOVE_QUIZ } from "@/core/reading/domain/quiz";
 import { CHAT_LIMITS } from "@/core/reading/domain/schemas";
 
@@ -13,6 +17,7 @@ const UNLOCK_PRICE = PRODUCTS.reading_unlock.price;
 
 export const OFFER = {
     price: formatPrice(UNLOCK_PRICE),
+    priceParts: priceParts(UNLOCK_PRICE),
     priceAmount: UNLOCK_PRICE.amountCents / 100,
     currency: UNLOCK_PRICE.currency,
     chatHours: CHAT_LIMITS.hours,

@@ -16,8 +16,7 @@ import { GoldButton, Magnetic, Reveal, TiltCard } from "../effects";
 import { SectionIntro } from "./section-intro";
 
 export function Pricing() {
-    const [amount] = OFFER.price.replace("US$", "").split(".");
-    const cents = OFFER.price.split(".")[1];
+    const { symbol, whole, cents } = OFFER.priceParts;
 
     return (
         <section
@@ -42,10 +41,10 @@ export function Pricing() {
                     />
                     <p className="flex items-end gap-2 font-display leading-none">
                         <span className="text-muted-foreground text-xl">
-                            US$
+                            {symbol}
                         </span>
                         <span className="text-[7rem] text-astral-gold tracking-tight sm:text-[8.5rem]">
-                            {amount}
+                            {whole}
                         </span>
                         <span className="pb-3 text-3xl text-astral-gold">
                             .{cents}

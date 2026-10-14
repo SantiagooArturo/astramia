@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { PRODUCTS } from "@/core/payment/domain/catalog";
 import type { GatewayPayment } from "@/core/payment/domain/types";
 import type { PaymentGateway } from "../../repository/gateways/payment-gateway";
 
@@ -89,8 +90,12 @@ describe("createCheckoutService", () => {
             ok: true,
             data: { checkoutUrl: "https://pay.example/checkout" },
         });
+        const { price } = PRODUCTS.reading_unlock;
         expect(createOrder).toHaveBeenCalledWith(
-            expect.objectContaining({ amountCents: 599, currency: "USD" }),
+            expect.objectContaining({
+                amountCents: price.amountCents,
+                currency: price.currency,
+            }),
         );
         const request = fakeGateway.createCheckout.mock.calls[0][0];
         expect(request.successUrl).toBe(

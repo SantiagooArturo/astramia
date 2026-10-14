@@ -1,8 +1,10 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import type { CheckoutRequest } from "@/core/payment/domain/types";
 import {
     mapMercadoPagoStatus,
     mercadoPagoGateway,
+    toMercadoPagoPreference,
     verifyMercadoPagoSignature,
 } from "../mercadopago";
 
@@ -69,5 +71,36 @@ describe("mercadoPagoGateway.parseReturn", () => {
             "7",
         );
         expect(mercadoPagoGateway.parseReturn({})).toBeNull();
+    });
+});
+
+describe("toMercadoPagoPreference", () => {
+    const request = (base: string): CheckoutRequest => ({
+        orderId: "o1",
+        productId: "reading_unlock",
+        title: "Lectura",
+        price: { amountCents: 1990, currency: "PEN" },
+        successUrl: `${base}/lectura/r/r1?checkout=mercadopago`,
+        failureUrl: `${base}/lectura/r/r1?checkout=mercadopago`,
+        pendingUrl: `${base}/lectura/r/r1?checkout=mercadopago`,
+    });
+
+    it("sends the price in major units and our order id", () => {
+        const body = toMercadoPagoPreference(request("https://astramia.ai"));
+        expect(body.items[0]).toMatchObject({
+            unit_price: 19.9,
+            currency_id: "PEN",
+        });
+        expect(body.external_reference).toBe("o1");
+    });
+
+    it("auto-returns only to https (Mercado Pago rejects it otherwise)", () => {
+        expect(
+            toMercadoPagoPreference(request("https://astramia.ai")).auto_return,
+        ).toBe("approved");
+        expect(
+            toMercadoPagoPreference(request("http://localhost:3000"))
+                .auto_return,
+        ).toBeUndefined();
     });
 });

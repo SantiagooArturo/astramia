@@ -7,13 +7,31 @@ import type { OrderStatus, PaymentStatus, Price, ProductId } from "./types";
 export const PRODUCTS = {
     reading_unlock: {
         title: "Lectura de amor + 2 horas de chat",
-        price: { amountCents: 599, currency: "USD" },
+        // Soles: Mercado Pago Perú turns a USD price into PEN at its own rate
+        // and reports the payment in PEN, so a USD order never matches it.
+        price: { amountCents: 1990, currency: "PEN" },
     },
 } as const satisfies Record<ProductId, { title: string; price: Price }>;
 
+/** Non-breaking space keeps "S/ 19.90" on one line. */
+const CURRENCY_SYMBOLS: Record<string, string> = {
+    USD: "US$",
+    PEN: "S/\u00a0",
+};
+
 export function formatPrice({ amountCents, currency }: Price): string {
     const amount = (amountCents / 100).toFixed(2);
-    return currency === "USD" ? `US$${amount}` : `${currency} ${amount}`;
+    const symbol = CURRENCY_SYMBOLS[currency];
+    return symbol ? `${symbol}${amount}` : `${currency} ${amount}`;
+}
+
+/** The pieces of a price for layouts that size them apart ("S/" "19" ".90"). */
+export function priceParts({ amountCents, currency }: Price) {
+    return {
+        symbol: (CURRENCY_SYMBOLS[currency] ?? currency).trim(),
+        whole: String(Math.floor(amountCents / 100)),
+        cents: String(amountCents % 100).padStart(2, "0"),
+    };
 }
 
 /** Maps a gateway's payment state onto what the order should become. */

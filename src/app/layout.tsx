@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import type { PropsWithChildren } from "react";
+import { OFFER } from "@/core/landing/domain/content";
 import { Providers } from "@/frontend/providers/providers";
 import "./globals.css";
 
@@ -23,8 +24,7 @@ const instrumentSerif = Instrument_Serif({
 
 export const metadata: Metadata = {
     title: "Astramia AI — Lecturas astrológicas personalizadas con IA",
-    description:
-        "Recibe tu lectura astrológica sobre amor y relaciones en minutos y conversa 2 horas con una IA que conoce tu carta. Pago único de US$5.99.",
+    description: `Recibe tu lectura astrológica sobre amor y relaciones en minutos y conversa ${OFFER.chatHours} horas con una IA que conoce tu carta. Pago único de ${OFFER.price}.`,
 };
 
 export default function RootLayout({ children }: PropsWithChildren) {
