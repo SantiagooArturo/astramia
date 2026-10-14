@@ -3,7 +3,7 @@
  * varied synthetic profiles and has a Gemini judge score each with a rubric,
  * next to mechanical checks (length, cuts, voseo, clichés, cost, latency).
  *
- *   pnpm eval:prompts                       # current prompts and AI_TASKS
+ *   pnpm eval:prompts                       # current prompts, AI_TASKS and models
  *   pnpm eval:prompts --model=google/gemini-3.8-flash --reasoning=low
  *   pnpm eval:prompts --prompts=./other-prompts.ts --profiles=3 --rpm=5
  *
@@ -14,6 +14,7 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { generateText, Output } from "ai";
 import { z } from "zod";
+import { DEFAULT_AI_MODELS } from "@/core/ai/domain/models";
 import { aiReasoningSchema } from "@/core/ai/domain/schemas";
 import type { AiPurpose } from "@/core/ai/domain/types";
 import { toAiUsage } from "@/core/ai/domain/usage";
@@ -137,12 +138,11 @@ const args = Object.fromEntries(
 );
 
 const MODELS = {
-    teaser:
-        args["teaser-model"] ?? args.model ?? "google/gemini-2.5-flash-lite",
-    reading: args["reading-model"] ?? args.model ?? "google/gemini-2.5-flash",
-    chat: args["chat-model"] ?? args.model ?? "google/gemini-2.5-flash",
+    teaser: args["teaser-model"] ?? args.model ?? DEFAULT_AI_MODELS.teaser,
+    reading: args["reading-model"] ?? args.model ?? DEFAULT_AI_MODELS.reading,
+    chat: args["chat-model"] ?? args.model ?? DEFAULT_AI_MODELS.chat,
 };
-const JUDGE = args.judge ?? "google/gemini-2.5-flash";
+const JUDGE = args.judge ?? "google/gemini-4-argon";
 
 /** `--rpm=5` spaces call starts for rate-limited plans (Vercel's free tier: 5/min per model). */
 const gapMs = args.rpm ? 60_000 / Number(args.rpm) : 0;

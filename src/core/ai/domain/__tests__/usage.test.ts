@@ -31,4 +31,28 @@ describe("toAiUsage", () => {
             costUsd: null,
         });
     });
+
+    it("bills the fallback when the requested model failed", () => {
+        const usage = toAiUsage("google/gemini-4-argon", {
+            usage: { inputTokens: 10, outputTokens: 5 },
+            providerMetadata: {
+                gateway: {
+                    cost: "0.0001",
+                    routing: {
+                        modelAttempts: [
+                            {
+                                canonicalSlug: "google/gemini-4-argon",
+                                success: false,
+                            },
+                            {
+                                canonicalSlug: "google/gemini-3.8-flash",
+                                success: true,
+                            },
+                        ],
+                    },
+                },
+            },
+        });
+        expect(usage.model).toBe("google/gemini-3.8-flash");
+    });
 });

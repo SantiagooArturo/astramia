@@ -27,6 +27,17 @@ export const aiUsageSchema = z.object({
     costUsd: z.number().nonnegative().nullable(),
 });
 
+/** Which models the Gateway tried for a call; the last success answered it. */
+export const gatewayRoutingMetadataSchema = z.object({
+    gateway: z.object({
+        routing: z.object({
+            modelAttempts: z.array(
+                z.object({ canonicalSlug: z.string(), success: z.boolean() }),
+            ),
+        }),
+    }),
+});
+
 /** AI Gateway reports cost per generation under `providerMetadata.gateway`. */
 export const gatewayCostMetadataSchema = z.object({
     gateway: z.object({ cost: z.coerce.number().nonnegative() }),

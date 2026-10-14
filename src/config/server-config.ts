@@ -16,6 +16,7 @@ export const ServerConfig = {
             teaser: env.AI_MODEL_TEASER,
             reading: env.AI_MODEL_READING,
             chat: env.AI_MODEL_CHAT,
+            fallback: env.AI_MODEL_FALLBACK,
         },
     },
     info: {

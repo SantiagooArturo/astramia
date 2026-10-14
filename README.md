@@ -122,11 +122,17 @@ and Venus's real dates for the next months, so it interprets instead of
 inventing. Change a prompt, then measure it:
 
 ```bash
-pnpm eval:prompts --rpm=5                       # free Gateway tier: 5 req/min
-pnpm eval:prompts --model=google/gemini-3.8-flash --label=g38
+pnpm eval:prompts                                    # production models
+pnpm eval:prompts --reading-model=google/gemini-3.8-flash --label=try
+pnpm eval:prompts --rpm=5                            # free Gateway tier: 5 req/min
 ```
 
-It runs teaser → reading → chat over six varied profiles, a Gemini judge
+Models live in `src/core/ai/domain/models.ts` (overridable with `AI_MODEL_*`):
+Gemini 4 Argon for the hook and the reading, Gemini 3.8 Flash for the chat and
+as the Gateway fallback when a call's model fails; `ai_usage` records the
+model that actually answered.
+
+The eval runs teaser → reading → chat over six varied profiles, a Gemini judge
 scores them with a rubric (specificity, hook, rigor, voice, form of address…)
 next to mechanical checks (cuts, voseo, banned phrases, cost, latency), and
 writes the texts to `.eval/` for reading them yourself. The judge is lenient

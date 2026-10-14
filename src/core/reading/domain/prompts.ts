@@ -19,7 +19,8 @@ import type { ReadingProfile } from "./types";
  */
 export const AI_TASKS = {
     teaser: { maxOutputTokens: 4000, reasoning: "low" },
-    reading: { maxOutputTokens: 12000, reasoning: "medium" },
+    // Gemini 3.8 Flash (the fallback) reasons up to ~9k tokens here.
+    reading: { maxOutputTokens: 16000, reasoning: "medium" },
     chat: { maxOutputTokens: 4000, reasoning: "low" },
 } as const satisfies Record<
     AiPurpose,
@@ -47,7 +48,7 @@ Frases que delatan un texto genérico; no uses ni ellas ni sus variantes: "energ
 </prohibido>
 
 <rigor>
-Solo existen los datos de <carta> y, si está, <cielo>. No menciones ascendente, casas, Mercurio, Júpiter, Saturno ni ningún otro punto que no esté ahí, y no inventes tránsitos, signos ni fechas: si un dato no está, no lo afirmes. Si la Luna viene marcada como incierta, habla de ella con un matiz honesto.
+Solo existen los datos de <carta> y, si está, <cielo>. No menciones ascendente, casas, Mercurio, Júpiter, Saturno ni ningún otro punto que no esté ahí, y no inventes tránsitos, signos ni fechas: si un dato no está, no lo afirmes. Si la Luna viene marcada como incierta, habla de ella con un matiz honesto. Un aspecto solo es "exacto" con menos de 1° de orbe.
 </rigor>
 
 <límites>
@@ -85,7 +86,9 @@ export function describeProfile(profile: ReadingProfile): string {
             : `- Luna en ${p.sign} · ${p.element} (sin hora exacta, pero estuvo en ese signo todo el día)`;
     });
     const aspects = chart.aspects.length
-        ? chart.aspects.map((a) => `${a.a} en ${a.name} con ${a.b}`).join("; ")
+        ? chart.aspects
+              .map((a) => `${a.a} en ${a.name} con ${a.b} (orbe ${a.orb}°)`)
+              .join("; ")
         : "ninguno mayor";
     const trato =
         profile.answers.find((a) => a.questionId === "trato")?.optionId ??

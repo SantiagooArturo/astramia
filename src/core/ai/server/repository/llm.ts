@@ -1,6 +1,7 @@
 import "server-only";
 import { getLogger } from "@logtape/logtape";
 import { generateText, type ModelMessage, streamText } from "ai";
+import { ServerConfig } from "@/config/server-config";
 import type {
     AiReasoning,
     AiUsage,
@@ -11,6 +12,12 @@ import { db } from "@/server/drizzle/db";
 import { aiUsage } from "@/server/drizzle/schemas/ai-usage-schema";
 
 const logger = getLogger(["server", "ai"]);
+
+/** Lets the Gateway retry a failed call on the fallback model. */
+function withFallback(model: string) {
+    const fallback = ServerConfig.ai.models.fallback;
+    return fallback === model ? undefined : { gateway: { models: [fallback] } };
+}
 
 /**
  * On thinking models hidden reasoning is billed as output and counts against
@@ -53,6 +60,7 @@ export async function generate(params: {
         prompt: params.prompt,
         maxOutputTokens: params.maxOutputTokens,
         reasoning: params.reasoning,
+        providerOptions: withFallback(params.model),
     });
     await recordUsage(params.usage, toAiUsage(params.model, result));
     // A cut text is never shown or stored; callers' error paths retry.
@@ -80,6 +88,7 @@ export function stream(params: {
         messages: params.messages,
         maxOutputTokens: params.maxOutputTokens,
         reasoning: params.reasoning,
+        providerOptions: withFallback(params.model),
         onError: ({ error }) => {
             logger.error("{purpose} stream failed: {error}", {
                 purpose: params.usage.purpose,
