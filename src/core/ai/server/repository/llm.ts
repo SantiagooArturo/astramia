@@ -8,6 +8,20 @@ import { aiUsage } from "@/server/drizzle/schemas/ai-usage-schema";
 
 const logger = getLogger(["server", "ai"]);
 
+/**
+ * No hidden reasoning. On thinking models (Gemini 2.5 Flash) it is billed as
+ * output and counts against `maxOutputTokens`: with it the paid reading came
+ * back cut at ~70 words; without it the text is whole, at half the cost.
+ */
+const REASONING = "none";
+
+function warnIfCut(ctx: UsageContext, finishReason: string): void {
+    if (finishReason === "length")
+        logger.warn("{purpose} hit maxOutputTokens; text is cut", {
+            purpose: ctx.purpose,
+        });
+}
+
 /** Who to bill a call to in `ai_usage`. */
 export interface UsageContext {
     purpose: AiPurpose;
@@ -59,8 +73,10 @@ export async function generate(params: {
         system: params.system,
         prompt: params.prompt,
         maxOutputTokens: params.maxOutputTokens,
+        reasoning: REASONING,
     });
     await recordUsage(params.usage, toAiUsage(params.model, result));
+    warnIfCut(params.usage, result.finishReason);
     return result.text;
 }
 
@@ -81,6 +97,7 @@ export function stream(params: {
         system: params.system,
         messages: params.messages,
         maxOutputTokens: params.maxOutputTokens,
+        reasoning: REASONING,
         onError: ({ error }) => {
             logger.error("{purpose} stream failed: {error}", {
                 purpose: params.usage.purpose,
@@ -90,6 +107,7 @@ export function stream(params: {
         onFinish: async (event) => {
             // Billed first: the tokens were spent even if saving the reply fails.
             await recordUsage(params.usage, toAiUsage(params.model, event));
+            warnIfCut(params.usage, event.finishReason);
             await params.onText(event.text);
         },
     });

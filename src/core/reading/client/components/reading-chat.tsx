@@ -10,6 +10,7 @@ import { Button } from "@/frontend/components/ui/button";
 import { Spinner } from "@/frontend/components/ui/spinner";
 import { Textarea } from "@/frontend/components/ui/textarea";
 import { cn } from "@/frontend/lib/utils";
+import { renderInline } from "./reading-text";
 
 function toUIMessage(message: ChatMessage): UIMessage {
     return {
@@ -114,7 +115,9 @@ export function ReadingChat({
                                 : "self-start bg-background/60",
                         )}
                     >
-                        {textOf(message)}
+                        {message.role === "assistant"
+                            ? renderInline(textOf(message))
+                            : textOf(message)}
                     </li>
                 ))}
                 {status === "submitted" && (

@@ -24,7 +24,8 @@ export function ReadingText({ text }: { text: string }) {
     );
 }
 
-function renderInline(text: string) {
+/** **bold** → <strong>; stray asterisks dropped. Shared with the chat. */
+export function renderInline(text: string) {
     return text
         .split(/(\*\*[^*]+\*\*)/)
         .map((part, i) =>
