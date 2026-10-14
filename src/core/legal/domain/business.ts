@@ -4,7 +4,6 @@
  * real before submitting the store for review.
  */
 
-// TODO(legal): replace every "[COMPLETAR …]" before going live.
 export const BUSINESS = {
     brand: "Astramia AI",
     /**
@@ -18,17 +17,18 @@ export const BUSINESS = {
     country: "Perú",
     /** Optional: Waffo accepts individuals without RUC. `null` hides it. */
     taxId: null as string | null,
-    registeredAddress: "[COMPLETAR: domicilio fiscal]",
+    /** Only shown for companies; individuals publish no address. */
+    registeredAddress: null as string | null,
     websiteUrl: "https://astramia.app",
     /** Must match the contact email submitted to Waffo and on receipts. */
     supportEmail: "help@astramia.app",
     businessHours: "lunes a viernes, 9:00–18:00 (hora de Lima, UTC−5)",
     /** Third-party model providers — Waffo requires declaring them. */
-    aiProviders: ["[COMPLETAR: p. ej. Anthropic]"],
+    aiProviders: ["Google (Gemini)"],
     /** Where servers and vendors process data (international transfers). */
     processingRegions: ["Estados Unidos"],
     /** Name customers see on their card statement. */
-    billingDescriptor: "[COMPLETAR: descriptor configurado en Waffo]",
+    billingDescriptor: "ASTRAMIA.APP",
 } as const;
 
 export const PAYMENT_PROCESSOR = "Waffo Pancake";
