@@ -14,21 +14,15 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { generateText, Output } from "ai";
 import { z } from "zod";
+import { aiReasoningSchema } from "@/core/ai/domain/schemas";
+import type { AiPurpose } from "@/core/ai/domain/types";
 import { natalChart, venusOutlook } from "@/core/reading/domain/chart";
+import type { ReadingProfile } from "@/core/reading/domain/prompts";
 import * as currentPrompts from "@/core/reading/domain/prompts";
 import { describeAnswer } from "@/core/reading/domain/quiz";
 import type { QuizAnswer } from "@/core/reading/domain/types";
 
-type Reasoning = "none" | "minimal" | "low" | "medium" | "high";
-
-interface Profile {
-    name: string;
-    birthDate: string;
-    birthTime: string | null;
-    birthPlace: string | null;
-    answers: QuizAnswer[];
-    chatQuestion: string;
-}
+type Profile = ReadingProfile & { name: string; chatQuestion: string };
 
 const answers = (...ids: string[]): QuizAnswer[] =>
     ["trato", "situacion", "patron", "necesidad", "herida", "pregunta"].map(
@@ -129,26 +123,9 @@ const PROFILES: Profile[] = [
     },
 ];
 
-/** Same contract as `@/core/reading/domain/prompts`; older versions ignore extra args. */
-interface PromptModule {
-    TEASER_PROMPT: {
-        system: string;
-        prompt: (profile: Profile, today: Date) => string;
-    };
-    READING_PROMPT: {
-        system: string;
-        prompt: (profile: Profile, teaser: string, today: Date) => string;
-    };
-    chatSystemPrompt: (
-        profile: Profile,
-        reading: string,
-        today: Date,
-    ) => string;
-    AI_TASKS?: Record<
-        "teaser" | "reading" | "chat",
-        { maxOutputTokens: number; reasoning: Reasoning }
-    >;
-}
+/** The prompts module's own shape; older versions may lack `AI_TASKS`. */
+type PromptModule = Omit<typeof currentPrompts, "AI_TASKS"> &
+    Partial<Pick<typeof currentPrompts, "AI_TASKS">>;
 
 const TODAY = new Date("2026-10-14T15:00:00Z");
 
@@ -187,14 +164,15 @@ interface Call {
 }
 
 async function call(
-    task: "teaser" | "reading" | "chat",
+    task: AiPurpose,
     prompts: PromptModule,
     input: { system: string; prompt: string },
 ): Promise<Call> {
     const settings = prompts.AI_TASKS?.[task];
-    const reasoning = (args.reasoning ??
+    const reasoning =
+        aiReasoningSchema.optional().parse(args.reasoning) ??
         settings?.reasoning ??
-        "none") as Reasoning;
+        "none";
     const maxOutputTokens = Number(
         args[`${task}-max`] ??
             settings?.maxOutputTokens ??
@@ -335,7 +313,7 @@ const words = (text: string) => text.split(/\s+/).filter(Boolean).length;
 async function runProfile(prompts: PromptModule, profile: Profile) {
     const teaser = await call("teaser", prompts, {
         system: prompts.TEASER_PROMPT.system,
-        prompt: prompts.TEASER_PROMPT.prompt(profile, TODAY),
+        prompt: prompts.TEASER_PROMPT.prompt(profile),
     });
     const reading = await call("reading", prompts, {
         system: prompts.READING_PROMPT.system,
