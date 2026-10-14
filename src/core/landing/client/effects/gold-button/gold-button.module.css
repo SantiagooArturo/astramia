@@ -1,0 +1,99 @@
+.gold {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    color: oklch(0.18 0.04 285);
+    background: linear-gradient(
+        115deg,
+        oklch(0.78 0.12 80) 0%,
+        var(--astral-gold) 35%,
+        oklch(0.95 0.06 90) 50%,
+        var(--astral-gold) 65%,
+        oklch(0.76 0.12 78) 100%
+    );
+    background-size: 220% 100%;
+    background-position: 0% 50%;
+    box-shadow:
+        0 0 0 1px oklch(0.95 0.06 90 / 40%) inset,
+        0 10px 40px -12px var(--astral-gold);
+    transition:
+        background-position 0.9s cubic-bezier(0.22, 1, 0.36, 1),
+        box-shadow 0.4s,
+        transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Liquid highlight that pools under the pointer side */
+.gold::before {
+    content: "";
+    position: absolute;
+    inset: -40%;
+    z-index: -1;
+    background: radial-gradient(
+        closest-side,
+        oklch(0.98 0.04 92 / 90%),
+        transparent
+    );
+    opacity: 0;
+    transform: scale(0.4);
+    transition:
+        opacity 0.5s,
+        transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Sheen sweep */
+.gold::after {
+    content: "";
+    position: absolute;
+    top: -50%;
+    bottom: -50%;
+    left: -30%;
+    width: 30%;
+    background: linear-gradient(
+        100deg,
+        transparent,
+        oklch(1 0 0 / 55%),
+        transparent
+    );
+    transform: translateX(-100%) skewX(-18deg);
+    pointer-events: none;
+}
+
+.gold:hover,
+.gold:focus-visible {
+    background-position: 100% 50%;
+    box-shadow:
+        0 0 0 1px oklch(0.98 0.04 92 / 70%) inset,
+        0 14px 50px -10px var(--astral-gold);
+    transform: translateY(-1px);
+}
+
+.gold:hover::before {
+    opacity: 0.7;
+    transform: scale(1);
+}
+
+.gold:hover::after {
+    animation: sheen 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.gold:active {
+    transform: translateY(0) scale(0.99);
+}
+
+@keyframes sheen {
+    to {
+        transform: translateX(600%) skewX(-18deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .gold,
+    .gold::before,
+    .gold::after {
+        transition: none;
+        animation: none;
+    }
+    .gold:hover {
+        transform: none;
+    }
+}

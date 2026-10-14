@@ -1,0 +1,7 @@
+.root {
+    display: inline-flex;
+    /* Generous hit area so the pull starts before the pointer reaches the button */
+    padding: 0.75rem;
+    margin: -0.75rem;
+    will-change: transform;
+}

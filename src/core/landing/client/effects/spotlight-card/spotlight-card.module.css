@@ -1,0 +1,63 @@
+.card {
+    --spot-x: 50%;
+    --spot-y: -20%;
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    backdrop-filter: blur(14px);
+    transition:
+        transform 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+        border-color 0.4s;
+}
+
+/* Inner glow following the pointer */
+.card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: radial-gradient(
+        420px circle at var(--spot-x) var(--spot-y),
+        oklch(0.62 0.2 295 / 18%),
+        transparent 45%
+    );
+    opacity: 0;
+    transition: opacity 0.4s;
+}
+
+/* Luminous border, masked to a 1px ring */
+.card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: radial-gradient(
+        260px circle at var(--spot-x) var(--spot-y),
+        var(--astral-gold),
+        transparent 60%
+    );
+    mask:
+        linear-gradient(#000 0 0) content-box,
+        linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.4s;
+    pointer-events: none;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+}
+
+.card:hover::before,
+.card:hover::after {
+    opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .card,
+    .card:hover {
+        transform: none;
+    }
+}

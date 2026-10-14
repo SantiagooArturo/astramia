@@ -1,7 +1,5 @@
-import { redirect } from "next/navigation";
-import { authenticate } from "@/server/auth/auth";
+import { LandingPage } from "@/core/landing/client/landing-page";
 
-export default async function HomePage() {
-    const session = await authenticate();
-    redirect(session ? "/projects" : "/auth/sign-in");
+export default function HomePage() {
+    return <LandingPage />;
 }

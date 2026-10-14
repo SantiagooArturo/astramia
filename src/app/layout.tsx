@@ -1,16 +1,39 @@
 import type { Metadata } from "next";
+import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import type { PropsWithChildren } from "react";
 import { Providers } from "@/frontend/providers/providers";
 import "./globals.css";
 
+const geistSans = Geist({
+    subsets: ["latin"],
+    variable: "--font-geist-sans",
+});
+
+const geistMono = Geist_Mono({
+    subsets: ["latin"],
+    variable: "--font-geist-mono",
+});
+
+const instrumentSerif = Instrument_Serif({
+    subsets: ["latin"],
+    weight: "400",
+    style: ["normal", "italic"],
+    variable: "--font-instrument-serif",
+});
+
 export const metadata: Metadata = {
-    title: "Hackaton Starter",
-    description: "Next + Elysia + Better Auth + Drizzle starter",
+    title: "Astramia AI — Lecturas astrológicas personalizadas con IA",
+    description:
+        "Recibe tu lectura astrológica sobre amor y relaciones en minutos y conversa 2 horas con una IA que conoce tu carta. Pago único de US$5.99.",
 };
 
 export default function RootLayout({ children }: PropsWithChildren) {
     return (
-        <html lang="en" suppressHydrationWarning>
+        <html
+            lang="es"
+            suppressHydrationWarning
+            className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable}`}
+        >
             <body className="min-h-svh antialiased">
                 <Providers>{children}</Providers>
             </body>

@@ -1,0 +1,14 @@
+.root {
+    display: inline;
+}
+
+.glyphs {
+    display: inline;
+    transition: color 0.3s ease;
+}
+
+/* While decoding, glyphs read as gold ink so the swap is visible */
+.running {
+    color: var(--astral-gold);
+    font-variant-ligatures: none;
+}

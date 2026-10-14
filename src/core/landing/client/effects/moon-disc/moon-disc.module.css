@@ -1,0 +1,24 @@
+.svg {
+    display: block;
+    overflow: visible;
+    filter: drop-shadow(0 0 14px oklch(0.92 0.06 88 / 35%));
+}
+
+.dark {
+    fill: oklch(0.2 0.03 285);
+}
+
+.lit {
+    fill: oklch(0.95 0.04 90);
+}
+
+.maria circle {
+    fill: oklch(0.3 0.03 285 / 28%);
+    mix-blend-mode: multiply;
+}
+
+.rim {
+    fill: none;
+    stroke: oklch(0.92 0.06 88 / 30%);
+    stroke-width: 0.8;
+}

@@ -1,0 +1,47 @@
+.root {
+    overflow: hidden;
+    mask-image: linear-gradient(
+        to right,
+        transparent,
+        #000 8%,
+        #000 92%,
+        transparent
+    );
+}
+
+.track {
+    display: flex;
+    width: max-content;
+    animation: scroll 70s linear infinite;
+}
+
+.root:hover .track {
+    animation-play-state: paused;
+}
+
+.group {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 2.5rem;
+    padding-right: 2.5rem;
+}
+
+@keyframes scroll {
+    to {
+        transform: translateX(-50%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .root {
+        overflow-x: auto;
+        mask-image: none;
+    }
+    .track {
+        animation: none;
+    }
+    .group[aria-hidden] {
+        display: none;
+    }
+}

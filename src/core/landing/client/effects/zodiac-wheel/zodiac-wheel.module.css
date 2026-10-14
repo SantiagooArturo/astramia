@@ -1,0 +1,257 @@
+.root {
+    position: relative;
+    aspect-ratio: 1;
+    width: 100%;
+}
+
+.halo {
+    position: absolute;
+    inset: 12%;
+    border-radius: 9999px;
+    background: radial-gradient(
+        circle,
+        oklch(0.84 0.12 85 / 35%),
+        oklch(0.62 0.2 295 / 20%) 45%,
+        transparent 70%
+    );
+    filter: blur(40px);
+    animation: breathe 6s ease-in-out infinite;
+    transition: opacity 0.6s;
+}
+
+.hasActive .halo {
+    opacity: 1;
+    animation-duration: 3s;
+}
+
+.layer {
+    position: absolute;
+    inset: 0;
+    will-change: transform;
+}
+
+.svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.overlay {
+    pointer-events: none;
+}
+
+.middle,
+.inner {
+    transform-origin: 200px 200px;
+    transform-box: view-box;
+}
+
+.middle {
+    animation: spin 60s linear infinite reverse;
+}
+
+.inner {
+    animation: spin 36s linear infinite;
+}
+
+.ring {
+    fill: none;
+    stroke-width: 1.2;
+}
+
+.ringFaint {
+    fill: none;
+    stroke: oklch(0.9 0.05 295 / 18%);
+    stroke-width: 1;
+}
+
+.ringDashed {
+    fill: none;
+    stroke: oklch(0.84 0.12 85 / 35%);
+    stroke-width: 1;
+    stroke-dasharray: 2 6;
+}
+
+.tick {
+    stroke: oklch(0.9 0.05 295 / 30%);
+    stroke-width: 1;
+}
+
+.sign {
+    fill: var(--astral-gold);
+    font-size: 15px;
+    text-anchor: middle;
+    dominant-baseline: central;
+    opacity: 0.85;
+    transition:
+        opacity 0.5s,
+        font-size 0.5s,
+        fill 0.5s;
+}
+
+.signDim {
+    opacity: 0.35;
+}
+
+.signActive {
+    opacity: 1;
+    font-size: 22px;
+    fill: oklch(0.97 0.05 85);
+    filter: drop-shadow(0 0 8px var(--astral-gold));
+}
+
+.burst {
+    fill: none;
+    stroke: var(--astral-gold);
+    stroke-width: 1.5;
+    transform-origin: center;
+    transform-box: fill-box;
+    animation: burst 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.pointer {
+    fill: var(--astral-gold);
+    opacity: 0;
+    transition: opacity 0.6s;
+}
+
+.hasActive .pointer {
+    opacity: 0.9;
+}
+
+.planetGold {
+    fill: var(--astral-gold);
+    filter: drop-shadow(0 0 6px var(--astral-gold));
+}
+
+.planetRose {
+    fill: var(--astral-rose);
+    filter: drop-shadow(0 0 5px var(--astral-rose));
+}
+
+.planetCyan {
+    fill: var(--astral-cyan);
+    filter: drop-shadow(0 0 5px var(--astral-cyan));
+}
+
+.constellation {
+    fill: none;
+    stroke: oklch(0.97 0.03 85 / 45%);
+    stroke-width: 0.8;
+    stroke-dasharray: 400;
+    stroke-dashoffset: 400;
+    animation: draw 4s 0.6s ease-out forwards;
+    transition: opacity 0.6s;
+}
+
+.node {
+    fill: oklch(0.97 0.03 85);
+    transition: opacity 0.6s;
+}
+
+.hasActive .constellation,
+.hasActive .node {
+    opacity: 0.25;
+}
+
+.core {
+    transform-origin: 200px 200px;
+    transform-box: view-box;
+    animation: pulse 4s ease-in-out infinite;
+}
+
+.hub {
+    animation: hubIn 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+    transform-origin: 200px 200px;
+    transform-box: view-box;
+}
+
+.hubRing {
+    fill: none;
+    stroke: var(--astral-gold);
+    stroke-width: 0.8;
+    stroke-dasharray: 3 5;
+    opacity: 0.7;
+}
+
+.hubGlyph {
+    fill: oklch(0.14 0.03 285);
+    font-size: 44px;
+    text-anchor: middle;
+    dominant-baseline: central;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes pulse {
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.95;
+    }
+    50% {
+        transform: scale(1.08);
+        opacity: 1;
+    }
+}
+
+@keyframes breathe {
+    0%,
+    100% {
+        opacity: 0.7;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.06);
+    }
+}
+
+@keyframes draw {
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes burst {
+    0% {
+        transform: scale(0.3);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(3.2);
+        opacity: 0;
+    }
+}
+
+@keyframes hubIn {
+    0% {
+        transform: scale(0.6) rotate(-20deg);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .middle,
+    .inner,
+    .core,
+    .halo,
+    .burst,
+    .hub {
+        animation: none;
+    }
+    .constellation {
+        animation: none;
+        stroke-dashoffset: 0;
+    }
+}

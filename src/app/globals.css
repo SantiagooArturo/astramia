@@ -23,6 +23,17 @@
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
     --ring: oklch(0.708 0 0);
+
+    /* Astramia brand — cosmic palette, shared by landing + product */
+    --astral-void: oklch(0.13 0.03 285);
+    --astral-violet: oklch(0.62 0.2 295);
+    --astral-indigo: oklch(0.45 0.17 275);
+    --astral-rose: oklch(0.72 0.15 350);
+    --astral-gold: oklch(0.84 0.12 85);
+    --astral-cyan: oklch(0.8 0.1 210);
+    /* Lighter gold for ink on dark surfaces, and a parchment tint for rules */
+    --astral-gold-soft: oklch(0.92 0.06 88);
+    --astral-ink: oklch(0.9 0.03 290 / 24%);
 }
 
 .dark {
@@ -69,6 +80,43 @@
     --color-border: var(--border);
     --color-input: var(--input);
     --color-ring: var(--ring);
+    --color-astral-void: var(--astral-void);
+    --color-astral-violet: var(--astral-violet);
+    --color-astral-indigo: var(--astral-indigo);
+    --color-astral-rose: var(--astral-rose);
+    --color-astral-gold: var(--astral-gold);
+    --color-astral-cyan: var(--astral-cyan);
+    --color-astral-gold-soft: var(--astral-gold-soft);
+    --color-astral-ink: var(--astral-ink);
+    --font-sans: var(--font-geist-sans);
+    --font-mono: var(--font-geist-mono);
+    --font-display: var(--font-instrument-serif);
+}
+
+/*
+ * Cosmic surface for marketing pages. Re-maps shadcn tokens so every
+ * shadcn component (Button, Card, Badge, Accordion…) renders on-brand
+ * without per-component overrides.
+ */
+.theme-astral {
+    --background: var(--astral-void);
+    --foreground: oklch(0.96 0.01 290);
+    --card: oklch(0.18 0.04 285 / 60%);
+    --card-foreground: oklch(0.96 0.01 290);
+    --popover: oklch(0.18 0.04 285);
+    --popover-foreground: oklch(0.96 0.01 290);
+    --primary: var(--astral-gold);
+    --primary-foreground: oklch(0.18 0.04 285);
+    --secondary: oklch(0.25 0.06 290 / 70%);
+    --secondary-foreground: oklch(0.96 0.01 290);
+    --muted: oklch(0.22 0.04 285);
+    --muted-foreground: oklch(0.74 0.04 290);
+    --accent: oklch(0.28 0.08 295 / 60%);
+    --accent-foreground: oklch(0.96 0.01 290);
+    --border: oklch(0.9 0.05 295 / 12%);
+    --input: oklch(0.9 0.05 295 / 16%);
+    --ring: var(--astral-violet);
+    color-scheme: dark;
 }
 
 @layer base {
@@ -76,6 +124,14 @@
         @apply border-border outline-ring/50;
     }
     body {
-        @apply bg-background text-foreground;
+        @apply bg-background text-foreground font-sans;
+    }
+    html {
+        scroll-behavior: smooth;
+    }
+    @media (prefers-reduced-motion: reduce) {
+        html {
+            scroll-behavior: auto;
+        }
     }
 }

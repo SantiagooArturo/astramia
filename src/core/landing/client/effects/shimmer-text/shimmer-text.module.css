@@ -1,0 +1,32 @@
+.shimmer {
+    background-image: linear-gradient(
+        100deg,
+        var(--astral-gold) 0%,
+        oklch(0.97 0.03 85) 22%,
+        var(--astral-rose) 45%,
+        var(--astral-violet) 70%,
+        var(--astral-gold) 100%
+    );
+    background-size: 250% 100%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    animation: sweep 9s linear infinite;
+    /* Keep descenders of the serif italic inside the clip box */
+    padding-bottom: 0.08em;
+}
+
+@keyframes sweep {
+    from {
+        background-position: 0% 50%;
+    }
+    to {
+        background-position: 250% 50%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .shimmer {
+        animation: none;
+    }
+}

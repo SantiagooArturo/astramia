@@ -1,0 +1,13 @@
+.scene {
+    transform-style: preserve-3d;
+    will-change: transform;
+}
+
+.card {
+    transform: translateZ(0);
+}
+
+/* The tilt replaces the spotlight lift so the two don't fight */
+.card:hover {
+    transform: translateZ(0);
+}
