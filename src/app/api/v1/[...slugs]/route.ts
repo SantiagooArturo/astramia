@@ -1,6 +1,7 @@
 import app from "@/server/router";
 
-export const maxDuration = 60;
+// Covers a reading written in the background (after()) on the fallback model.
+export const maxDuration = 120;
 
 export const GET = app.fetch;
 export const POST = app.fetch;

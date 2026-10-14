@@ -10,6 +10,7 @@ import {
     err,
     ok,
 } from "@/server/common/responses";
+import type { ReadingRow } from "@/server/drizzle/schemas/reading-schema";
 import {
     claimReadingGeneration,
     findReading,
@@ -23,9 +24,48 @@ const logger = getLogger(["server", "reading"]);
 const CLAIM_TTL_MS = 2 * 60 * 1000;
 
 /**
- * Returns the unlocked reading, writing the full text the first time it is
- * opened. Concurrent opens don't double-bill: only the claimant generates,
- * the others get `content: null` and the page polls.
+ * Writes the full text once. Concurrent callers don't double-bill: only the
+ * claimant generates; the others get `null` and the page polls.
+ */
+async function writeReadingContent(row: ReadingRow): Promise<string | null> {
+    const claimed = await claimReadingGeneration(
+        row.id,
+        new Date(Date.now() - CLAIM_TTL_MS),
+    );
+    if (!claimed) return null;
+
+    try {
+        const content = await generate({
+            model: ServerConfig.ai.models.reading,
+            system: READING_PROMPT.system,
+            prompt: READING_PROMPT.prompt(
+                toProfile(row),
+                row.teaser,
+                new Date(),
+            ),
+            ...AI_TASKS.reading,
+            usage: {
+                purpose: "reading",
+                userId: row.userId,
+                referenceId: row.id,
+            },
+        });
+        await saveReadingContent(row.id, content.trim());
+        return content.trim();
+    } catch (cause) {
+        // Release the claim so the next open retries right away.
+        await saveReadingContent(row.id, null);
+        logger.error("Reading {id} generation failed: {cause}", {
+            id: row.id,
+            cause,
+        });
+        throw cause;
+    }
+}
+
+/**
+ * Returns the unlocked reading, writing the full text if nobody has yet.
+ * `content: null` means it is being written elsewhere: the page polls.
  */
 export async function ensureReadingContentService(
     userId: string,
@@ -37,36 +77,26 @@ export async function ensureReadingContentService(
         const reading = toReading(row);
         if (reading.locked) return err(AppErrors.forbidden());
         if (reading.content) return ok(reading);
+        return ok({ ...reading, content: await writeReadingContent(row) });
+    } catch (cause) {
+        return err(AppErrors.unexpected(cause));
+    }
+}
 
-        const claimed = await claimReadingGeneration(
-            id,
-            new Date(Date.now() - CLAIM_TTL_MS),
-        );
-        if (!claimed) return ok(reading);
-
-        try {
-            const content = await generate({
-                model: ServerConfig.ai.models.reading,
-                system: READING_PROMPT.system,
-                prompt: READING_PROMPT.prompt(
-                    toProfile(row),
-                    row.teaser,
-                    new Date(),
-                ),
-                ...AI_TASKS.reading,
-                usage: { purpose: "reading", userId, referenceId: id },
-            });
-            await saveReadingContent(id, content.trim());
-            return ok({ ...reading, content: content.trim() });
-        } catch (cause) {
-            // Release the claim so the next open retries right away.
-            await saveReadingContent(id, null);
-            logger.error("Reading {id} generation failed: {cause}", {
-                id,
-                cause,
-            });
-            return err(AppErrors.unexpected(cause));
-        }
+/**
+ * Writes the full text ahead of payment, while the buyer fills in the
+ * checkout, so it's ready when they come back instead of ~30 s later. It
+ * stays on the server until the reading is unlocked (`toReading`).
+ */
+export async function prepareReadingContentService(
+    userId: string,
+    id: string,
+): AsyncAppResult<void> {
+    try {
+        const row = await findReading(userId, id);
+        if (!row) return err(AppErrors.notFound({ targets: ["reading"] }));
+        if (!row.content) await writeReadingContent(row);
+        return ok(undefined);
     } catch (cause) {
         return err(AppErrors.unexpected(cause));
     }

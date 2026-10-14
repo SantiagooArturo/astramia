@@ -144,6 +144,12 @@ export function natalChart(
     };
 }
 
+/** "21 de marzo de 1994" from an ISO date. */
+export function longDate(isoDate: string): string {
+    const [y, m, d] = isoDate.split("-").map(Number);
+    return `${d} de ${MONTHS_ES[m - 1]} de ${y}`;
+}
+
 /** "principios de noviembre": dates are ±1 day, so no false precision. */
 export function approximateDate(date: Date): string {
     const day = date.getUTCDate();

@@ -3,7 +3,7 @@ import { OFFER } from "@/core/landing/domain/content";
 import { BUSINESS } from "@/core/legal/domain/business";
 import { LEGAL_ROUTES } from "@/core/legal/domain/policies";
 import type { ChatMessage, Reading } from "@/core/reading/domain/types";
-import { Skeleton } from "@/frontend/components/ui/skeleton";
+import { ChartReveal } from "../components/chart-reveal";
 import { ReadingChat } from "../components/reading-chat";
 import { ReadingText } from "../components/reading-text";
 import { RefreshWhile } from "../components/refresh-while";
@@ -129,20 +129,22 @@ export function UnlockedReadingScreen({
         <ReadingShell>
             <Header reading={reading} />
             <ReadingText text={reading.teaser} />
-            <Suspense fallback={<WritingReading />}>{content}</Suspense>
+            <Suspense fallback={<WritingReading reading={reading} />}>
+                {content}
+            </Suspense>
         </ReadingShell>
     );
 }
 
-export function WritingReading() {
+/** Usually skipped: the text is written during checkout. Otherwise, their chart. */
+export function WritingReading({ reading }: { reading: Reading }) {
     return (
-        <div className="flex flex-col gap-3" aria-busy>
-            <p className="font-mono text-[11px] text-muted-foreground uppercase tracking-[0.16em]">
-                Escribiendo tu lectura…
-            </p>
-            <Skeleton className="h-4 w-full" />
-            <Skeleton className="h-4 w-11/12" />
-            <Skeleton className="h-4 w-4/5" />
+        <div aria-busy>
+            <ChartReveal
+                chart={reading.chart}
+                birthDate={reading.birthDate}
+                mode="reading"
+            />
         </div>
     );
 }
@@ -158,7 +160,7 @@ export function ReadingBody({
         return (
             <>
                 <RefreshWhile />
-                <WritingReading />
+                <WritingReading reading={reading} />
             </>
         );
     return (

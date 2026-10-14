@@ -60,9 +60,11 @@ Regenerate + apply migrations: `pnpm db:generate && pnpm db:migrate`.
 
 `/lectura/amor` (quiz, anonymous Better Auth session) → `POST /readings`
 writes a free teaser → `/lectura/r/:id` shows it with the rest blurred →
-`POST /readings/:id/checkout` opens the hosted checkout → the gateway's webhook
+`POST /readings/:id/checkout` opens the hosted checkout (and starts writing
+the full reading in the background, so it's ready when the buyer returns) → the gateway's webhook
 (`/payments/webhooks/:provider`) or the return URL syncs the payment → the
-paid order unlocks the reading, whose full text is written on first open, and
+paid order unlocks the reading (its text is only sent once unlocked; if it's
+still being written, the page draws the buyer's chart until it is) and
 opens the 2-hour chat (`POST /readings/:id/chat`, streamed with the AI SDK).
 
 ### Switching payment gateway

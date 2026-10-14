@@ -56,46 +56,6 @@ export const createReadingSchema = z.object({
         ),
 });
 
-/**
- * Wire shape. `content` is `null` until the reading is unlocked *and*
- * written; the locked reading never carries it.
- */
-export const readingSchema = z.object({
-    id: z.string(),
-    topic: readingTopicSchema,
-    sunSign: z.string(),
-    teaser: z.string(),
-    locked: z.boolean(),
-    content: z.string().nullable(),
-    chatExpiresAt: z.string().nullable(),
-    createdAt: z.string(),
-});
-
-export const readingIdParamsSchema = z.object({ id: z.string().min(1) });
-
-export const chatRoleSchema = z.enum(["user", "assistant"]);
-
-export const chatMessageSchema = z.object({
-    id: z.string(),
-    role: chatRoleSchema,
-    content: z.string(),
-    createdAt: z.string(),
-});
-
-export const chatTurnSchema = z.object({
-    text: z.string().trim().min(1).max(CHAT_LIMITS.maxMessageChars),
-});
-
-export const createdReadingSchema = z.object({ id: z.string() });
-
-/** What the prompts know about the person (a reading row minus bookkeeping). */
-export const readingProfileSchema = z.object({
-    birthDate: z.string(),
-    birthTime: z.string().nullable(),
-    birthPlace: z.string().nullable(),
-    answers: z.array(quizAnswerSchema),
-});
-
 /*
  * Computed by `chart.ts` and handed to the prompts so the model interprets
  * facts instead of inventing them. Never parsed from input; the element type
@@ -144,6 +104,49 @@ export const venusOutlookSchema = z.object({
     sign: z.string(),
     retrograde: z.boolean(),
     events: z.array(skyEventSchema),
+});
+
+/**
+ * Wire shape. `content` is `null` until the reading is unlocked *and*
+ * written; the locked reading never carries it.
+ */
+export const readingSchema = z.object({
+    id: z.string(),
+    topic: readingTopicSchema,
+    sunSign: z.string(),
+    teaser: z.string(),
+    birthDate: z.string(),
+    /** Drawn while the full text is being written. */
+    chart: natalChartSchema,
+    locked: z.boolean(),
+    content: z.string().nullable(),
+    chatExpiresAt: z.string().nullable(),
+    createdAt: z.string(),
+});
+
+export const readingIdParamsSchema = z.object({ id: z.string().min(1) });
+
+export const chatRoleSchema = z.enum(["user", "assistant"]);
+
+export const chatMessageSchema = z.object({
+    id: z.string(),
+    role: chatRoleSchema,
+    content: z.string(),
+    createdAt: z.string(),
+});
+
+export const chatTurnSchema = z.object({
+    text: z.string().trim().min(1).max(CHAT_LIMITS.maxMessageChars),
+});
+
+export const createdReadingSchema = z.object({ id: z.string() });
+
+/** What the prompts know about the person (a reading row minus bookkeeping). */
+export const readingProfileSchema = z.object({
+    birthDate: z.string(),
+    birthTime: z.string().nullable(),
+    birthPlace: z.string().nullable(),
+    answers: z.array(quizAnswerSchema),
 });
 
 /** The reading's Markdown subset, parsed into blocks for rendering. */

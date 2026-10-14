@@ -11,6 +11,9 @@ import { ensureReadingContentService } from "@/core/reading/server/services/ensu
 import { getReadingService } from "@/core/reading/server/services/get-reading-service";
 import { authenticate } from "@/server/auth/auth";
 
+/** The full reading may be written during this render (~30–60 s). */
+export const maxDuration = 120;
+
 type Query = Record<string, string | string[] | undefined>;
 
 function flatten(query: Query): Record<string, string | undefined> {

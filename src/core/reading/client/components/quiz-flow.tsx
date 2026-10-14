@@ -6,18 +6,24 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { GoldButton } from "@/core/landing/client/effects";
+import { natalChart } from "@/core/reading/domain/chart";
 import type { LOVE_QUIZ } from "@/core/reading/domain/quiz";
 import {
     createdReadingSchema,
     createReadingSchema,
 } from "@/core/reading/domain/schemas";
-import type { QuizAnswer, ReadingTopic } from "@/core/reading/domain/types";
+import type {
+    NatalChart,
+    QuizAnswer,
+    ReadingTopic,
+} from "@/core/reading/domain/types";
 import { authClient } from "@/frontend/auth/auth";
 import { Button } from "@/frontend/components/ui/button";
 import { Input } from "@/frontend/components/ui/input";
 import { Label } from "@/frontend/components/ui/label";
 import { Spinner } from "@/frontend/components/ui/spinner";
 import { useReadings } from "../hooks";
+import { ChartReveal } from "./chart-reveal";
 
 /** Anonymous session first, so the reading has an owner without a sign-up. */
 async function ensureSession(): Promise<void> {
@@ -40,6 +46,11 @@ export function QuizFlow({
     const [answers, setAnswers] = useState<QuizAnswer[]>([]);
     const [birth, setBirth] = useState({ date: "", time: "", place: "" });
     const [submitting, setSubmitting] = useState(false);
+    /** Their chart, drawn while the hook is being written. */
+    const [revealing, setRevealing] = useState<{
+        chart: NatalChart;
+        birthDate: string;
+    } | null>(null);
 
     const total = questions.length + 1;
     const question = questions[step];
@@ -70,6 +81,13 @@ export function QuizFlow({
             return;
         }
         setSubmitting(true);
+        setRevealing({
+            chart: natalChart(
+                parsed.data.birthDate,
+                parsed.data.birthTime ?? null,
+            ),
+            birthDate: parsed.data.birthDate,
+        });
         try {
             await ensureSession();
             // Eden only infers 200 bodies; the 201 envelope is parsed here.
@@ -81,9 +99,19 @@ export function QuizFlow({
             toast.error(
                 "No pudimos preparar tu lectura. Inténtalo de nuevo en un momento.",
             );
+            setRevealing(null);
             setSubmitting(false);
         }
     }
+
+    if (revealing)
+        return (
+            <ChartReveal
+                chart={revealing.chart}
+                birthDate={revealing.birthDate}
+                mode="teaser"
+            />
+        );
 
     return (
         <div className="flex flex-col gap-8">

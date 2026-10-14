@@ -1,6 +1,5 @@
 import type { AiPurpose, AiReasoning } from "@/core/ai/domain/types";
-import { MONTHS_ES } from "@/core/landing/domain/zodiac";
-import { natalChart, venusOutlook } from "./chart";
+import { longDate, natalChart, venusOutlook } from "./chart";
 import { describeAnswer } from "./quiz";
 import type { ReadingProfile } from "./types";
 
@@ -63,11 +62,6 @@ Así consigues que la persona piense "¿cómo sabe esto?":
 4. Prueba de especificidad: si una frase le serviría a cualquier persona, reescríbela con un detalle de su carta o de sus respuestas.
 5. Sus respuestas son pistas, no un formulario: jamás las repitas entre comillas ni con sus mismas palabras; tradúcelas a lo que revelan (quien da más de lo que recibe lleva una cuenta que nunca cobra).
 </método>`;
-
-function longDate(isoDate: string): string {
-    const [y, m, d] = isoDate.split("-").map(Number);
-    return `${d} de ${MONTHS_ES[m - 1]} de ${y}`;
-}
 
 const TRATO: Record<string, string> = {
     femenino: "Háblale en femenino.",

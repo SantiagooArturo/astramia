@@ -1,3 +1,4 @@
+import { natalChart } from "@/core/reading/domain/chart";
 import type {
     ChatMessage,
     Reading,
@@ -16,6 +17,8 @@ export function toReading(row: ReadingRow): Reading {
         topic: row.topic,
         sunSign: row.sunSign,
         teaser: row.teaser,
+        birthDate: row.birthDate,
+        chart: natalChart(row.birthDate, row.birthTime),
         locked,
         content: locked ? null : row.content,
         chatExpiresAt: row.chatExpiresAt?.toISOString() ?? null,

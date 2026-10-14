@@ -1,6 +1,8 @@
 import "server-only";
+import { after } from "next/server";
 import { CHAT_LIMITS } from "@/core/reading/domain/schemas";
 import { unlockReading } from "../repository/readings";
+import { prepareReadingContentService } from "./ensure-reading-content-service";
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -14,4 +16,7 @@ export async function unlockReadingService(
         readingId,
         new Date(Date.now() + CHAT_LIMITS.hours * HOUR_MS),
     );
+    // Usually written during checkout already; this covers a failed attempt
+    // (no-op when the text exists or another request is writing it).
+    after(() => prepareReadingContentService(userId, readingId));
 }
