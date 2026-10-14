@@ -39,7 +39,11 @@ export default async function ReadingPage({
     const returned = await syncCheckoutReturnService(
         flatten(await searchParams),
     );
-    if (returned.ok && returned.data) {
+    if (!returned.ok) {
+        // Never offer to pay again for a payment we couldn't apply: a mismatch
+        // needs a person, anything else (gateway down) retries on refresh.
+        payment = returned.error.code === "CONFLICT" ? "review" : "confirming";
+    } else if (returned.data) {
         const status = returned.data.order?.status;
         // Paid: drop the gateway's query string so a reload is a clean view.
         if (status === "paid") redirect(`/lectura/r/${id}`);

@@ -3,7 +3,7 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { Send } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CHAT_LIMITS } from "@/core/reading/domain/schemas";
 import type { ChatMessage } from "@/core/reading/domain/types";
 import { Button } from "@/frontend/components/ui/button";
@@ -23,6 +23,23 @@ function textOf(message: UIMessage): string {
     return message.parts
         .map((part) => (part.type === "text" ? part.text : ""))
         .join("");
+}
+
+/**
+ * Formatted after mount: the server doesn't know the visitor's time zone, and
+ * formatting there (UTC on Vercel) would not match the browser's hydration.
+ */
+function useLocalTime(iso: string): string | null {
+    const [time, setTime] = useState<string | null>(null);
+    useEffect(() => {
+        setTime(
+            new Date(iso).toLocaleTimeString("es-PE", {
+                hour: "2-digit",
+                minute: "2-digit",
+            }),
+        );
+    }, [iso]);
+    return time;
 }
 
 /**
@@ -68,10 +85,7 @@ export function ReadingChat({
         setInput("");
     }
 
-    const closesAt = new Date(expiresAt).toLocaleTimeString("es-PE", {
-        hour: "2-digit",
-        minute: "2-digit",
-    });
+    const closesAt = useLocalTime(expiresAt);
 
     return (
         <section
@@ -81,7 +95,11 @@ export function ReadingChat({
             <header className="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 className="font-display text-2xl">Pregúntale a tu carta</h2>
                 <p className="font-mono text-[11px] text-muted-foreground uppercase tracking-[0.16em]">
-                    {expired ? "Chat cerrado" : `Abierto hasta las ${closesAt}`}
+                    {expired
+                        ? "Chat cerrado"
+                        : closesAt
+                          ? `Abierto hasta las ${closesAt}`
+                          : "Chat abierto"}
                 </p>
             </header>
 

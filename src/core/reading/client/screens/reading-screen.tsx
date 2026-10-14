@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { OFFER } from "@/core/landing/domain/content";
+import { BUSINESS } from "@/core/legal/domain/business";
 import { LEGAL_ROUTES } from "@/core/legal/domain/policies";
 import type { ChatMessage, Reading } from "@/core/reading/domain/types";
 import { Skeleton } from "@/frontend/components/ui/skeleton";
@@ -13,7 +14,7 @@ import { ReadingShell } from "./reading-shell";
 const BLURRED_FILLER =
     "Venus no se mueve igual para todos. En tu carta marca un ritmo que explica por qué ciertas personas te atrapan desde la primera conversación, y por qué otras, que parecían seguras, se apagan sin aviso. Lo que se repite no es casualidad: tiene un origen y tiene una salida. Tu Luna habla de lo que necesitas para sentirte en casa con alguien, y ahí está la respuesta a tu pregunta. En los próximos meses";
 
-export type PaymentState = "none" | "confirming" | "failed";
+export type PaymentState = "none" | "confirming" | "failed" | "review";
 
 function Header({ reading }: { reading: Reading }) {
     return (
@@ -58,6 +59,26 @@ export function LockedReadingScreen({
                         </p>
                         <p className="text-muted-foreground text-sm">
                             Suele tardar unos segundos. No cierres esta página.
+                        </p>
+                    </>
+                ) : payment === "review" ? (
+                    <>
+                        <p className="font-display text-2xl">
+                            Estamos revisando tu pago
+                        </p>
+                        <p
+                            role="alert"
+                            className="text-muted-foreground text-sm"
+                        >
+                            No pudimos confirmarlo automáticamente. No vuelvas a
+                            pagar: escríbenos a{" "}
+                            <a
+                                href={`mailto:${BUSINESS.supportEmail}`}
+                                className="underline underline-offset-4"
+                            >
+                                {BUSINESS.supportEmail}
+                            </a>{" "}
+                            con tu número de operación y lo resolvemos.
                         </p>
                     </>
                 ) : (

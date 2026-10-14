@@ -11,7 +11,7 @@ import {
     ok,
 } from "@/server/common/responses";
 import {
-    addChatMessage,
+    addChatTurn,
     findReading,
     listChatMessages,
 } from "../repository/readings";
@@ -33,8 +33,8 @@ export async function listChatMessagesService(
 }
 
 /**
- * One chat turn: checks the paid window and the message cap, stores the
- * question, and streams the answer (stored when it finishes).
+ * One chat turn: checks the paid window and the message cap and streams the
+ * answer. Question and answer are stored together once the answer finishes.
  */
 export async function sendChatMessageService(
     userId: string,
@@ -56,8 +56,7 @@ export async function sendChatMessageService(
         if (asked >= CHAT_LIMITS.maxUserMessages)
             return err(AppErrors.tooManyRequests());
 
-        await addChatMessage({ readingId, role: "user", content: text });
-
+        const askedAt = new Date();
         return ok(
             stream({
                 model: ServerConfig.ai.models.chat,
@@ -72,11 +71,7 @@ export async function sendChatMessageService(
                 maxOutputTokens: 800,
                 usage: { purpose: "chat", userId, referenceId: readingId },
                 onText: (reply) =>
-                    addChatMessage({
-                        readingId,
-                        role: "assistant",
-                        content: reply,
-                    }),
+                    addChatTurn(readingId, { content: text, askedAt }, reply),
             }),
         );
     } catch (cause) {

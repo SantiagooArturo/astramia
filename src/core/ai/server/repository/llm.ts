@@ -1,9 +1,12 @@
 import "server-only";
+import { getLogger } from "@logtape/logtape";
 import { generateText, type ModelMessage, streamText } from "ai";
 import { gatewayCostMetadataSchema } from "@/core/ai/domain/schemas";
 import type { AiPurpose, AiUsage } from "@/core/ai/domain/types";
 import { db } from "@/server/drizzle/db";
 import { aiUsage } from "@/server/drizzle/schemas/ai-usage-schema";
+
+const logger = getLogger(["server", "ai"]);
 
 /** Who to bill a call to in `ai_usage`. */
 export interface UsageContext {
@@ -61,7 +64,10 @@ export async function generate(params: {
     return result.text;
 }
 
-/** Streams a chat turn; `onText` receives the full reply once it ends. */
+/**
+ * Streams a chat turn; `onText` receives the full reply once it ends. Never
+ * called when the model fails, so a failed turn leaves nothing behind.
+ */
 export function stream(params: {
     model: string;
     system: string;
@@ -70,14 +76,24 @@ export function stream(params: {
     usage: UsageContext;
     onText: (text: string) => Promise<void>;
 }) {
-    return streamText({
+    const result = streamText({
         model: params.model,
         system: params.system,
         messages: params.messages,
         maxOutputTokens: params.maxOutputTokens,
+        onError: ({ error }) => {
+            logger.error("{purpose} stream failed: {error}", {
+                purpose: params.usage.purpose,
+                error,
+            });
+        },
         onFinish: async (event) => {
-            await params.onText(event.text);
+            // Billed first: the tokens were spent even if saving the reply fails.
             await recordUsage(params.usage, toAiUsage(params.model, event));
+            await params.onText(event.text);
         },
     });
+    // Keep reading if the browser disconnects, so the reply and its cost are still saved.
+    result.consumeStream();
+    return result;
 }

@@ -102,10 +102,22 @@ export async function listChatMessages(
     });
 }
 
-export async function addChatMessage(values: {
-    readingId: string;
-    role: "user" | "assistant";
-    content: string;
-}): Promise<void> {
-    await db.insert(chatMessages).values(values);
+/**
+ * Stores a question together with its answer, so a turn the model failed to
+ * answer doesn't use up one of the reading's questions.
+ */
+export async function addChatTurn(
+    readingId: string,
+    question: { content: string; askedAt: Date },
+    reply: string,
+): Promise<void> {
+    await db.insert(chatMessages).values([
+        {
+            readingId,
+            role: "user",
+            content: question.content,
+            createdAt: question.askedAt,
+        },
+        { readingId, role: "assistant", content: reply },
+    ]);
 }
