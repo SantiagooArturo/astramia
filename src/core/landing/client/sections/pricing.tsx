@@ -1,5 +1,6 @@
 import { ArrowRight, Lock } from "lucide-react";
 import Link from "next/link";
+import { LEGAL_ROUTES, REFUND_POLICY } from "@/core/legal/domain/policies";
 import {
     CardContent,
     CardFooter,
@@ -114,6 +115,32 @@ export function Pricing() {
                             </p>
                         </CardFooter>
                     </TiltCard>
+                    <p className="mt-4 text-pretty text-muted-foreground text-xs leading-relaxed">
+                        ¿Primera compra? Tienes{" "}
+                        {REFUND_POLICY.firstPurchaseDays} días para pedir tu
+                        reembolso.{" "}
+                        <Link
+                            href={LEGAL_ROUTES.refunds}
+                            className="text-astral-gold underline-offset-4 hover:underline"
+                        >
+                            Política de reembolsos
+                        </Link>
+                        . Al comprar aceptas los{" "}
+                        <Link
+                            href={LEGAL_ROUTES.terms}
+                            className="text-astral-gold underline-offset-4 hover:underline"
+                        >
+                            Términos
+                        </Link>{" "}
+                        y la{" "}
+                        <Link
+                            href={LEGAL_ROUTES.privacy}
+                            className="text-astral-gold underline-offset-4 hover:underline"
+                        >
+                            Política de Privacidad
+                        </Link>
+                        .
+                    </p>
                 </Reveal>
             </div>
         </section>

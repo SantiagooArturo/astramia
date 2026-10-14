@@ -1,3 +1,5 @@
+import { REFUND_POLICY } from "@/core/legal/domain/policies";
+
 /**
  * Landing copy + product facts. Single source so pricing/session length
  * never drift between sections.
@@ -22,11 +24,11 @@ export function startReadingHref(signId?: string): string {
 }
 
 export const NAV_LINKS = [
-    { href: "#experiencias", label: "Lecturas" },
-    { href: "#como-funciona", label: "Cómo funciona" },
-    { href: "#conversacion", label: "El chat" },
-    { href: "#precio", label: "Precio" },
-    { href: "#preguntas", label: "Preguntas" },
+    { href: "/#experiencias", label: "Lecturas" },
+    { href: "/#como-funciona", label: "Cómo funciona" },
+    { href: "/#conversacion", label: "El chat" },
+    { href: "/#precio", label: "Precio" },
+    { href: "/#preguntas", label: "Preguntas" },
 ] as const;
 
 export const HERO = {
@@ -230,6 +232,10 @@ export const FAQS: Faq[] = [
     {
         question: "¿Es una suscripción?",
         answer: "No. Es un pago único. No guardamos tu tarjeta y no hay cobros futuros.",
+    },
+    {
+        question: "¿Y si no me convence?",
+        answer: `Si es tu primera compra, tienes ${REFUND_POLICY.firstPurchaseDays} días para pedir el reembolso completo, sin explicar por qué. Si tu lectura no llegó o hubo una falla técnica, tienes ${REFUND_POLICY.technicalIssueDays} días. El pago lo procesa Waffo Pancake y el dinero vuelve a tu misma tarjeta.`,
     },
     {
         question: "¿La lectura la escribe una persona o una IA?",
