@@ -362,6 +362,23 @@ const OTHER_GENDER =
     /(?<!\p{L})(?<!desde )(él|ella|novio|novia|chico|chica)(?!\p{L})/giu;
 const words = (text: string) => text.split(/\s+/).filter(Boolean).length;
 
+/** Sentences: what a reader takes in one go (a line break ends one too). */
+const sentences = (text: string) =>
+    text
+        .replace(/\*\*/g, "")
+        .split(/(?<=[.?!…])\s+|\n+/)
+        .map((s) => s.trim())
+        .filter((s) => words(s) > 0);
+/** Easy to read on a phone: few words per sentence, almost no long ones. */
+function readability(text: string) {
+    const lengths = sentences(text).map(words);
+    const total = lengths.reduce((a, b) => a + b, 0);
+    return {
+        wordsPerSentence: Math.round((total / lengths.length) * 10) / 10,
+        longSentences: lengths.filter((n) => n > 20).length,
+    };
+}
+
 /** Bodies each single-body scene is shown next to. */
 const ON_SCREEN: Partial<Record<keyof ReadingScenes, string[]>> = {
     venus: ["Venus"],
@@ -423,6 +440,8 @@ async function runProfile(prompts: PromptModule, profile: Profile) {
         checks: {
             teaserWords: words(teaser.text),
             readingWords: words(readingText),
+            ...readability(readingText),
+            teaserWordsPerSentence: readability(teaser.text).wordsPerSentence,
             crossTalk: crossTalk(reading.text),
             chatWords: words(chat.text),
             cut: [teaser, reading, chat].some(
@@ -501,6 +520,11 @@ const summary = {
     cortes: results.filter((r) => r.checks.cut).length,
     voseo: results.reduce((n, r) => n + r.checks.voseo.length, 0),
     palabrasLectura: mean(results.map((r) => r.checks.readingWords)),
+    palabrasPorFrase: mean(results.map((r) => r.checks.wordsPerSentence)),
+    frasesLargas: mean(results.map((r) => r.checks.longSentences)),
+    palabrasPorFraseGancho: mean(
+        results.map((r) => r.checks.teaserWordsPerSentence),
+    ),
     segundosLectura: mean(results.map((r) => r.reading.seconds)),
     segundosChat: mean(results.map((r) => r.chat.seconds)),
     usdPorCompra:
