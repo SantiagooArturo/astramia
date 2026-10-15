@@ -18,6 +18,7 @@ import {
 } from "@/core/reading/domain/solar-system";
 import type { StoryBody } from "@/core/reading/domain/story";
 import type { NatalChart } from "@/core/reading/domain/types";
+import { sphereShare } from "../globe";
 import { MoonPhaseScene } from "./moon-phase-scene";
 import { PlanetScene } from "./planet-scene";
 
@@ -34,7 +35,7 @@ const HALF = 1.04;
 
 /**
  * Each body from afar: its radius, and a small rendered sphere of it
- * (scripts/planet-sprites.py), lit from its right.
+ * (scripts/planet-sprites.py): unlit, north up, as the 3D globe starts.
  */
 const LOOK: Record<SystemBody, { r: number; sprite: string }> = {
     Sol: { r: 0.055, sprite: "sol" },
@@ -46,12 +47,48 @@ const LOOK: Record<SystemBody, { r: number; sprite: string }> = {
 /** The sphere's share of its sprite: the rest is atmosphere or flames. */
 const SPRITE_SPHERE = 0.86;
 
-/** Turns a sprite (lit from its right) so its day side faces the Sun. */
+/** The angle (SVG degrees, clockwise) from a body toward the Sun. */
 function towardTheSun(p: Point): number {
     return (Math.atan2(-p.y, -p.x) * 180) / Math.PI;
 }
 
-/** How close the camera gets: the dot grows to about the globe that replaces it. */
+/** The light comes from the Sun's side and a little toward us. */
+const FRONT = 0.42;
+
+/** Where the Sun is, for the globe's shader (x right, y up, z toward us). */
+function sunLight(p: Point): readonly [number, number, number] {
+    const length = Math.hypot(p.x, p.y) || 1;
+    return [-p.x / length, p.y / length, FRONT];
+}
+
+const smoothstep = (a: number, b: number, x: number) => {
+    const t = Math.min(Math.max((x - a) / (b - a), 0), 1);
+    return t * t * (3 - 2 * t);
+};
+
+/**
+ * The night side laid over a sprite, from its dark edge (0) to the edge
+ * facing the Sun (1): the globe's own shading along that line, so the dot
+ * and the globe that takes over are lit alike.
+ */
+const NIGHT = Array.from({ length: 25 }, (_, i) => {
+    const offset = i / 24;
+    const u = (offset - 0.5) / (SPRITE_SPHERE / 2);
+    if (u <= -1) return { offset, opacity: 0.95 };
+    if (u >= 1) return { offset, opacity: 0 };
+    const z = Math.sqrt(1 - u * u);
+    const d = (u + FRONT * z) / Math.hypot(1, FRONT);
+    const lit = smoothstep(-0.06, 0.22, d) * (0.3 + 0.7 * Math.max(d, 0));
+    const shade = 0.05 + 0.95 * lit;
+    // The sprites' own limb darkening, already in the picture.
+    const drawn = 0.75 + 0.25 * Math.sqrt(z);
+    return { offset, opacity: Math.min(Math.max(1 - shade / drawn, 0), 0.95) };
+});
+
+/** Bodies with a night side drawn over them (the Sun has none). */
+const NIGHT_BODIES = ["Venus", "Tierra", "Marte", "Luna"] as const;
+
+/** How close the camera gets: the dot grows to the globe that replaces it. */
 const ZOOM: Record<StoryBody, number> = {
     Sol: 7,
     Venus: 17,
@@ -59,7 +96,18 @@ const ZOOM: Record<StoryBody, number> = {
     Luna: 34,
 };
 
+/**
+ * The globe's canvas, sized in the scene's own units so its sphere is
+ * exactly its dot at the end of the zoom, on any screen.
+ */
+function globeSize(body: StoryBody): string {
+    const sphere = (2 * LOOK[body].r * ZOOM[body] * 50) / HALF;
+    return `${sphere / sphereShare(body)}cqmin`;
+}
+
 const IN = { duration: 1.5, ease: [0.45, 0, 0.15, 1] } as const;
+/** While the camera's last stretch shows it, the globe covers its dot. */
+const HANDOFF = [0.72, 0.9];
 const OUT = { duration: 1, ease: [0.4, 0, 0.2, 1] } as const;
 
 /**
@@ -164,15 +212,41 @@ export function SolarSystemScene({
     const viewBox = useTransform(progress, (t) =>
         cameraAt(t, view.bodies[target.current], ZOOM[target.current]),
     );
-    // The drawing gives way to the globe at the end of the flight.
-    const mapOpacity = useTransform(progress, [0, 0.7, 1], [1, 1, 0]);
+    // The drawing gives way to the globe once the globe covers its dot.
+    const mapOpacity = useTransform(progress, [0, HANDOFF[1], 1], [1, 1, 0]);
     const labelsOpacity = useTransform(progress, [0, 0.12], [1, 0]);
+    // The globe rides the camera: where its dot is on screen, as big as it.
+    const ride = {
+        x: useTransform(
+            progress,
+            (t) =>
+                `${((1 - t) * view.bodies[target.current].x * 50) / HALF}cqmin`,
+        ),
+        y: useTransform(
+            progress,
+            (t) =>
+                `${((1 - t) * view.bodies[target.current].y * 50) / HALF}cqmin`,
+        ),
+        scale: useTransform(progress, (t) => ZOOM[target.current] ** (t - 1)),
+        opacity: useTransform(progress, HANDOFF, [0, 1]),
+        // Not painted at all until its turn: cheap while it waits.
+        visibility: useTransform(progress, (t) =>
+            t < HANDOFF[0] ? "hidden" : "visible",
+        ),
+    };
 
     /** The body the camera is going to (its name lights up). */
     const [aim, setAim] = useState<StoryBody | null>(null);
     /** The line of sight on screen, from the Earth through this body. */
     const [sight, setSight] = useState<StoryBody | null>(null);
-    const [arrived, setArrived] = useState<SystemFocus | null>(null);
+    /** What's waiting at the destination, mounted ahead (see `fly`). */
+    const [arrived, setArrived] = useState<{
+        focus: SystemFocus;
+        /** Seconds until the globe shows: it starts turning then. */
+        turnDelay: number;
+    } | null>(null);
+    /** The camera is there: the constellation may draw itself. */
+    const [landed, setLanded] = useState(false);
     const mounted = useRef(false);
 
     // The flight restarts only when where it goes changes, not when an
@@ -191,7 +265,6 @@ export function SolarSystemScene({
         mounted.current = true;
 
         async function fly() {
-            setArrived(null);
             // A phase is not a sign: no line of sight, just the flight.
             const line = focus && !phase ? focus.body : null;
             if (reducedMotion) {
@@ -199,29 +272,46 @@ export function SolarSystemScene({
                 progress.set(focus ? 1 : 0);
                 setAim(focus?.body ?? null);
                 setSight(line);
-                setArrived(focus);
+                setArrived(focus && { focus, turnDelay: 0 });
+                setLanded(Boolean(focus));
                 return;
             }
+            setLanded(false);
             if (progress.get() > 0) {
                 setSight(null);
                 setAim(null);
+                // The globe shrinks back into its dot as the camera pulls out.
                 await animate(progress, 0, OUT);
             }
-            if (!live || !focus) return;
+            if (!live) return;
+            setArrived(null);
+            if (!focus) return;
             target.current = focus.body;
             // Coming from another scene, let the whole system be seen first.
-            await wait(first ? 700 : 150);
+            const pause = first ? 700 : 150;
+            const look = line ? 1100 : 700;
+            // The globe mounts now, unseen: loaded, and facing its dot's
+            // way, by the time the camera gets there. A phase is another
+            // picture: it just fades in at the end.
+            if (!phase)
+                setArrived({
+                    focus,
+                    turnDelay: (pause + look) / 1000 + IN.duration * 0.8,
+                });
+            await wait(pause);
             if (!live) return;
             setAim(focus.body);
             setSight(line);
-            await wait(line ? 1100 : 700);
+            await wait(look);
             if (!live) return;
             const flight = animate(progress, 1, IN);
-            // The globe takes over while the camera is still arriving.
-            await wait(IN.duration * 620);
-            if (!live) return;
-            setArrived(focus);
+            if (phase) {
+                await wait(IN.duration * 620);
+                if (!live) return;
+                setArrived({ focus, turnDelay: 0 });
+            }
             await flight;
+            if (live) setLanded(true);
         }
         fly();
         return () => {
@@ -252,6 +342,22 @@ export function SolarSystemScene({
                     className="absolute inset-0 size-full overflow-visible"
                 >
                     <defs>
+                        {NIGHT_BODIES.map((body) => (
+                            <linearGradient
+                                key={body}
+                                id={`${glowId}-${body}`}
+                                gradientTransform={`rotate(${towardTheSun(view.bodies[body])} 0.5 0.5)`}
+                            >
+                                {NIGHT.map(({ offset, opacity }) => (
+                                    <stop
+                                        key={offset}
+                                        offset={offset}
+                                        stopColor="#03030a"
+                                        stopOpacity={opacity}
+                                    />
+                                ))}
+                            </linearGradient>
+                        ))}
                         <radialGradient id={glowId}>
                             <stop
                                 offset="0%"
@@ -362,19 +468,24 @@ export function SolarSystemScene({
                         const at = view.bodies[body];
                         const half = LOOK[body].r / SPRITE_SPHERE;
                         return (
-                            <image
-                                key={`sprite-${body}`}
-                                href={`/planets/sprites/${LOOK[body].sprite}.webp`}
-                                x={at.x - half}
-                                y={at.y - half}
-                                width={half * 2}
-                                height={half * 2}
-                                transform={
-                                    body === "Sol"
-                                        ? undefined
-                                        : `rotate(${towardTheSun(at)} ${at.x} ${at.y})`
-                                }
-                            />
+                            <g key={`sprite-${body}`}>
+                                <image
+                                    href={`/planets/sprites/${LOOK[body].sprite}.webp`}
+                                    x={at.x - half}
+                                    y={at.y - half}
+                                    width={half * 2}
+                                    height={half * 2}
+                                />
+                                {/* Its night side, away from the Sun. */}
+                                {body !== "Sol" && (
+                                    <circle
+                                        cx={at.x}
+                                        cy={at.y}
+                                        r={half}
+                                        fill={`url(#${glowId}-${body})`}
+                                    />
+                                )}
+                            </g>
                         );
                     })}
                 </motion.svg>
@@ -429,30 +540,49 @@ export function SolarSystemScene({
             </motion.div>
 
             <AnimatePresence>
-                {arrived && (
+                {arrived && "phase" in arrived.focus && (
                     <motion.div
-                        key={arrived.body}
+                        key="phase"
                         className="absolute inset-0"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.6 }}
                     >
-                        {"phase" in arrived ? (
-                            <MoonPhaseScene phase={arrived.phase} born={born} />
-                        ) : (
-                            <PlanetScene
-                                body={arrived.body}
-                                sign={arrived.sign}
-                                signs={arrived.signs}
-                                moonPhase={chart.moonPhase}
-                                born={born}
-                                fromZoom
-                            />
-                        )}
+                        <MoonPhaseScene
+                            phase={arrived.focus.phase}
+                            born={born}
+                        />
                     </motion.div>
                 )}
             </AnimatePresence>
+            {arrived && "sign" in arrived.focus && (
+                <motion.div
+                    key={arrived.focus.body}
+                    className="absolute inset-0"
+                    style={ride}
+                >
+                    <PlanetScene
+                        body={arrived.focus.body}
+                        sign={arrived.focus.sign}
+                        signs={arrived.focus.signs}
+                        moonPhase={chart.moonPhase}
+                        born={born}
+                        ride={{
+                            size: globeSize(arrived.focus.body),
+                            light:
+                                arrived.focus.body === "Sol"
+                                    ? undefined
+                                    : sunLight(view.bodies[arrived.focus.body]),
+                            turnDelay: arrived.turnDelay,
+                            // Still until the camera lands: it would barely turn
+                            // meanwhile, and the flight stays light.
+                            paused: !landed,
+                        }}
+                        landed={landed}
+                    />
+                </motion.div>
+            )}
 
             <motion.p
                 aria-hidden

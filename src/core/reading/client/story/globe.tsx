@@ -1,7 +1,13 @@
 "use client";
 
 import { useReducedMotion } from "motion/react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import {
+    type CSSProperties,
+    type ReactNode,
+    useEffect,
+    useRef,
+    useState,
+} from "react";
 
 export type GlobeBody = "Sol" | "Luna" | "Venus" | "Marte";
 
@@ -90,6 +96,11 @@ const LOOKS: Record<GlobeBody, Look> = {
 
 /** Planets lit from the upper left, the way they're usually pictured. */
 const SUNLIGHT: [number, number, number] = [-0.55, 0.32, 0.77];
+
+/** How much of its canvas a body's sphere spans (the rest: corona, air). */
+export function sphereShare(body: GlobeBody): number {
+    return LOOKS[body].radius;
+}
 
 const VERTEX = `
 attribute vec2 aPos;
@@ -251,18 +262,51 @@ function moonLight(phase: number): [number, number, number] {
 export function Globe({
     body,
     phase,
+    light,
+    turnDelay = 0,
+    paused = false,
     className,
+    style,
     fallback,
 }: {
     body: GlobeBody;
     /** The Moon's place in its month, 0–1 (0 new, 0.5 full). */
     phase?: number;
+    /**
+     * Where its light comes from (x right, y up, z toward us), instead of
+     * the upper left: a globe taking over from the solar system is lit by
+     * where the Sun really was.
+     */
+    light?: readonly [number, number, number];
+    /**
+     * Seconds before it starts turning: one mounted ahead, to take over a
+     * still picture, is still facing the same way when it does.
+     */
+    turnDelay?: number;
+    /**
+     * Drawn once and shown as a still picture: one mounted ahead to take
+     * over a moving dot costs nothing to load, scale or move until then.
+     */
+    paused?: boolean;
     className?: string;
+    style?: CSSProperties;
     fallback?: ReactNode;
 }) {
     const hostRef = useRef<HTMLDivElement>(null);
     const phaseRef = useRef(phase);
     phaseRef.current = phase;
+    const lightRef = useRef(light);
+    lightRef.current = light;
+    const pausedRef = useRef(paused);
+    pausedRef.current = paused;
+    const runRef = useRef<(() => void) | null>(null);
+    const stillRef = useRef<(() => void) | null>(null);
+
+    // Live when it plays; a picture of its last frame while paused.
+    useEffect(() => {
+        if (paused) stillRef.current?.();
+        else runRef.current?.();
+    }, [paused]);
     const drawRef = useRef<(() => void) | null>(null);
     const reducedMotion = useReducedMotion();
     const [failed, setFailed] = useState(false);
@@ -280,6 +324,16 @@ export function Globe({
         const canvas = document.createElement("canvas");
         canvas.className = "block size-full";
         host.appendChild(canvas);
+        // A still picture of the last frame: an image is free to scale
+        // and move, a live WebGL canvas is not (on weaker phones).
+        const picture = document.createElement("img");
+        picture.className = "block size-full";
+        picture.alt = "";
+        host.appendChild(picture);
+        const showLive = (live: boolean) => {
+            canvas.style.display = live ? "" : "none";
+            picture.style.display = live ? "none" : "";
+        };
         const gl = canvas.getContext("webgl", {
             premultipliedAlpha: true,
             antialias: true,
@@ -359,9 +413,10 @@ export function Globe({
             if (disposed) return;
             resize();
             const t = reducedMotion ? 0 : (performance.now() - start) / 1000;
+            const turning = Math.max(0, t - turnDelay);
             // The Moon shows one face; it only sways a little (libration).
             const spin = look.turn
-                ? (t * 2 * Math.PI) / look.turn
+                ? (turning * 2 * Math.PI) / look.turn
                 : body === "Luna"
                   ? 0.07 * Math.sin(t * 0.25)
                   : 0;
@@ -369,21 +424,41 @@ export function Globe({
             gl.uniform1f(at("uSpin"), spin);
             gl.uniform3fv(
                 at("uLight"),
-                body === "Luna" ? moonLight(phaseRef.current ?? 0.5) : SUNLIGHT,
+                body === "Luna"
+                    ? moonLight(phaseRef.current ?? 0.5)
+                    : (lightRef.current ?? SUNLIGHT),
             );
             gl.clearColor(0, 0, 0, 0);
             gl.clear(gl.COLOR_BUFFER_BIT);
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+            // Read in the same task as the draw: the buffer is still there.
+            if (pausedRef.current) picture.src = canvas.toDataURL();
         };
         drawRef.current = draw;
 
         let tick = 0;
+        let running = false;
         const loop = () => {
+            if (pausedRef.current) {
+                running = false;
+                return;
+            }
             // A big Sun (the sunrise) skips frames; a small one moves at 60.
             const step =
                 canvas.width * canvas.height > 300_000 ? look.frameStep : 1;
             if (tick++ % step === 0) draw();
             frame = requestAnimationFrame(loop);
+        };
+        const run = () => {
+            showLive(true);
+            if (running || disposed || reducedMotion) return;
+            running = true;
+            frame = requestAnimationFrame(loop);
+        };
+        runRef.current = run;
+        stillRef.current = () => {
+            draw();
+            showLive(false);
         };
 
         const source = TEXTURES[body];
@@ -427,24 +502,29 @@ export function Globe({
                         gl.LINEAR,
                     );
                 gl.uniform1f(at("uHasTex"), 1);
-                if (reducedMotion) draw();
+                // Ready even while paused: the map is on before it shows.
+                draw();
             };
             image.src = source;
         }
 
-        if (reducedMotion) draw();
-        else loop();
+        draw();
+        if (pausedRef.current) showLive(false);
+        else run();
 
         return () => {
             disposed = true;
             drawRef.current = null;
+            runRef.current = null;
+            stillRef.current = null;
             cancelAnimationFrame(frame);
             // Scenes come and go: free the context instead of piling them up.
             gl.getExtension("WEBGL_lose_context")?.loseContext();
             canvas.remove();
+            picture.remove();
         };
-    }, [body, reducedMotion]);
+    }, [body, reducedMotion, turnDelay]);
 
     if (failed && fallback) return <>{fallback}</>;
-    return <div ref={hostRef} className={className} />;
+    return <div ref={hostRef} className={className} style={style} />;
 }

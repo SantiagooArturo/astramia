@@ -3,9 +3,11 @@ Renders the small, lit spheres the story's solar system draws from afar
 (public/planets/sprites/*.webp), so a planet seen from a distance still
 looks like itself instead of a flat dot.
 
-Each sprite is lit from its right (+x): the scene rotates it so that side
-faces the Sun. The sphere fills SPHERE of the image; the rest is room for
-an atmosphere or the Sun's rim.
+The planets are drawn unlit, north up and facing longitude 0, exactly as
+the story's 3D globe starts: the scene lays the night side over each one,
+toward where the Sun was, and lights the globe that takes over the same
+way. The sphere fills SPHERE of the image; the rest is room for an
+atmosphere or the Sun's rim.
 
     python3 scripts/planet-sprites.py path/to/earth.jpg
 
@@ -71,26 +73,22 @@ def smoothstep(a, b, t):
     return t * t * (3 - 2 * t)
 
 
-def planet(texture, *, tilt=0.0, lon0=0.0, tint=(1, 1, 1), ambient=0.04,
-           limb=0.25, rim=None):
+def planet(texture, *, tilt=0.0, lon0=0.0, tint=(1, 1, 1), limb=0.25,
+           rim=None):
     n = SIZE * SUPERSAMPLE
     x, y, z, r = sphere_grid(n)
-    albedo = sample(texture, x, y, z, tilt, lon0) / 255 * np.array(tint)
-    light = np.array([1.0, 0.18, 0.42])
-    light /= np.linalg.norm(light)
-    facing = x * light[0] + y * light[1] + z * light[2]
-    # A soft terminator, the way a real limb of day fades into night.
-    shade = ambient + (1 - ambient) * smoothstep(-0.12, 0.55, facing)
+    # The globe's own color curve: (map ^ 1.15) * tint.
+    albedo = (sample(texture, x, y, z, tilt, lon0) / 255) ** 1.15
+    albedo = albedo * np.array(tint)
     darken = (1 - limb) + limb * np.sqrt(z)
-    rgb = np.clip(albedo * (shade * darken)[..., None], 0, 1)
+    rgb = np.clip(albedo * darken[..., None], 0, 1)
     alpha = smoothstep(1.0, 1.0 - 2.5 / (n * SPHERE / 2), r)
 
     if rim is not None:
-        # Atmosphere: a thin glow past the edge, on the lit side.
+        # Atmosphere: a thin glow past the edge (night covers its dark side).
         outside = np.clip(r - 1, 0, None)
-        day = smoothstep(-0.4, 0.6, x / np.maximum(r, 1e-6))
-        glow = np.exp(-outside * 38) * (r >= 1) * day * 0.85
-        inner = smoothstep(0.82, 1.0, r) * (r < 1) * day * 0.35
+        glow = np.exp(-outside * 38) * (r >= 1) * 0.85
+        inner = smoothstep(0.82, 1.0, r) * (r < 1) * 0.35
         rgb = rgb + np.array(rim) * (inner)[..., None]
         rgb = np.where((r >= 1)[..., None], np.array(rim), rgb)
         alpha = np.maximum(alpha, glow)
@@ -156,7 +154,7 @@ def main(earth_map):
                         tint=(1.18, 0.9, 0.74), limb=0.2,
                         rim=(1.0, 0.6, 0.45)),
         "luna": planet(load("public/planets/moon.jpg"), tint=(1.6, 1.58, 1.52),
-                       ambient=0.03, limb=0.1),
+                       limb=0.1),
     }
     for name, image in sprites.items():
         target = OUT / f"{name}.webp"

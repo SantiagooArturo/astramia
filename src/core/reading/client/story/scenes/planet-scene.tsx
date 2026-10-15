@@ -68,18 +68,36 @@ function FlatOrb({
     );
 }
 
+/** A globe that takes over from the solar system's dot. */
+export interface Ride {
+    /** Its canvas, sized so the sphere is exactly the dot. */
+    size: string;
+    /** Lit from where the Sun was, like the dot. */
+    light?: readonly [number, number, number];
+    /** Seconds until it shows: it starts turning then. */
+    turnDelay: number;
+    /** Not on screen yet: drawn once, kept still. */
+    paused: boolean;
+}
+
 function Orb({
     body,
     moonPhase,
+    ride,
 }: {
     body: StoryBody;
     moonPhase: MoonPhaseName;
+    ride?: Ride;
 }) {
     return (
         <Globe
             body={body}
             phase={body === "Luna" ? phaseFraction(moonPhase) : undefined}
-            className={GLOBE_SIZE[body]}
+            light={ride?.light}
+            turnDelay={ride?.turnDelay}
+            paused={ride?.paused}
+            className={ride ? undefined : GLOBE_SIZE[body]}
+            style={ride ? { width: ride.size, height: ride.size } : undefined}
             fallback={<FlatOrb body={body} moonPhase={moonPhase} />}
         />
     );
@@ -96,15 +114,18 @@ export function PlanetScene({
     signs,
     moonPhase,
     born,
-    fromZoom = false,
+    ride,
+    landed = true,
 }: {
     body: StoryBody;
     sign: string;
     signs?: readonly [string, string];
     moonPhase: MoonPhaseName;
     born: string;
-    /** The camera just flew in: the globe is already where the dot grew. */
-    fromZoom?: boolean;
+    /** Mounted ahead to take over from the solar system's dot. */
+    ride?: Ride;
+    /** The camera is there: its stars draw themselves only then. */
+    landed?: boolean;
 }) {
     const reducedMotion = useReducedMotion();
     const figure = CONSTELLATIONS[sign];
@@ -115,12 +136,15 @@ export function PlanetScene({
 
     return (
         <div className="relative flex h-full w-full flex-col items-center justify-center">
-            <div
+            <motion.div
                 aria-hidden
-                className="absolute top-1/2 left-1/2 size-[80%] max-w-[560px] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-40 blur-3xl"
+                className="absolute top-1/2 left-1/2 size-[80%] max-w-[560px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
                 style={{
                     background: `radial-gradient(circle, ${glow}, transparent 70%)`,
                 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: landed ? 0.4 : 0 }}
+                transition={{ duration: quick(1) }}
             />
             <div className="relative aspect-square w-[min(82vw,370px)] lg:w-[560px]">
                 {figure && (
@@ -146,7 +170,7 @@ export function PlanetScene({
                                     initial={{
                                         pathLength: reducedMotion ? 1 : 0,
                                     }}
-                                    animate={{ pathLength: 1 }}
+                                    animate={{ pathLength: landed ? 1 : 0 }}
                                     transition={{
                                         duration: quick(0.7),
                                         delay: quick(0.3 + i * 0.18),
@@ -167,9 +191,11 @@ export function PlanetScene({
                                 }}
                                 initial={{ opacity: reducedMotion ? 1 : 0 }}
                                 animate={
-                                    reducedMotion
-                                        ? { opacity: 1 }
-                                        : { opacity: [0, 1, 0.65, 1] }
+                                    !landed
+                                        ? { opacity: 0 }
+                                        : reducedMotion
+                                          ? { opacity: 1 }
+                                          : { opacity: [0, 1, 0.65, 1] }
                                 }
                                 transition={{
                                     duration: 3,
@@ -182,26 +208,32 @@ export function PlanetScene({
                 )}
                 <motion.div
                     className="absolute inset-0 flex items-center justify-center"
-                    initial={{
-                        opacity: 0,
-                        scale: reducedMotion ? 1 : fromZoom ? 0.94 : 0.7,
-                    }}
+                    // Taking over a dot: already there, already its size.
+                    initial={
+                        ride
+                            ? false
+                            : { opacity: 0, scale: reducedMotion ? 1 : 0.7 }
+                    }
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{
-                        duration: quick(fromZoom ? 0.7 : 1.2),
-                        delay: quick(fromZoom ? 0 : 0.5),
+                        duration: quick(1.2),
+                        delay: quick(0.5),
                         ease: [0.2, 0.8, 0.2, 1],
                     }}
                 >
                     <motion.div
-                        animate={reducedMotion ? undefined : { y: [0, -6, 0] }}
+                        animate={
+                            reducedMotion || !landed
+                                ? undefined
+                                : { y: [0, -6, 0] }
+                        }
                         transition={{
                             duration: 6,
                             repeat: Number.POSITIVE_INFINITY,
                             ease: "easeInOut",
                         }}
                     >
-                        <Orb body={body} moonPhase={moonPhase} />
+                        <Orb body={body} moonPhase={moonPhase} ride={ride} />
                     </motion.div>
                 </motion.div>
             </div>
@@ -209,7 +241,7 @@ export function PlanetScene({
                 aria-hidden
                 className="-mt-6 font-mono text-[11px] text-astral-gold uppercase tracking-[0.22em] max-lg:hidden"
                 initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
+                animate={{ opacity: landed ? 1 : 0 }}
                 transition={{ duration: quick(0.8), delay: quick(1.2) }}
             >
                 {born} · {body} en {zodiac?.glyph} {signLabel}
