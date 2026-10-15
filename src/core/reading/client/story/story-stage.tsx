@@ -47,10 +47,19 @@ function Scene({
             );
         case "star":
             return <StarScene />;
-        case "pair":
-            return (
+        case "pair": {
+            const pair = (
                 <PairScene bodies={visual.bodies} chart={chart} born={born} />
             );
+            // Not bought yet: there, but out of focus.
+            return visual.locked ? (
+                <div aria-hidden className="h-full w-full opacity-70 blur-md">
+                    {pair}
+                </div>
+            ) : (
+                pair
+            );
+        }
     }
 }
 

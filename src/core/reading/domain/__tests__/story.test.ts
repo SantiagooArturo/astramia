@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { natalChart, readingOutlook } from "../chart";
-import { SAMPLE_READING, SAMPLE_SCENES } from "../sample-reading";
+import { SAMPLE_FREE, SAMPLE_READING, SAMPLE_SCENES } from "../sample-reading";
 import {
     buildStory,
     previewStory,
@@ -312,38 +312,52 @@ describe("buildStory, a reading written per scene", () => {
     });
 });
 
+describe("a reading after the free scenes", () => {
+    const { opening, venus, mars, ...paid } = SAMPLE_SCENES;
+    const story = buildStory(
+        input({
+            teaser: JSON.stringify(SAMPLE_FREE),
+            content: JSON.stringify(paid),
+        }),
+    );
+
+    it("starts on Venus and Mars, with the free texts, no paragraph first", () => {
+        expect(story.steps.slice(0, 3)).toMatchObject([
+            { kind: "scene", text: SAMPLE_FREE.venus },
+            { kind: "scene", text: SAMPLE_FREE.mars },
+            { kind: "scene", text: SAMPLE_SCENES.venusMars },
+        ]);
+        expect(story.steps.some((s) => s.kind === "prologue")).toBe(false);
+        // What was bought starts with the two together.
+        expect(story.continueAt).toBe(2);
+    });
+});
+
 describe("the preview, before paying", () => {
     const preview = previewStory({
-        teaser: SAMPLE_READING.teaser,
+        teaser: JSON.stringify(SAMPLE_FREE),
         chart,
-        question: "¿Cuándo llega alguien para mí?",
     });
 
-    it("starts the same story and stops at Venus, without landing", () => {
+    it("shows Venus and Mars, then their scene together blurred", () => {
         expect(preview.steps.map((s) => s.kind)).toEqual([
-            "prologue",
+            "scene",
             "scene",
             "door",
         ]);
-        expect(preview.steps[0].visual).toEqual({ kind: "system" });
-        expect(preview.steps[1]).toMatchObject({
-            title: "Venus estaba en Aries",
-            visual: {
-                kind: "planet",
-                body: "Venus",
-                sign: "Aries",
-                approach: true,
-            },
+        expect(preview.steps.map((s) => s.visual)).toEqual([
+            { kind: "planet", body: "Venus", sign: "Aries" },
+            { kind: "planet", body: "Marte", sign: "Sagitario" },
+            { kind: "pair", bodies: ["Venus", "Marte"], locked: true },
+        ]);
+        expect(preview.steps[2]).toMatchObject({
+            kind: "door",
+            title: "Venus y Marte",
         });
-        // The camera stays on the same stage as the paid story.
-        expect(visualKey(preview.steps[1].visual)).toBe("system");
-        expect(preview.steps[2].visual).toEqual(preview.steps[1].visual);
     });
 
-    it("says what the reading holds, their own question included", () => {
-        const door = preview.steps[2];
-        expect(door.kind === "door" && door.inside).toContain(
-            "Tu pregunta: ¿Cuándo llega alguien para mí?",
-        );
+    it("opens with the old paragraph for readings made before", () => {
+        const old = previewStory({ teaser: SAMPLE_READING.teaser, chart });
+        expect(old.steps.map((s) => s.kind)).toEqual(["prologue", "door"]);
     });
 });

@@ -215,16 +215,32 @@ export const readingBlockSchema = z.discriminatedUnion("kind", [
  * the story, each shown next to the body it talks about. Stored as JSON in
  * `readings.content`; older readings hold Markdown (see `parseScenes`).
  */
+const venusScene = z
+    .string()
+    .describe("2-4 frases cortas, solo Venus: cómo se enamora y qué le atrae");
+const marsScene = z
+    .string()
+    .describe(
+        "2-4 frases cortas, solo Marte: cómo desea y va por lo que quiere",
+    );
+
+/**
+ * The free part, written before paying (`readings.teaser`): the story's
+ * first two scenes. Older readings hold a paragraph there instead.
+ */
+export const freeScenesSchema = z.object({
+    venus: venusScene,
+    mars: marsScene,
+});
+
+/**
+ * `readings.content`. Readings written before the free scenes also carry
+ * an opening and their own Venus and Mars; newer ones start at venusMars.
+ */
 export const readingScenesSchema = z.object({
-    opening: z
-        .string()
-        .describe("2-3 frases: resuelve el misterio con que terminó el inicio"),
-    venus: z
-        .string()
-        .describe("2-3 frases, solo Venus: cómo se enamora y qué le atrae"),
-    mars: z
-        .string()
-        .describe("2-3 frases, solo Marte: cómo desea y va por lo que quiere"),
+    opening: z.string().optional(),
+    venus: venusScene.optional(),
+    mars: marsScene.optional(),
     venusMars: z
         .string()
         .describe("3-4 frases: Venus y Marte juntos, qué se repite y por qué"),
@@ -262,4 +278,11 @@ export const readingScenesSchema = z.object({
         .string()
         .describe("2-3 frases: una acción pequeña para esta semana"),
     closing: z.string().describe("una sola frase breve y memorable"),
+});
+
+/** What the model writes after payment: everything after the free part. */
+export const paidScenesSchema = readingScenesSchema.omit({
+    opening: true,
+    venus: true,
+    mars: true,
 });

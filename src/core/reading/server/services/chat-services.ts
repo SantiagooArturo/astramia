@@ -68,7 +68,12 @@ export async function sendChatMessageService(
         return ok(
             stream({
                 model: ServerConfig.ai.models.chat,
-                system: chatSystemPrompt(toProfile(row), row.content, askedAt),
+                system: chatSystemPrompt(
+                    toProfile(row),
+                    row.content,
+                    row.teaser,
+                    askedAt,
+                ),
                 messages: [
                     ...history.map((m) => ({
                         role: m.role,

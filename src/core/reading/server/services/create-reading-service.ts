@@ -1,6 +1,6 @@
 import "server-only";
 import { ServerConfig } from "@/config/server-config";
-import { generate } from "@/core/ai/server/repository/llm";
+import { generateObject } from "@/core/ai/server/repository/llm";
 import { sunSignOf } from "@/core/reading/domain/chart";
 import { AI_TASKS, TEASER_PROMPT } from "@/core/reading/domain/prompts";
 import { DAILY_READING_LIMIT } from "@/core/reading/domain/schemas";
@@ -15,7 +15,7 @@ import { countReadingsSince, createReading } from "../repository/readings";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Saves the questionnaire and writes the free teaser paragraph. */
+/** Saves the questionnaire and writes the free scenes (Venus and Mars). */
 export async function createReadingService(
     userId: string,
     input: CreateReading,
@@ -36,10 +36,11 @@ export async function createReadingService(
             answers: input.answers,
         };
         const id = crypto.randomUUID();
-        const teaser = await generate({
+        const free = await generateObject({
             model: ServerConfig.ai.models.teaser,
             system: TEASER_PROMPT.system,
             prompt: TEASER_PROMPT.prompt(profile),
+            schema: TEASER_PROMPT.schema,
             ...AI_TASKS.teaser,
             usage: { purpose: "teaser", userId, referenceId: id },
         });
@@ -50,7 +51,10 @@ export async function createReadingService(
             topic: input.topic,
             ...profile,
             sunSign: sunSignOf(input.birthDate),
-            teaser: teaser.trim(),
+            teaser: JSON.stringify({
+                venus: free.venus.trim(),
+                mars: free.mars.trim(),
+            }),
         });
         return ok({ id: row.id });
     } catch (cause) {

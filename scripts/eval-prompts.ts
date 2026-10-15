@@ -23,6 +23,7 @@ import { natalChart, venusOutlook } from "@/core/reading/domain/chart";
 import * as currentPrompts from "@/core/reading/domain/prompts";
 import { describeAnswer, tratoOf } from "@/core/reading/domain/quiz";
 import {
+    freeAsText,
     parseScenes,
     readingAsText,
 } from "@/core/reading/domain/reading-content";
@@ -409,7 +410,13 @@ async function runProfile(prompts: PromptModule, profile: Profile) {
     const teaser = await call("teaser", prompts, {
         system: prompts.TEASER_PROMPT.system,
         prompt: prompts.TEASER_PROMPT.prompt(profile),
+        schema:
+            "schema" in prompts.TEASER_PROMPT
+                ? prompts.TEASER_PROMPT.schema
+                : undefined,
     });
+    // The free scenes (or, for older prompts, a paragraph) as read.
+    const teaserText = freeAsText(teaser.text);
     const reading = await call("reading", prompts, {
         system: prompts.READING_PROMPT.system,
         prompt: prompts.READING_PROMPT.prompt(profile, teaser.text, TODAY),
@@ -418,18 +425,24 @@ async function runProfile(prompts: PromptModule, profile: Profile) {
                 ? prompts.READING_PROMPT.schema
                 : undefined,
     });
-    const readingText = readingAsText(reading.text);
+    // Free and paid scenes together: everything the person reads.
+    const readingText = readingAsText(reading.text, teaser.text);
     const chat = await call("chat", prompts, {
-        system: prompts.chatSystemPrompt(profile, reading.text, TODAY),
+        system: prompts.chatSystemPrompt(
+            profile,
+            reading.text,
+            teaser.text,
+            TODAY,
+        ),
         prompt: profile.chatQuestion,
     });
     const { verdict, costUsd } = await judge(
         profile,
-        teaser.text,
+        teaserText,
         readingText,
         chat.text,
     );
-    const all = [teaser.text, readingText, chat.text].join("\n");
+    const all = [readingText, chat.text].join("\n");
     return {
         profile: profile.name,
         teaser,
@@ -438,10 +451,10 @@ async function runProfile(prompts: PromptModule, profile: Profile) {
         verdict,
         judgeCostUsd: costUsd,
         checks: {
-            teaserWords: words(teaser.text),
+            teaserWords: words(teaserText),
             readingWords: words(readingText),
             ...readability(readingText),
-            teaserWordsPerSentence: readability(teaser.text).wordsPerSentence,
+            teaserWordsPerSentence: readability(teaserText).wordsPerSentence,
             crossTalk: crossTalk(reading.text),
             chatWords: words(chat.text),
             cut: [teaser, reading, chat].some(
@@ -452,7 +465,7 @@ async function runProfile(prompts: PromptModule, profile: Profile) {
             otherGender: all.match(OTHER_GENDER) ?? [],
             jargon: all.match(JARGON) ?? [],
             teaserPlanets: (
-                teaser.text.match(
+                teaserText.match(
                     /(?<!\p{L})(Luna|Venus|Marte|Sol)(?!\p{L})/gu,
                 ) ?? []
             ).length,

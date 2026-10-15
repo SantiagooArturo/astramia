@@ -1,4 +1,4 @@
-import type { QuizAnswer, ReadingScenes } from "./types";
+import type { FreeScenes, QuizAnswer, ReadingScenes } from "./types";
 
 /**
  * A complete paid reading, written the way READING_PROMPT asks, for the
@@ -92,4 +92,13 @@ export const SAMPLE_SCENES: ReadingScenes = {
     gesture:
         "Esta semana, cuando sientas el impulso de escribirle a alguien para llenar un rato de silencio, deja el celular boca abajo en otra mesa durante veinte minutos. Deja que la otra persona tenga el espacio de buscarte a ti.",
     closing: "Quien es para ti no necesita que corras para alcanzarlo.",
+};
+
+/**
+ * The free scenes for the same chart, as TEASER_PROMPT writes them now:
+ * what /lectura/ejemplo opens with, before and after paying.
+ */
+export const SAMPLE_FREE: FreeScenes = {
+    venus: "Venus habla de cómo te enamoras. La tuya está en Aries: te enamoras rápido y de frente. Si alguien te gusta, escribes tú primero. Propones el plan y no sabes fingir que no te importa.",
+    mars: "Marte es cómo deseas. El tuyo está en Sagitario: te enciende reír, moverte y descubrir algo nuevo. Te apaga la rutina sin chispa. Y aquí empieza la pregunta: qué pasa cuando tu Venus corre y tu Marte quiere volar.",
 };

@@ -9,6 +9,7 @@ import {
 import { ReadingStory } from "@/core/reading/client/story/reading-story";
 import { natalChart, readingOutlook } from "@/core/reading/domain/chart";
 import {
+    SAMPLE_FREE,
     SAMPLE_READING,
     SAMPLE_SCENES,
 } from "@/core/reading/domain/sample-reading";
@@ -54,17 +55,19 @@ export default async function SampleReadingPage({
         SAMPLE_READING.birthTime,
         SAMPLE_READING.birthTimeZone,
     );
+    const { opening, venus, mars, ...paid } = SAMPLE_SCENES;
     const reading: Reading = {
         id: SAMPLE_READING.id,
         topic: "amor",
         sunSign: chart.placements[0].sign,
-        teaser: SAMPLE_READING.teaser,
+        teaser: JSON.stringify(SAMPLE_FREE),
         birthDate: SAMPLE_READING.birthDate,
         birthTime: SAMPLE_READING.birthTime,
         birthPlace: SAMPLE_READING.birthPlace,
         chart,
         locked: false,
-        content: JSON.stringify(SAMPLE_SCENES),
+        // As written now: the free scenes in `teaser`, the rest here.
+        content: JSON.stringify(paid),
         question: storyQuestion(SAMPLE_READING.answers),
         skyAhead: readingOutlook(
             SAMPLE_READING,

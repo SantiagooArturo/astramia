@@ -1,8 +1,8 @@
 import type { AiPurpose, AiReasoning } from "@/core/ai/domain/types";
 import { longDate, natalChart, readingOutlook } from "./chart";
 import { describeAnswer, type Trato, tratoOf } from "./quiz";
-import { readingAsText } from "./reading-content";
-import { readingScenesSchema } from "./schemas";
+import { freeAsText, readingAsText } from "./reading-content";
+import { freeScenesSchema, paidScenesSchema } from "./schemas";
 import type { ReadingProfile } from "./types";
 
 /**
@@ -66,7 +66,7 @@ Las metáforas obvias de cada signo cansan: chispa y fuego, nido, hogar y refugi
 </imágenes>
 
 <prohibido>
-Frases que delatan un texto genérico; no uses ni ellas ni sus variantes: "energía vibrante", "danza", "aguas turbulentas", "el universo", "conectar contigo", "a flor de piel", "zona de confort", "media naranja", "cerrar ciclos", "dar el primer paso", "construir puentes", "muros emocionales", "es importante recordar", "en conclusión", "entiendo perfecto", "excelente pregunta", "qué buena pregunta", "no te preocupes", "viaje de autodescubrimiento", "brillar con luz propia", "mereces lo mejor", "sin mirar atrás", "darlo todo", "saltar etapas", "a la intemperie", "la huella de", "medias tintas", "migajas", "cartas sobre la mesa", "bajo la alfombra", "mover el piso", "tierra de nadie", "mirarte al espejo".
+Frases que delatan un texto genérico; no uses ni ellas ni sus variantes: "energía vibrante", "danza", "aguas turbulentas", "el universo", "conectar contigo", "a flor de piel", "zona de confort", "media naranja", "cerrar ciclos", "dar el primer paso", "construir puentes", "muros emocionales", "es importante recordar", "en conclusión", "entiendo perfecto", "excelente pregunta", "qué buena pregunta", "no te preocupes", "viaje de autodescubrimiento", "brillar con luz propia", "mereces lo mejor", "sin mirar atrás", "darlo todo", "saltar etapas", "a la intemperie", "la huella de", "medias tintas", "migajas", "cartas sobre la mesa", "bajo la alfombra", "mover el piso", "tierra de nadie", "mirarte al espejo", "entregar el corazón", "salir corriendo", "dar vueltas en círculos", "caminar en círculos". Tampoco "como buen Cáncer" ni "como buena Aries": su signo explica, no etiqueta.
 </prohibido>
 
 <rigor>
@@ -153,36 +153,39 @@ ${events.join("\n")}
 </cielo>`;
 }
 
+/**
+ * The free part, before paying: the story's first two scenes, Venus and
+ * Mars, each beside its planet. No guessing first: the chart explains.
+ */
 export const TEASER_PROMPT = {
     system: `${SOUL}
 
 ${METHOD}
 
 <tarea>
-Escribe el primer párrafo de su lectura de amor. Es lo único que verá antes de decidir si paga por el resto: en las dos primeras frases tiene que sentir que la viste, y al final debe quedar una pregunta abierta que solo la lectura completa responde.
+Escribe las dos primeras escenas de su lectura de amor. Es lo único que verá antes de decidir si paga por el resto. Cada escena aparece en pantalla junto a su planeta, que ya tiene título ("Venus estaba en Aries"). Tiene que sentir que la viste: no porque adivinaste, sino porque su carta lo explica.
 </tarea>
 
-<forma>
-- Un párrafo de 45 a 65 palabras, en frases cortas como pide <lectura-fácil>.
-- La primera frase es algo que hace, con un momento o un objeto concreto (un mensaje, una hora, una conversación). Nunca empieces con "Veo", "Siento", "Hay", con un rasgo ("Te entregas con intensidad") ni con su signo como sujeto ("Tu Sol en...").
-- Después, su contradicción y su porqué en la carta: como mucho un planeta además de su signo, explicado con palabras simples como pide <público>.
-- Cierra con una frase completa y concreta que abra un misterio ligado a lo que quiere saber primero, sin resolverlo: algo que la persona podría preguntarse en voz alta, no una metáfora ("esa pieza que escondiste", "un silencio exacto"). Nada de puntos suspensivos.
-- Sin títulos, saludos ni negritas.
-</forma>
+<escenas>
+1. venus (30 a 45 palabras, junto a Venus en su signo): empieza por lo que es Venus, en palabras simples, y lo que dice la suya. Después, una escena concreta de su vida que lo muestre, cruzada con una de sus <respuestas>.
+2. mars (30 a 45 palabras, junto a Marte en su signo): lo que es Marte en palabras simples, y cómo desea: qué lo enciende y qué lo apaga, con un detalle de sus <respuestas>. Termina con una frase que deje abierta la pregunta de qué pasa cuando su Venus y su Marte actúan a la vez, sin responderla: eso viene en la lectura completa.
+- Cada escena habla solo de su planeta. En venus no nombres a Marte, la Luna ni el Sol. En mars, solo la última frase puede nombrar a Venus.
+- Frases cortas, como pide <lectura-fácil>. Sin Markdown, títulos, saludos ni comillas para citar sus respuestas.
+</escenas>
 
 <proceso>
-Antes de escribir, en tu razonamiento: elige su contradicción central; elige la escena más reconocible que la muestre; decide qué misterio dejas abierto; revisa <prohibido>, el tuteo, el <trato>, que no le diste género a la otra persona, que ninguna frase pasa de 20 palabras y que lo entendería a la primera alguien que nunca leyó de astrología.
+Antes de escribir, en tu razonamiento: elige qué respuesta explica mejor su Venus y cuál su Marte; elige una escena reconocible para cada uno; decide qué pregunta dejas abierta; revisa <prohibido>, el tuteo, el <trato>, que no le diste género a la otra persona, que ninguna frase pasa de 20 palabras y que lo entendería a la primera alguien que nunca leyó de astrología.
 </proceso>
 
-<ejemplos>
-Muestran la forma, no las palabras: no copies sus arranques, imágenes ni cierres.
+<ejemplo>
+Muestra la forma, no las palabras: no copies sus arranques, imágenes ni cierres.
 
-Para alguien con Venus en Acuario y Luna en Géminis (le gusta alguien, se aleja cuando se pone serio, necesita libertad, le dolió sentir control, quiere saber cuándo llega alguien):
-Respondes rápido. Mandas chistes y audios largos. Hasta el día en que te preguntan qué son. Ahí tardas horas en contestar. No es frialdad. Venus habla de cómo amas, y la tuya está en Acuario: quieres querer con la puerta abierta. Cuándo llega lo tuyo depende de algo que haces cada vez que alguien empieza a quedarse.
-
-Para alguien con Luna en Virgo y Marte en Escorpio (en una relación, le cuesta confiar, necesita admirar, le dolió un engaño, duda si quedarse):
-Sabes qué día cambió la clave de su celular. Nunca lo dijiste en voz alta. La Luna habla de lo que necesitas para estar en paz, y la tuya está en Virgo. Por eso lo notas todo. Y lo guardas, aunque quisieras olvidarlo. Si quedarte o irte tiene respuesta, empieza por algo que admirabas de esa persona y ya no ves.
-</ejemplos>`,
+Para alguien con Venus en Acuario y Marte en Tauro (le gusta alguien, se aleja cuando se pone serio, necesita libertad):
+venus: Venus habla de cómo te enamoras. La tuya está en Acuario: quieres querer con la puerta abierta. Por eso respondes rápido, con chistes y audios largos. Hasta el día en que te preguntan qué son. Ahí tardas horas en contestar.
+mars: Marte es cómo deseas. El tuyo está en Tauro: vas lento, pero cuando quieres, no sueltas. Te enciende lo que se toca, como un abrazo largo. Y aquí empieza la pregunta: qué pasa cuando tu Venus pide aire y tu Marte pide quedarse.
+</ejemplo>`,
+    /** The model fills the two free scenes. */
+    schema: freeScenesSchema,
     prompt: (profile: ReadingProfile) => describeProfile(profile),
 };
 
@@ -192,7 +195,7 @@ export const READING_PROMPT = {
 ${METHOD}
 
 <tarea>
-Escribe la lectura completa que la persona acaba de pagar. Ya leyó el primer párrafo (<inicio>): continúas desde ahí, sin repetirlo, y cumples lo que prometió. Al terminar tiene que quedar la sensación de que alguien entendió su vida amorosa con una precisión casi incómoda, y algo concreto para hacer esta misma semana.
+Escribe la lectura completa que la persona acaba de pagar. Ya leyó las escenas de Venus y de Marte (<inicio>): continúas desde ahí, sin repetirlas, y respondes la pregunta con que terminó Marte. Al terminar tiene que quedar la sensación de que alguien entendió su vida amorosa con una precisión casi incómoda, y algo concreto para hacer esta misma semana.
 </tarea>
 
 <escenas>
@@ -203,39 +206,38 @@ La lectura se ve como una historia: cada campo aparece en pantalla junto a una i
 - Frases cortas, como pide <lectura-fácil>: cada campo se lee de un vistazo en el celular. Respeta el rango de palabras de cada uno. Sin Markdown: ni títulos, ni negritas, ni listas, ni comillas para citar sus respuestas.
 
 En este orden:
-1. opening (25 a 40 palabras): resuelve de inmediato el misterio con que terminó <inicio>.
-2. venus (30 a 45 palabras, junto a Venus en su signo): cómo se enamora, qué le atrae. La primera vez que la nombres, di qué mueve Venus en palabras simples.
-3. mars (30 a 45 palabras, junto a Marte en su signo): cómo desea, qué enciende y qué apaga su deseo.
-4. venusMars (40 a 60 palabras, junto a Venus y Marte): qué se repite en su vida amorosa cuando los dos actúan a la vez, y por qué. Si en <carta> hay un aspecto entre ellos, cuéntalo sin su nombre técnico.
-5. moonPhase (15 a 30 palabras, junto a la Luna en la fase con que nació): qué dice esa Luna de su forma de amar. La pantalla ya mostró la fase y qué es: no la expliques ni la nombres.
-6. moon (30 a 45 palabras, junto a la Luna en su signo): qué necesita para sentirse en casa con alguien. Si la Luna es incierta, dilo con un matiz honesto.
-7. sun (25 a 40 palabras, junto al Sol en su signo, el que conoce): su signo de siempre, visto desde el amor.
-8. moonSun (40 a 60 palabras, junto a la Luna y el Sol): solo esos dos: lo que necesita y de dónde viene lo que más le dolió.
-9. question (60 a 85 palabras, bajo su pregunta): respóndela con honestidad y matices: qué muestra su carta, qué señales mirar, qué depende de su decisión. Nunca una predicción cerrada.
-10. moments (junto a Venus viajando por los próximos meses): elige 2 o 3 momentos de <cielo>, por su número, sobre todo los que tocan sus signos. Para cada uno, 20 a 35 palabras que empiecen con su fecha tal como viene ("A finales de octubre…") y digan qué le abre o le pide según su carta. Usa solo <cielo>.
-11. gesture (30 a 45 palabras): una acción concreta y pequeña, hecha para esta persona, que pueda hacer esta semana (algo que se pueda hacer un martes cualquiera, no "ámate más").
-12. closing (8 a 16 palabras): una sola frase memorable que querría guardar.
-Entre 450 y 600 palabras en total.
+1. venusMars (40 a 60 palabras, junto a Venus y Marte): responde la pregunta con que terminó <inicio>: qué se repite en su vida amorosa cuando los dos actúan a la vez, y por qué. Si en <carta> hay un aspecto entre ellos, cuéntalo sin su nombre técnico.
+2. moonPhase (15 a 30 palabras, junto a la Luna en la fase con que nació): qué dice esa Luna de su forma de amar. La pantalla ya mostró la fase y qué es: no la expliques ni la nombres.
+3. moon (30 a 45 palabras, junto a la Luna en su signo): qué necesita para sentirse en casa con alguien. Si la Luna es incierta, dilo con un matiz honesto.
+4. sun (25 a 40 palabras, junto al Sol en su signo, el que conoce): su signo de siempre, visto desde el amor.
+5. moonSun (40 a 60 palabras, junto a la Luna y el Sol): solo esos dos: lo que necesita y de dónde viene lo que más le dolió.
+6. question (60 a 85 palabras, bajo su pregunta): respóndela con honestidad y matices: qué muestra su carta, qué señales mirar, qué depende de su decisión. Nunca una predicción cerrada.
+7. moments (junto a Venus viajando por los próximos meses): elige 2 o 3 momentos de <cielo>, por su número, sobre todo los que tocan sus signos. Para cada uno, 20 a 35 palabras que empiecen con su fecha tal como viene ("A finales de octubre…") y digan qué le abre o le pide según su carta. Usa solo <cielo>.
+8. gesture (30 a 45 palabras): una acción concreta y pequeña, hecha para esta persona, que pueda hacer esta semana (algo que se pueda hacer un martes cualquiera, no "ámate más").
+9. closing (8 a 16 palabras): una sola frase memorable que querría guardar.
+Entre 350 y 480 palabras en total.
 </escenas>
 
 <proceso>
-Antes de escribir, en tu razonamiento: (1) define su contradicción central en una frase; (2) asigna cada una de sus cinco respuestas al campo y al planeta que mejor la explican; (3) elige tres escenas de la vida diaria, distintas entre sí; (4) elige de <cielo> los momentos que más le hablan; (5) al terminar, verifica: cada campo habla solo de lo suyo; Sol, Luna, Venus y Marte explicados en palabras simples la primera vez; las cinco respuestas usadas sin citarlas; al menos un aspecto si <carta> trae alguno, contado sin su nombre técnico; ningún dato fuera de <carta> y <cielo>; nada de <prohibido> ni metáforas repetidas; ninguna frase de más de 20 palabras ni palabras difíciles; tuteo; el <trato> pedido en cada adjetivo; la otra persona sin género; cada campo en su rango y entre 450 y 600 palabras en total.
+Antes de escribir, en tu razonamiento: (1) define su contradicción central en una frase; (2) asigna cada una de sus cinco respuestas al campo y al planeta que mejor la explican; (3) elige tres escenas de la vida diaria, distintas entre sí; (4) elige de <cielo> los momentos que más le hablan; (5) al terminar, verifica: cada campo habla solo de lo suyo; la Luna y el Sol explicados en palabras simples la primera vez (Venus y Marte ya se explicaron en <inicio>); las cinco respuestas usadas sin citarlas; al menos un aspecto si <carta> trae alguno, contado sin su nombre técnico; ningún dato fuera de <carta> y <cielo>; nada de <prohibido> ni metáforas repetidas; ninguna frase de más de 20 palabras ni palabras difíciles; tuteo; el <trato> pedido en cada adjetivo; la otra persona sin género; cada campo en su rango y entre 350 y 480 palabras en total.
 </proceso>`,
-    /** The model fills one text per scene of the story. */
-    schema: readingScenesSchema,
+    /** The model fills one text per scene, after the free ones. */
+    schema: paidScenesSchema,
     prompt: (profile: ReadingProfile, teaser: string, today: Date) =>
         `${describeProfile(profile)}
 
 ${describeSky(profile, today)}
 
 <inicio>
-${teaser}
+${freeAsText(teaser)}
 </inicio>`,
 };
 
 export function chatSystemPrompt(
     profile: ReadingProfile,
     reading: string,
+    /** The free scenes (Venus, Mars): also part of what they read. */
+    teaser: string,
     today: Date,
 ): string {
     const [sun] = natalChart(
@@ -264,6 +266,6 @@ ${describeProfile(profile)}
 ${describeSky(profile, today)}
 
 <lectura>
-${readingAsText(reading)}
+${readingAsText(reading, teaser)}
 </lectura>`;
 }

@@ -25,6 +25,10 @@ import { StoryStage } from "./story-stage";
 
 export const CHAT_ANCHOR = "chat";
 
+/** The cover: their whole solar system, before the camera flies anywhere. */
+const COVER_STEP = -1;
+const COVER = { visual: { kind: "system" }, chapter: null } as const;
+
 /** Text arrives softly as its step reaches the middle of the screen. */
 const ENTER = {
     initial: { opacity: 0, y: 28 },
@@ -167,6 +171,7 @@ function StepContent({
                 </motion.div>
             );
         case "door":
+            // The next scene, blurred behind: its title, and the page's box.
             return (
                 <div className="flex flex-col gap-4">
                     <motion.p
@@ -177,34 +182,14 @@ function StepContent({
                     </motion.p>
                     <motion.h3
                         {...ENTER}
-                        className="text-balance font-display text-4xl leading-[1.02] sm:text-5xl"
+                        className="text-balance font-display text-4xl leading-[1.02] sm:text-5xl lg:text-6xl"
                     >
                         {step.title}
                     </motion.h3>
-                    <motion.div
-                        {...ENTER}
-                        transition={{ ...ENTER.transition, delay: 0.35 }}
-                        className={CARD}
-                    >
-                        <ul className="flex flex-col gap-2">
-                            {step.inside.map((item) => (
-                                <li
-                                    key={item}
-                                    className="flex gap-3 text-muted-foreground"
-                                >
-                                    <span
-                                        aria-hidden
-                                        className="mt-2.5 size-1 shrink-0 rounded-full bg-astral-gold"
-                                    />
-                                    {item}
-                                </li>
-                            ))}
-                        </ul>
-                    </motion.div>
                     {door && (
                         <motion.div
                             {...ENTER}
-                            transition={{ ...ENTER.transition, delay: 0.6 }}
+                            transition={{ ...ENTER.transition, delay: 0.35 }}
                         >
                             {door}
                         </motion.div>
@@ -292,11 +277,11 @@ export function ReadingStory({
                 : previewStory({
                       teaser: reading.teaser,
                       chart: reading.chart,
-                      question: reading.question,
                   }),
         [reading, content],
     );
-    const [active, setActive] = useState(0);
+    // -1 is the cover.
+    const [active, setActive] = useState(COVER_STEP);
     const stepRefs = useRef<(HTMLElement | null)[]>([]);
     const storyRef = useRef<HTMLElement>(null);
     const { scrollYProgress } = useScroll({
@@ -346,7 +331,7 @@ export function ReadingStory({
         return () => observer.disconnect();
     }, []);
 
-    const step = story.steps[active] ?? story.steps[0];
+    const step = story.steps[active] ?? COVER;
     const chapter = step.chapter === null ? null : story.chapters[step.chapter];
 
     return (
@@ -419,7 +404,7 @@ export function ReadingStory({
                             ref={(el) => {
                                 stepRefs.current[story.steps.length] = el;
                             }}
-                            data-step={0}
+                            data-step={COVER_STEP}
                             className="flex min-h-[100svh] flex-col justify-end gap-6 pb-[10svh] lg:justify-center lg:pb-0"
                         >
                             <motion.div
@@ -450,7 +435,7 @@ export function ReadingStory({
                                 // Steps are fixed for a given text: order is their identity.
                                 key={i}
                                 id={
-                                    content && i === 1
+                                    content && i === story.continueAt
                                         ? CONTINUE_ANCHOR
                                         : undefined
                                 }
