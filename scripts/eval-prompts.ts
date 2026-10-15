@@ -214,9 +214,15 @@ const verdictSchema = z.object({
         gancho: score.describe(
             "5: produce '¿cómo sabe esto?' y deja una pregunta abierta irresistible",
         ),
+        claridad: score.describe(
+            "5: alguien de 20 años que llegó desde TikTok y nunca leyó de astrología lo entiende todo a la primera; 1: hay que saber astrología para entenderlo",
+        ),
     }),
     lectura: z.object({
         especificidad: score,
+        claridad: score.describe(
+            "5: alguien sin ningún conocimiento de astrología entiende cada frase; 1: lleno de jerga sin explicar",
+        ),
         uso_de_datos: score.describe(
             "cruza carta y las cinco respuestas, reinterpretadas, no citadas",
         ),
@@ -256,6 +262,11 @@ const verdictSchema = z.object({
     cliches: z
         .array(z.string())
         .describe("frases trilladas encontradas, literal"),
+    jerga_sin_explicar: z
+        .array(z.string())
+        .describe(
+            "términos astrológicos usados sin decir en palabras simples qué significan para la persona (p. ej. 'tu Marte en Cáncer' a secas), literal",
+        ),
     inventos: z
         .array(z.string())
         .describe(
@@ -315,7 +326,7 @@ async function judge(
         reasoning: "medium",
         maxOutputTokens: 6000,
         output: Output.object({ schema: verdictSchema }),
-        system: `Eres editora de un producto de astrología de pago en español latinoamericano, exigente con la calidad literaria y con la precisión. Evalúas sin piedad: un 5 es excepcional y raro; un texto correcto pero genérico es un 2. Juzgas solo contra los datos dados: cualquier dato astrológico que no esté en ellos es un invento.`,
+        system: `Eres editora de un producto de astrología de pago en español latinoamericano, exigente con la calidad literaria y con la precisión. Evalúas sin piedad: un 5 es excepcional y raro; un texto correcto pero genérico es un 2. El público es masivo (llega desde TikTok e Instagram) y no sabe astrología: un texto que solo entiende quien sabe astrología falla, por bien escrito que esté. Juzgas solo contra los datos dados: cualquier dato astrológico que no esté en ellos es un invento.`,
         prompt: `<datos>\n${groundTruth(profile)}\n</datos>\n\n<gancho_gratuito>\n${teaser}\n</gancho_gratuito>\n\n<lectura_pagada>\n${reading}\n</lectura_pagada>\n\n<chat>\nPregunta: ${profile.chatQuestion}\nRespuesta: ${chat}\n</chat>`,
     });
     return {
@@ -328,6 +339,9 @@ const BANNED =
     /energía vibrante|danza|aguas turbulentas|el universo|conectar contigo|es importante recordar|en conclusión|entiendo perfecto|excelente pregunta|qué buena pregunta|no te preocupes|viaje de autodescubrimiento|luz propia/gi;
 const VOSEO = /\b(tenés|sentís|querés|podés|sos|vos|sabés|hacés|necesitás)\b/gi;
 /** The other person's gender is never given; any of these assumes it. */
+/** Technical terms a mass audience doesn't know; each one needs a plain gloss or nothing. */
+const JARGON =
+    /(?<!\p{L})(cuadratura|trígono|sextil|conjunción|oposición|orbe|elemento dominante|fase lunar)(?!\p{L})/giu;
 // "desde chico/chica" is the reader, in their own trato.
 const OTHER_GENDER =
     /(?<!\p{L})(?<!desde )(él|ella|novio|novia|chico|chica)(?!\p{L})/giu;
@@ -370,6 +384,12 @@ async function runProfile(prompts: PromptModule, profile: Profile) {
             banned: all.match(BANNED) ?? [],
             voseo: all.match(VOSEO) ?? [],
             otherGender: all.match(OTHER_GENDER) ?? [],
+            jargon: all.match(JARGON) ?? [],
+            teaserPlanets: (
+                teaser.text.match(
+                    /(?<!\p{L})(Luna|Venus|Marte|Sol)(?!\p{L})/gu,
+                ) ?? []
+            ).length,
             exclamations: (all.match(/!/g) ?? []).length,
         },
     };
@@ -401,6 +421,14 @@ const summary = {
     models: MODELS,
     "teaser.especificidad": rubric((v) => v.teaser.especificidad),
     "teaser.gancho": rubric((v) => v.teaser.gancho),
+    "teaser.claridad": rubric((v) => v.teaser.claridad),
+    "lectura.claridad": rubric((v) => v.lectura.claridad),
+    jergaSinExplicar: results.reduce(
+        (n, r) => n + r.verdict.jerga_sin_explicar.length,
+        0,
+    ),
+    terminosTecnicos: results.reduce((n, r) => n + r.checks.jargon.length, 0),
+    planetasEnGancho: mean(results.map((r) => r.checks.teaserPlanets)),
     "lectura.especificidad": rubric((v) => v.lectura.especificidad),
     "lectura.uso_de_datos": rubric((v) => v.lectura.uso_de_datos),
     "lectura.rigor": rubric((v) => v.lectura.rigor),
