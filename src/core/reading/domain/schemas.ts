@@ -102,6 +102,8 @@ export const aspectSchema = z.object({
     orb: z.number(),
 });
 
+const orbitPointSchema = z.object({ x: z.number(), y: z.number() });
+
 export const natalChartSchema = z.object({
     placements: z.array(natalPlacementSchema),
     aspects: z.array(aspectSchema),
@@ -112,6 +114,15 @@ export const natalChartSchema = z.object({
      * the sign at midnight and at the end of the day. `null` when certain.
      */
     moonRange: z.object({ early: z.string(), late: z.string() }).nullable(),
+    /**
+     * Venus, the Earth and Mars around the Sun at birth (AU, ecliptic
+     * plane), to draw the solar system of that day.
+     */
+    orbits: z.object({
+        Venus: orbitPointSchema,
+        Tierra: orbitPointSchema,
+        Marte: orbitPointSchema,
+    }),
 });
 
 export const skyEventSchema = z.object({

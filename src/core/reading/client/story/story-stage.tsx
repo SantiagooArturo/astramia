@@ -5,8 +5,8 @@ import { type StoryVisual, visualKey } from "@/core/reading/domain/story";
 import type { NatalChart } from "@/core/reading/domain/types";
 import { MoonPhaseScene } from "./scenes/moon-phase-scene";
 import { PairScene } from "./scenes/pair-scene";
-import { PlanetScene } from "./scenes/planet-scene";
 import { SkyScene, StarScene } from "./scenes/sky-scenes";
+import { SolarSystemScene } from "./scenes/solar-system-scene";
 import { VenusPathScene } from "./scenes/venus-path-scene";
 
 function Scene({
@@ -19,24 +19,18 @@ function Scene({
     born: string;
 }) {
     switch (visual.kind) {
-        case "sky":
-            return <SkyScene chart={chart} caption={`Tu cielo · ${born}`} />;
+        case "system":
+            return <SolarSystemScene chart={chart} born={born} focus={null} />;
+        case "planet":
+            return (
+                <SolarSystemScene chart={chart} born={born} focus={visual} />
+            );
         case "wheel":
             return (
                 <SkyScene
                     chart={chart}
                     litAspects
                     caption={`Tu cielo · ${born}`}
-                />
-            );
-        case "planet":
-            return (
-                <PlanetScene
-                    body={visual.body}
-                    sign={visual.sign}
-                    signs={visual.signs}
-                    moonPhase={chart.moonPhase}
-                    born={born}
                 />
             );
         case "moonPhase":

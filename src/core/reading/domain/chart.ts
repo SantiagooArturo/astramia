@@ -3,6 +3,7 @@ import {
     marsLongitude,
     moonLongitude,
     moonPhase,
+    orbitPositions,
     sunLongitude,
     venusLongitude,
 } from "@/core/landing/domain/ephemeris";
@@ -166,6 +167,8 @@ export function natalChart(
 ): NatalChart {
     const zone = timeZone ?? DEFAULT_TIME_ZONE;
     const placements = natalPlacements(birthDate, birthTime, zone);
+    const jd = julianDay(localInstant(birthDate, birthTime ?? "12:00", zone));
+    const orbits = orbitPositions(jd);
     let moonRange: NatalChart["moonRange"] = null;
     if (!birthTime) {
         const early = longitudeToSign(
@@ -185,10 +188,13 @@ export function natalChart(
                 : placements.filter((p) => p.body !== "Luna"),
         ),
         dominantElement: dominantElement(placements),
-        moonPhase: moonPhase(
-            julianDay(localInstant(birthDate, birthTime ?? "12:00", zone)),
-        ).name,
+        moonPhase: moonPhase(jd).name,
         moonRange,
+        orbits: {
+            Venus: orbits.venus,
+            Tierra: orbits.earth,
+            Marte: orbits.mars,
+        },
     };
 }
 

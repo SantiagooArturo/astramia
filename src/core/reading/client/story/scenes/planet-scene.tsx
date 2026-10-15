@@ -96,12 +96,15 @@ export function PlanetScene({
     signs,
     moonPhase,
     born,
+    fromZoom = false,
 }: {
     body: StoryBody;
     sign: string;
     signs?: readonly [string, string];
     moonPhase: MoonPhaseName;
     born: string;
+    /** The camera just flew in: the globe is already where the dot grew. */
+    fromZoom?: boolean;
 }) {
     const reducedMotion = useReducedMotion();
     const figure = CONSTELLATIONS[sign];
@@ -179,11 +182,14 @@ export function PlanetScene({
                 )}
                 <motion.div
                     className="absolute inset-0 flex items-center justify-center"
-                    initial={{ opacity: 0, scale: reducedMotion ? 1 : 0.7 }}
+                    initial={{
+                        opacity: 0,
+                        scale: reducedMotion ? 1 : fromZoom ? 0.94 : 0.7,
+                    }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{
-                        duration: quick(1.2),
-                        delay: quick(0.5),
+                        duration: quick(fromZoom ? 0.7 : 1.2),
+                        delay: quick(fromZoom ? 0 : 0.5),
                         ease: [0.2, 0.8, 0.2, 1],
                     }}
                 >

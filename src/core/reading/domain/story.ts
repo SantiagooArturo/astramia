@@ -17,9 +17,9 @@ import type { NatalChart, QuizAnswer, ReadingScenes, SkyEvent } from "./types";
 export type StoryBody = "Sol" | "Luna" | "Venus" | "Marte";
 
 export type StoryVisual =
-    /** Their whole chart, slowly turning: the night they were born. */
-    | { kind: "sky" }
-    /** The same chart with its tensions (aspects) lit. */
+    /** The solar system the day they were born, seen from afar. */
+    | { kind: "system" }
+    /** Their chart with its tensions (aspects) lit. */
     | { kind: "wheel" }
     | {
           kind: "planet";
@@ -90,7 +90,9 @@ const NUMERALS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"];
 export function visualKey(visual: StoryVisual): string {
     switch (visual.kind) {
         case "planet":
-            return `planet:${visual.body}`;
+            // The solar system stays on stage: the camera pulls back from
+            // one body and flies to the next instead of cutting.
+            return "system";
         case "pair":
             return `pair:${visual.bodies.join("+")}`;
         case "moonPhase":
@@ -212,7 +214,7 @@ function skyFacts(chart: NatalChart) {
     };
 }
 
-const SKY: StoryVisual = { kind: "sky" };
+const SKY: StoryVisual = { kind: "system" };
 const WORDS_PER_SCREEN = 70;
 
 /** A long answer on two screens, split at the sentence nearest its middle. */

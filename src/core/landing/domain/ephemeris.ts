@@ -156,6 +156,31 @@ function geocentricLongitude(el: KeplerElements, jd: number): number {
 export const venusLongitude = (jd: number) => geocentricLongitude(VENUS, jd);
 export const marsLongitude = (jd: number) => geocentricLongitude(MARS, jd);
 
+/** A point in the plane of the ecliptic, in AU, the Sun at the origin. */
+export interface OrbitPoint {
+    x: number;
+    y: number;
+}
+
+/**
+ * Where Venus, the Earth and Mars were around the Sun: the same positions
+ * their longitudes above are measured from, so a line from the Earth
+ * through a planet points at the planet's sign.
+ */
+export function orbitPositions(jd: number): {
+    venus: OrbitPoint;
+    earth: OrbitPoint;
+    mars: OrbitPoint;
+} {
+    const T = centuries(jd);
+    const flat = ({ x, y }: Vec3): OrbitPoint => ({ x, y });
+    return {
+        venus: flat(heliocentric(VENUS, T)),
+        earth: flat(heliocentric(EARTH, T)),
+        mars: flat(heliocentric(MARS, T)),
+    };
+}
+
 export type MoonPhaseName =
     | "Luna nueva"
     | "Luna creciente"

@@ -55,12 +55,12 @@ describe("buildStory", () => {
         ]);
     });
 
-    it("starts with the teaser, then the opening, over their sky", () => {
+    it("starts with the teaser, then the opening, over their solar system", () => {
         const [prologue, opening] = story.steps;
         expect(prologue).toMatchObject({
             kind: "prologue",
             text: SAMPLE_READING.teaser,
-            visual: { kind: "sky" },
+            visual: { kind: "system" },
             chapter: null,
         });
         expect(opening).toMatchObject({ kind: "paragraph", chapter: null });
@@ -92,7 +92,9 @@ describe("buildStory", () => {
             phase: "Luna menguante",
         });
         // The text stays over the last thing it was introduced with.
-        expect(visualKey(second[4].visual)).toBe("planet:Sol");
+        expect(second[4].visual).toMatchObject({ kind: "planet", body: "Sol" });
+        // Planets share the stage with the solar system: no cut between them.
+        expect(visualKey(second[4].visual)).toBe("system");
     });
 
     it("introduces Venus and Mars with their signs", () => {
