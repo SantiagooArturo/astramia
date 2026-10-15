@@ -60,7 +60,7 @@ const CARD =
  * height): gone above the first, whole below the second. The scene has
  * the half above it, as the Sun has the chat's.
  */
-const FADE = [0.44, 0.54] as const;
+const FADE = [0.38, 0.47] as const;
 
 function StepContent({
     step,

@@ -88,13 +88,27 @@ const NIGHT = Array.from({ length: 25 }, (_, i) => {
 /** Bodies with a night side drawn over them (the Sun has none). */
 const NIGHT_BODIES = ["Venus", "Tierra", "Marte", "Luna"] as const;
 
-/** How close the camera gets: the dot grows to the globe that replaces it. */
+/**
+ * The system's share of the stage's short side: air between the band and
+ * the screen's edges (and, on a phone, the text under it).
+ */
+const FRAME = 0.84;
+
+/**
+ * How close the camera gets: the dot grows to the globe that replaces it,
+ * this many times the dot's size on the full stage.
+ */
 const ZOOM: Record<StoryBody, number> = {
     Sol: 7,
     Venus: 17,
     Marte: 20,
     Luna: 34,
 };
+
+/** The camera's zoom: a framed system needs a little more to fill it. */
+function zoomOf(body: StoryBody): number {
+    return ZOOM[body] / FRAME;
+}
 
 /**
  * The globe's canvas, sized in the scene's own units so its sphere is
@@ -210,7 +224,7 @@ export function SolarSystemScene({
     const target = useRef<StoryBody>(focus?.body ?? "Sol");
     const progress = useMotionValue(0);
     const viewBox = useTransform(progress, (t) =>
-        cameraAt(t, view.bodies[target.current], ZOOM[target.current]),
+        cameraAt(t, view.bodies[target.current], zoomOf(target.current)),
     );
     // The drawing gives way to the globe once the globe covers its dot.
     const mapOpacity = useTransform(progress, [0, HANDOFF[1], 1], [1, 1, 0]);
@@ -220,14 +234,14 @@ export function SolarSystemScene({
         x: useTransform(
             progress,
             (t) =>
-                `${((1 - t) * view.bodies[target.current].x * 50) / HALF}cqmin`,
+                `${((1 - t) * view.bodies[target.current].x * 50 * FRAME) / HALF}cqmin`,
         ),
         y: useTransform(
             progress,
             (t) =>
-                `${((1 - t) * view.bodies[target.current].y * 50) / HALF}cqmin`,
+                `${((1 - t) * view.bodies[target.current].y * 50 * FRAME) / HALF}cqmin`,
         ),
-        scale: useTransform(progress, (t) => ZOOM[target.current] ** (t - 1)),
+        scale: useTransform(progress, (t) => zoomOf(target.current) ** (t - 1)),
         opacity: useTransform(progress, HANDOFF, [0, 1]),
         // Not painted at all until its turn: cheap while it waits.
         visibility: useTransform(progress, (t) =>
@@ -347,8 +361,12 @@ export function SolarSystemScene({
     return (
         <div className="relative h-full w-full [container-type:size]">
             <motion.div
-                className="absolute top-1/2 left-1/2 size-[min(100cqw,100cqh)] -translate-x-1/2 -translate-y-1/2"
-                style={{ opacity: mapOpacity }}
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+                style={{
+                    width: `${FRAME * 100}cqmin`,
+                    height: `${FRAME * 100}cqmin`,
+                    opacity: mapOpacity,
+                }}
             >
                 <motion.svg
                     viewBox={viewBox}
