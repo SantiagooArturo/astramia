@@ -1,6 +1,7 @@
 "use client";
 
 import { Lock } from "lucide-react";
+import { useEffect } from "react";
 import { toast } from "sonner";
 import { GoldButton } from "@/core/landing/client/effects";
 import { Spinner } from "@/frontend/components/ui/spinner";
@@ -15,6 +16,18 @@ export function UnlockButton({
     label: string;
 }) {
     const checkout = useReadings().useCheckout(readingId);
+    const { reset } = checkout;
+
+    // Back from the gateway, the browser may restore this page from its
+    // back/forward cache with the state frozen at "redirecting": the button
+    // would spin forever. A restored page starts over.
+    useEffect(() => {
+        const onShow = (event: PageTransitionEvent) => {
+            if (event.persisted) reset();
+        };
+        window.addEventListener("pageshow", onShow);
+        return () => window.removeEventListener("pageshow", onShow);
+    }, [reset]);
 
     async function start() {
         try {
