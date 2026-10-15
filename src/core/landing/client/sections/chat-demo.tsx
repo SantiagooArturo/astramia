@@ -127,11 +127,11 @@ export function ChatDemo() {
                         aria-hidden
                         className="flex size-9 shrink-0 items-center justify-center rounded-full border border-astral-gold/40 bg-astral-gold/10 font-display text-astral-gold text-lg"
                     >
-                        ♀
+                        {"\u2609\uFE0E"}
                     </span>
                     <div className="min-w-0">
                         <p className="truncate font-medium text-sm">
-                            Tu asistente · lectura de amor
+                            Tu Sol
                         </p>
                         <p className="truncate font-mono text-[11px] text-muted-foreground">
                             {DEMO_CONTEXT.sun} · {DEMO_CONTEXT.venus}
@@ -191,7 +191,7 @@ export function ChatDemo() {
                     {typing && (
                         <output
                             className="flex w-fit gap-1 rounded-2xl rounded-bl-sm border border-astral-ink bg-secondary px-4 py-3"
-                            aria-label="Astramia está escribiendo"
+                            aria-label="Tu Sol está escribiendo"
                         >
                             {[0, 1, 2].map((dot) => (
                                 <span

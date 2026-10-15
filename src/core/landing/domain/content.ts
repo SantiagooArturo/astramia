@@ -186,8 +186,8 @@ export const PRICING_INCLUDES = [
     { item: "Lectura de amor y relaciones", detail: "escrita para ti" },
     { item: "Tu carta natal interpretada", detail: "Sol, Luna, Venus, Marte" },
     {
-        item: `${OFFER.chatHours} horas de chat con tu asistente`,
-        detail: "sabe lo que respondiste",
+        item: `${OFFER.chatHours} horas de chat con tu Sol`,
+        detail: "conoce tu carta y tu lectura",
     },
     { item: "Acceso a tu lectura", detail: "para siempre" },
     { item: "Suscripción", detail: "ninguna" },
@@ -234,7 +234,7 @@ export interface Faq {
 export const FAQS: Faq[] = [
     {
         question: `¿Qué recibo exactamente por ${OFFER.price}?`,
-        answer: `Una lectura de amor y relaciones escrita a partir de tu carta y tus respuestas, más ${OFFER.chatHours} horas de conversación con un asistente de IA que ya la leyó. La lectura queda guardada para siempre. Las ${OFFER.chatHours} horas de chat empiezan con tu primera pregunta, no al pagar.`,
+        answer: `Una lectura de amor y relaciones escrita a partir de tu carta y tus respuestas, más ${OFFER.chatHours} horas de conversación con tu Sol: una IA que conoce tu carta y tu lectura. La lectura queda guardada para siempre. Las ${OFFER.chatHours} horas de chat empiezan con tu primera pregunta, no al pagar.`,
     },
     {
         question: "¿Necesito saber mi hora exacta de nacimiento?",

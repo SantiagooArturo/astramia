@@ -21,13 +21,13 @@ export function AiConversation() {
                     label="El chat"
                     title={
                         <>
-                            No es un informe.{" "}
+                            No solo la lees.{" "}
                             <em className="text-astral-gold">
-                                Es alguien que ya lo leyó.
+                                Le preguntas a tus astros.
                             </em>
                         </>
                     }
-                    description={`Una carta astral en PDF se lee una vez. A esta se le pregunta durante ${OFFER.chatHours} horas, y responde con tu carta y tus palabras delante.`}
+                    description={`Una carta astral en PDF se lee una vez. Aquí, al terminar tu lectura, tu Sol te escucha durante ${OFFER.chatHours} horas y te responde con tu carta delante.`}
                 />
             </Reveal>
 
@@ -42,7 +42,7 @@ export function AiConversation() {
                 >
                     <div>
                         <p className="font-mono text-[11px] text-astral-gold/80 uppercase tracking-[0.24em]">
-                            Lo que el asistente tiene delante
+                            Lo que tu Sol tiene delante
                         </p>
                         <dl className="mt-4 divide-y divide-astral-ink border-astral-ink border-y font-mono text-sm">
                             {MEMORY.map(({ label, value }) => (
