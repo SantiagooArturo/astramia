@@ -4,6 +4,10 @@ import { useEffect, useState } from "react";
 import { authClient } from "@/frontend/auth/auth";
 import { Button } from "@/frontend/components/ui/button";
 import { Spinner } from "@/frontend/components/ui/spinner";
+import { authErrorMessage } from "./auth-errors";
+
+const GOOGLE_FAILED =
+    "No pudimos entrar con Google. Inténtalo otra vez o usa tu correo.";
 
 function GoogleLogo() {
     return (
@@ -34,6 +38,7 @@ function GoogleLogo() {
  */
 export function GoogleButton() {
     const [pending, setPending] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     // Back from Google's screen, a restored page must not keep spinning.
     useEffect(() => {
@@ -44,18 +49,34 @@ export function GoogleButton() {
         return () => window.removeEventListener("pageshow", onShow);
     }, []);
 
+    // A failed sign-in comes back here with ?error=: say so, then drop it
+    // from the address so a reload is clean. Cancelling isn't a failure.
+    useEffect(() => {
+        const url = new URL(window.location.href);
+        const code = url.searchParams.get("error");
+        if (!code) return;
+        if (code !== "access_denied") setError(GOOGLE_FAILED);
+        url.searchParams.delete("error");
+        url.searchParams.delete("error_description");
+        window.history.replaceState(window.history.state, "", url);
+    }, []);
+
     async function start() {
         setPending(true);
+        setError(null);
         const here = `${window.location.pathname}${window.location.search}`;
         const { error } = await authClient.signIn.social({
             provider: "google",
             callbackURL: here,
             errorCallbackURL: here,
         });
-        if (error) setPending(false);
+        if (error) {
+            setPending(false);
+            setError(authErrorMessage(error));
+        }
     }
 
-    return (
+    const button = (
         <Button
             type="button"
             onClick={start}
@@ -66,5 +87,14 @@ export function GoogleButton() {
             {pending ? <Spinner /> : <GoogleLogo />}
             Continuar con Google
         </Button>
+    );
+    if (!error) return button;
+    return (
+        <div className="flex flex-col gap-2">
+            {button}
+            <p role="alert" className="text-destructive text-sm">
+                {error}
+            </p>
+        </div>
     );
 }
