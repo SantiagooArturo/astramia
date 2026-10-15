@@ -2,7 +2,8 @@ import "server-only";
 import { ServerConfig } from "@/config/server-config";
 import { generateObject } from "@/core/ai/server/repository/llm";
 import { sunSignOf } from "@/core/reading/domain/chart";
-import { AI_TASKS, TEASER_PROMPT } from "@/core/reading/domain/prompts";
+import { planFor } from "@/core/reading/domain/plan";
+import { AI_TASKS, freePrompt } from "@/core/reading/domain/prompts";
 import { DAILY_READING_LIMIT } from "@/core/reading/domain/schemas";
 import type { CreateReading } from "@/core/reading/domain/types";
 import {
@@ -15,7 +16,7 @@ import { countReadingsSince, createReading } from "../repository/readings";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Saves the questionnaire and writes the free scenes (Venus and Mars). */
+/** Saves the questionnaire and writes the free scenes of its plan. */
 export async function createReadingService(
     userId: string,
     input: CreateReading,
@@ -36,11 +37,12 @@ export async function createReadingService(
             answers: input.answers,
         };
         const id = crypto.randomUUID();
+        const prompt = freePrompt(planFor(input.topic));
         const free = await generateObject({
             model: ServerConfig.ai.models.teaser,
-            system: TEASER_PROMPT.system,
-            prompt: TEASER_PROMPT.prompt(profile),
-            schema: TEASER_PROMPT.schema,
+            system: prompt.system,
+            prompt: prompt.prompt(profile),
+            schema: prompt.schema,
             ...AI_TASKS.teaser,
             usage: { purpose: "teaser", userId, referenceId: id },
         });
@@ -51,10 +53,14 @@ export async function createReadingService(
             topic: input.topic,
             ...profile,
             sunSign: sunSignOf(input.birthDate),
-            teaser: JSON.stringify({
-                venus: free.venus.trim(),
-                mars: free.mars.trim(),
-            }),
+            teaser: JSON.stringify(
+                Object.fromEntries(
+                    Object.entries(free).map(([key, text]) => [
+                        key,
+                        typeof text === "string" ? text.trim() : text,
+                    ]),
+                ),
+            ),
         });
         return ok({ id: row.id });
     } catch (cause) {

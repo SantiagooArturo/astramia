@@ -1,4 +1,5 @@
-import type { FreeScenes, QuizAnswer, ReadingScenes } from "./types";
+import type { SceneTexts } from "./plan";
+import type { QuizAnswer } from "./types";
 
 /**
  * A complete paid reading, written the way READING_PROMPT asks, for the
@@ -60,7 +61,7 @@ Esta semana, cuando sientas el impulso de contestar al instante o de proponer el
  * The same chart's reading written per scene, as READING_PROMPT writes it
  * now (generated with it; one typo fixed): what /lectura/ejemplo shows.
  */
-export const SAMPLE_SCENES: ReadingScenes = {
+export const SAMPLE_SCENES: SceneTexts = {
     opening:
         "Entras a todo o nada porque confundes la prisa con el interés real. Ahora mismo, mientras dejas atrás a tu ex, sigues con el teléfono en la mano esperando una señal que llene ese vacío rápido.",
     venus: "Con Venus, que marca qué te atrae, en Aries, te enamoras en cinco minutos. No sabes esperar ni fingir desinterés. Si alguien te gusta, propones el plan, mandas el primer mensaje y pones toda la carne en el asador desde el día uno.",
@@ -95,10 +96,13 @@ export const SAMPLE_SCENES: ReadingScenes = {
 };
 
 /**
- * The free scenes for the same chart, as TEASER_PROMPT writes them now:
- * what /lectura/ejemplo opens with, before and after paying.
+ * The free scenes for the same chart, as the free prompt writes them now
+ * (the hook's text included: the server cuts it while the reading is
+ * locked): what /lectura/ejemplo opens with, before and after paying.
  */
-export const SAMPLE_FREE: FreeScenes = {
+export const SAMPLE_FREE: SceneTexts = {
     venus: "Venus habla de cómo te enamoras. La tuya está en Aries: te enamoras rápido y de frente. Si alguien te gusta, escribes tú primero. Propones el plan y no sabes fingir que no te importa.",
-    mars: "Marte es cómo deseas. El tuyo está en Sagitario: te enciende reír, moverte y descubrir algo nuevo. Te apaga la rutina sin chispa. Y aquí empieza la pregunta: qué pasa cuando tu Venus corre y tu Marte quiere volar.",
+    mars: "Marte es cómo deseas. El tuyo está en Sagitario: te enciende reír, moverte y descubrir algo nuevo. Te apaga la rutina sin chispa.",
+    venusMars:
+        "Juntos, tu Venus y tu Marte hacen que llegues primero a todo. Propones, escribes, organizas, y al principio es emocionante. Pero un día miras atrás y ves que siempre fuiste tú. No es mala suerte. Tu Venus corre tan rápido que nunca le das a la otra persona el espacio de buscarte.",
 };

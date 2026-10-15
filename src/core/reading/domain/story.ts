@@ -1,7 +1,18 @@
 import type { MoonPhaseName } from "@/core/landing/domain/ephemeris";
 import { toReadingBlocks } from "./markdown";
-import { parseFreeScenes, parseScenes } from "./reading-content";
-import type { NatalChart, QuizAnswer, ReadingScenes, SkyEvent } from "./types";
+import {
+    type PlanScene,
+    planFor,
+    type ReadingPlan,
+    type SceneContext,
+    type SceneTexts,
+    sceneMoments,
+    scenesOf,
+    sceneText,
+} from "./plan";
+import { parseTexts } from "./reading-content";
+import { MOON_PHASES, skyFacts } from "./sky-facts";
+import type { NatalChart, QuizAnswer, ReadingTopic, SkyEvent } from "./types";
 
 /**
  * The paid reading as a story told on scroll: each idea is shown (the Moon
@@ -9,9 +20,9 @@ import type { NatalChart, QuizAnswer, ReadingScenes, SkyEvent } from "./types";
  * its text is read.
  *
  * The visuals come from the chart, never from the model, so they can't
- * contradict the sky. Readings written per scene (`readingScenesSchema`)
- * put each text next to its body; older Markdown readings are split along
- * the five sections their prompt asked for.
+ * contradict the sky. Readings written per scene follow their plan
+ * (`plan.ts`): each text next to its body. Older Markdown readings are
+ * split along the five sections their prompt asked for.
  */
 
 export type StoryBody = "Sol" | "Luna" | "Venus" | "Marte";
@@ -31,15 +42,8 @@ export type StoryVisual =
           /** Unknown birth time and the Moon changed sign that day. */
           signs?: readonly [string, string];
       }
-    /**
-     * Two bodies side by side: what they do together. `locked`: the scene
-     * after the free ones, blurred until the reading is bought.
-     */
-    | {
-          kind: "pair";
-          bodies: readonly [StoryBody, StoryBody];
-          locked?: boolean;
-      }
+    /** Two bodies side by side: what they do together. */
+    | { kind: "pair"; bodies: readonly [StoryBody, StoryBody] }
     /** A lunar month that comes to rest on their phase. */
     | { kind: "moonPhase"; phase: MoonPhaseName }
     /** Venus over the months ahead; `focus` is where it is (an event index). */
@@ -73,10 +77,11 @@ export type StoryStep = { visual: StoryVisual; chapter: number | null } & (
     | NoteStep
     | { kind: "paragraph"; text: string; heading?: string }
     /**
-     * Where the preview stops: the next scene's title over its blurred
-     * image, and under it the page's own box (unlock, or "being written").
+     * Where the preview stops, at its most intriguing: the hook scene's
+     * first sentences, the rest blurred, and the page's own box (unlock,
+     * or "being written").
      */
-    | { kind: "door"; eyebrow: string; title: string }
+    | { kind: "door"; eyebrow?: string; title?: string; text?: string }
     /** The reading's last line: the story ends here, before the chat. */
     | { kind: "closing"; text: string }
 );
@@ -94,6 +99,7 @@ export interface Story {
 }
 
 export interface StoryInput {
+    topic: ReadingTopic;
     teaser: string;
     content: string;
     chart: NatalChart;
@@ -119,61 +125,6 @@ export function visualKey(visual: StoryVisual): string {
     }
 }
 
-/** What you'd see in the sky that night, then what it says about you. */
-export const MOON_PHASES: Record<
-    MoonPhaseName,
-    { title: string; sky: string; meaning: string }
-> = {
-    "Luna nueva": {
-        title: "Había Luna nueva",
-        sky: "Es la noche en que la Luna no se ve: pasa entre la Tierra y el Sol y nos da la espalda.",
-        meaning:
-            "Con ella empieza un ciclo. Quien nace así suele empezar las cosas sin mapa y aprende en el camino.",
-    },
-    "Luna creciente": {
-        title: "Había Luna creciente",
-        sky: "Asoma un hilo de luz que cada noche se hace más grande.",
-        meaning:
-            "Es la Luna del impulso: quien nace así va hacia lo que quiere aunque todavía no lo vea completo.",
-    },
-    "Cuarto creciente": {
-        title: "Había cuarto creciente",
-        sky: "Se ve media Luna y la luz sigue aumentando.",
-        meaning:
-            "Es la Luna de las decisiones: quien nace así se mueve mejor cuando le toca elegir.",
-    },
-    "Gibosa creciente": {
-        title: "Había Luna gibosa creciente",
-        sky: "Está casi llena: le falta un borde para completarse.",
-        meaning:
-            "Es la Luna que afina: quien nace así quiere que las cosas queden bien, no solo que pasen.",
-    },
-    "Luna llena": {
-        title: "Había Luna llena",
-        sky: "La Tierra queda entre el Sol y la Luna, y la vemos entera.",
-        meaning:
-            "Es la Luna de lo que se ve: quien nace así se entiende a sí mismo a través de sus relaciones.",
-    },
-    "Gibosa menguante": {
-        title: "Había Luna gibosa menguante",
-        sky: "Acaba de pasar la Luna llena y la luz empieza a recogerse.",
-        meaning:
-            "Es la Luna que comparte: quien nace así suele ser a quien le cuentan todo.",
-    },
-    "Cuarto menguante": {
-        title: "Había cuarto menguante",
-        sky: "Otra vez media Luna, pero ahora la luz se va.",
-        meaning:
-            "Es la Luna que revisa: quien nace así sabe, antes que nadie, cuándo algo ya no le queda.",
-    },
-    "Luna menguante": {
-        title: "Había Luna menguante",
-        sky: "Queda un hilo de luz antes de que la Luna desaparezca y todo empiece de nuevo.",
-        meaning:
-            "Es la Luna que suelta: quien nace así reconoce rápido lo que termina y se queda con lo que vale.",
-    },
-};
-
 /** "¿Qué quieres saber primero?" answers, said back as their question. */
 const QUESTIONS: Record<string, string> = {
     volvera: "¿Esa persona va a volver?",
@@ -186,48 +137,6 @@ const QUESTIONS: Record<string, string> = {
 export function storyQuestion(answers: readonly QuizAnswer[]): string | null {
     const id = answers.find((a) => a.questionId === "pregunta")?.optionId;
     return (id && QUESTIONS[id]) ?? null;
-}
-
-/** What the chart says, as the story titles it ("Venus estaba en Aries"). */
-function skyFacts(chart: NatalChart) {
-    const byBody = new Map(chart.placements.map((p) => [p.body, p]));
-    const sign = (body: StoryBody) => byBody.get(body)?.sign ?? "";
-    const range = chart.moonRange;
-    const planet = (body: StoryBody): StoryVisual => ({
-        kind: "planet",
-        body,
-        sign: sign(body),
-    });
-    return {
-        sign,
-        venus: {
-            title: `Venus estaba en ${sign("Venus")}`,
-            visual: planet("Venus"),
-        },
-        mars: {
-            title: `Marte estaba en ${sign("Marte")}`,
-            visual: planet("Marte"),
-        },
-        moon: range
-            ? {
-                  title: `La Luna estaba entre ${range.early} y ${range.late}`,
-                  visual: {
-                      kind: "planet",
-                      body: "Luna",
-                      sign: range.early,
-                      signs: [range.early, range.late],
-                  } satisfies StoryVisual,
-              }
-            : {
-                  title: `La Luna estaba en ${sign("Luna")}`,
-                  visual: planet("Luna"),
-              },
-        sun: {
-            title: `El Sol estaba en ${sign("Sol")}`,
-            visual: planet("Sol"),
-        },
-        phase: chart.moonPhase,
-    };
 }
 
 const SKY: StoryVisual = { kind: "system" };
@@ -251,180 +160,113 @@ function splitLong(text: string): string[] {
     ];
 }
 
-const LOVE = "Cómo amas";
+function context(
+    input: Pick<StoryInput, "chart" | "question" | "skyAhead">,
+): SceneContext {
+    return {
+        sky: skyFacts(input.chart),
+        question: input.question,
+        skyAhead: input.skyAhead,
+    };
+}
 
-/** The free scenes, the story's first: Venus, then Mars, in their signs. */
-function freeSteps(
-    facts: ReturnType<typeof skyFacts>,
-    free: { venus: string; mars: string },
-    chapter: number,
+/** Numbers chapters as their first scene with a text shows up. */
+function chapterNumbers(chapters: StoryChapter[]) {
+    return (label: string) => () => {
+        if (chapters.at(-1)?.label !== label)
+            chapters.push({
+                numeral:
+                    NUMERALS[chapters.length] ?? String(chapters.length + 1),
+                label,
+            });
+        return chapters.length - 1;
+    };
+}
+
+/** A scene's steps, or none when its text isn't there. */
+function sceneSteps(
+    scene: PlanScene,
+    c: SceneContext,
+    texts: SceneTexts,
+    chapter: () => number,
 ): StoryStep[] {
+    if (scene.kind === "moments") {
+        // Each moment moves Venus to its date; ones that point nowhere are left out.
+        const moments = sceneMoments(texts).filter(
+            (m) => m.event >= 1 && m.event <= c.skyAhead.length,
+        );
+        if (!moments.length) return [];
+        const index = chapter();
+        const path = scene.visual(c);
+        return moments.map(
+            (moment, n): StoryStep => ({
+                kind: "scene",
+                eyebrow: n === 0 ? scene.eyebrow?.(c) : undefined,
+                title: n === 0 ? scene.title?.(c) : undefined,
+                text: moment.text,
+                visual:
+                    path.kind === "venusPath"
+                        ? { ...path, focus: moment.event - 1 }
+                        : path,
+                chapter: index,
+            }),
+        );
+    }
+    const text = sceneText(texts, scene.key);
+    if (!text) return [];
+    const index = chapter();
+    const visual = scene.visual(c);
+    const [first, ...rest] = scene.split ? splitLong(text) : [text];
     return [
         {
             kind: "scene",
-            eyebrow: "El día que naciste",
-            title: facts.venus.title,
-            text: free.venus,
-            visual: facts.venus.visual,
-            chapter,
+            eyebrow: scene.eyebrow?.(c),
+            title: scene.title?.(c),
+            note: scene.note?.(c),
+            text: first,
+            visual,
+            chapter: index,
         },
-        {
-            kind: "scene",
-            eyebrow: "Ese mismo día",
-            title: facts.mars.title,
-            text: free.mars,
-            visual: facts.mars.visual,
-            chapter,
-        },
+        ...rest.map(
+            (more): StoryStep => ({
+                kind: "paragraph",
+                text: more,
+                visual,
+                chapter: index,
+            }),
+        ),
     ];
 }
 
-/**
- * A reading written per scene: each text beside the body it talks about.
- * It starts on Venus and Mars (the free scenes, or the reading's own in
- * readings written before them); no paragraph guessing at them first.
- */
-function sceneStory(input: StoryInput, scenes: ReadingScenes): Story {
-    const facts = skyFacts(input.chart);
-    const free =
-        parseFreeScenes(input.teaser) ??
-        (scenes.venus && scenes.mars
-            ? { venus: scenes.venus, mars: scenes.mars }
-            : null);
+/** A reading written per scene, told in its plan's order. */
+function planStory(
+    plan: ReadingPlan,
+    c: SceneContext,
+    texts: SceneTexts,
+    /** An older reading's paragraph, when it has no free scenes. */
+    prologue?: string,
+): Story {
     const chapters: StoryChapter[] = [];
-    // Bought with an old preview (a paragraph) after the free scenes
-    // existed: no Venus or Mars text anywhere, so the paragraph opens it.
-    const steps: StoryStep[] = free
-        ? []
-        : [
-              {
-                  kind: "prologue",
-                  text: input.teaser,
-                  visual: SKY,
-                  chapter: null,
-              },
-          ];
-    const chapter = (label: string, add: (index: number) => StoryStep[]) => {
-        const index = chapters.length;
-        const added = add(index);
-        if (!added.length) return;
-        chapters.push({ numeral: NUMERALS[index], label });
-        steps.push(...added);
-    };
-    const born = "El día que naciste";
-
-    chapter(LOVE, (i) => [
-        ...(free ? freeSteps(facts, free, i) : []),
-        {
-            kind: "scene",
-            eyebrow: "Juntos",
-            title: "Venus y Marte",
-            text: scenes.venusMars,
-            visual: { kind: "pair", bodies: ["Venus", "Marte"] },
-            chapter: i,
-        },
-    ]);
-
-    chapter("Lo que necesitas", (i) => [
-        {
-            kind: "scene",
-            eyebrow: born,
-            title: MOON_PHASES[facts.phase].title,
-            note: MOON_PHASES[facts.phase].sky,
-            text: scenes.moonPhase,
-            visual: { kind: "moonPhase", phase: facts.phase },
-            chapter: i,
-        },
-        {
-            kind: "scene",
-            eyebrow: born,
-            title: facts.moon.title,
-            text: scenes.moon,
-            visual: facts.moon.visual,
-            chapter: i,
-        },
-        {
-            kind: "scene",
-            eyebrow: `Por eso eres ${facts.sign("Sol")}`,
-            title: facts.sun.title,
-            text: scenes.sun,
-            visual: facts.sun.visual,
-            chapter: i,
-        },
-        {
-            kind: "scene",
-            eyebrow: "Juntos",
-            title: "La Luna y el Sol",
-            text: scenes.moonSun,
-            visual: { kind: "pair", bodies: ["Luna", "Sol"] },
-            chapter: i,
-        },
-    ]);
-
-    chapter("Tu pregunta", (i) => {
-        const [first, ...rest] = splitLong(scenes.question);
-        const wheel: StoryVisual = { kind: "wheel" };
-        return [
-            {
-                kind: "scene",
-                eyebrow: "Lo que querías saber",
-                title: input.question ?? undefined,
-                text: first,
-                visual: wheel,
-                chapter: i,
-            },
-            ...rest.map(
-                (text): StoryStep => ({
-                    kind: "paragraph",
-                    text,
-                    visual: wheel,
-                    chapter: i,
-                }),
-            ),
-        ];
-    });
-
-    // Each moment moves Venus to its date; ones that point nowhere are left out.
-    chapter("Lo que viene", (i) =>
-        scenes.moments
-            .filter((m) => m.event >= 1 && m.event <= input.skyAhead.length)
-            .map(
-                (moment, n): StoryStep => ({
-                    kind: "scene",
-                    eyebrow: n === 0 ? "Desde hoy" : undefined,
-                    title: n === 0 ? "El camino de Venus" : undefined,
-                    text: moment.text,
-                    visual: {
-                        kind: "venusPath",
-                        events: input.skyAhead,
-                        focus: moment.event - 1,
-                    },
-                    chapter: i,
-                }),
-            ),
-    );
-
-    chapter("Un gesto", (i) => [
-        {
-            kind: "scene",
-            eyebrow: "Para esta semana",
-            title: "Un gesto",
-            text: scenes.gesture,
-            visual: { kind: "star" },
-            chapter: i,
-        },
-    ]);
-
-    steps.push({
-        kind: "closing",
-        text: scenes.closing,
-        // The gesture's star stays: the story ends where it last pointed.
-        visual: { kind: "star" },
-        chapter: null,
-    });
-    // Venus and Mars (or the paragraph) were free: what was bought starts
-    // with the two together.
-    return { chapters, steps, continueAt: free ? 2 : 1 };
+    const chapterOf = chapterNumbers(chapters);
+    const steps: StoryStep[] = prologue
+        ? [{ kind: "prologue", text: prologue, visual: SKY, chapter: null }]
+        : [];
+    let continueAt = steps.length;
+    for (const scene of scenesOf(plan)) {
+        // A buyer comes back to the hook, to read what was blurred.
+        if (scene === plan.hook) continueAt = steps.length;
+        steps.push(...sceneSteps(scene, c, texts, chapterOf(scene.chapter)));
+    }
+    const closing = sceneText(texts, "closing");
+    if (closing)
+        steps.push({
+            kind: "closing",
+            text: closing,
+            // The last image stays: the story ends where it last pointed.
+            visual: steps.at(-1)?.visual ?? SKY,
+            chapter: null,
+        });
+    return { chapters, steps, continueAt };
 }
 
 /** Older readings' five sections, in their prompt's order. */
@@ -622,45 +464,59 @@ function markdownStory(input: StoryInput): Story {
 }
 
 /**
- * The free part, as the start of the same story: Venus and Mars in their
- * signs, with their texts, then their scene together blurred, where the
- * page puts its box. Readings from before the free scenes have a
- * paragraph instead; it opens their preview.
+ * Before paying: the same story's free scenes, then the hook at its most
+ * intriguing (its first sentences; the page blurs the rest and puts its
+ * box there). Readings from before the free scenes open with their
+ * paragraph instead.
  */
 export function previewStory(
-    input: Pick<StoryInput, "teaser" | "chart">,
+    input: Pick<
+        StoryInput,
+        "topic" | "teaser" | "chart" | "question" | "skyAhead"
+    >,
 ): Story {
-    const facts = skyFacts(input.chart);
-    const free = parseFreeScenes(input.teaser);
-    const door: StoryStep = {
+    const plan = planFor(input.topic);
+    const c = context(input);
+    const free = parseTexts(input.teaser);
+    const chapters: StoryChapter[] = [];
+    const chapterOf = chapterNumbers(chapters);
+    const steps: StoryStep[] = free
+        ? plan.free.flatMap((scene) =>
+              sceneSteps(scene, c, free, chapterOf(scene.chapter)),
+          )
+        : [
+              {
+                  kind: "prologue",
+                  text: input.teaser,
+                  visual: SKY,
+                  chapter: null,
+              },
+          ];
+    const hook = plan.hook;
+    steps.push({
         kind: "door",
-        eyebrow: "Juntos",
-        title: "Venus y Marte",
-        visual: { kind: "pair", bodies: ["Venus", "Marte"], locked: true },
-        chapter: free ? 0 : null,
-    };
-    if (!free)
-        return {
-            chapters: [],
-            steps: [
-                {
-                    kind: "prologue",
-                    text: input.teaser,
-                    visual: SKY,
-                    chapter: null,
-                },
-                door,
-            ],
-            continueAt: 0,
-        };
-    return {
-        chapters: [{ numeral: NUMERALS[0], label: LOVE }],
-        steps: [...freeSteps(facts, free, 0), door],
-        continueAt: 0,
-    };
+        eyebrow: hook.eyebrow?.(c),
+        title: hook.title?.(c),
+        text: free ? sceneText(free, hook.key) : undefined,
+        visual: hook.visual(c),
+        chapter: free ? chapterOf(hook.chapter)() : null,
+    });
+    return { chapters, steps, continueAt: 0 };
 }
 
 export function buildStory(input: StoryInput): Story {
-    const scenes = parseScenes(input.content);
-    return scenes ? sceneStory(input, scenes) : markdownStory(input);
+    const paid = parseTexts(input.content);
+    if (!paid) return markdownStory(input);
+    const plan = planFor(input.topic);
+    const free = parseTexts(input.teaser);
+    // The free scenes live in the teaser; older readings carry them here.
+    const texts = { ...paid, ...free };
+    const hasFree = plan.free.some((scene) => sceneText(texts, scene.key));
+    return planStory(
+        plan,
+        context(input),
+        texts,
+        // Bought with an older paragraph and no free scenes: it opens the story.
+        hasFree ? undefined : input.teaser,
+    );
 }

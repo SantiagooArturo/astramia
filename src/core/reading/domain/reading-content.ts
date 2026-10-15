@@ -1,78 +1,104 @@
-import { freeScenesSchema, readingScenesSchema } from "./schemas";
-import type { FreeScenes, ReadingScenes } from "./types";
+import {
+    HOOK_SENTENCES,
+    type ReadingPlan,
+    type SceneTexts,
+    sceneMoments,
+    scenesOf,
+    sceneText,
+} from "./plan";
 
-function parseJson<T>(
-    text: string,
-    schema: { safeParse(value: unknown): { success: boolean; data?: T } },
-): T | null {
+/**
+ * `readings.teaser` and `readings.content` hold scene texts as JSON (see
+ * `plan.ts`). Older readings hold a paragraph (teaser) or Markdown
+ * (content): those parse to `null`.
+ */
+export function parseTexts(text: string): SceneTexts | null {
     if (!text.trimStart().startsWith("{")) return null;
     try {
-        const parsed = schema.safeParse(JSON.parse(text));
-        return parsed.success ? (parsed.data ?? null) : null;
+        const value: unknown = JSON.parse(text);
+        return value && typeof value === "object" && !Array.isArray(value)
+            ? (value as SceneTexts)
+            : null;
     } catch {
         return null;
     }
 }
 
-/**
- * `readings.content` holds the scenes as JSON since the reading is written
- * per scene; older readings hold Markdown. `null` means Markdown.
- */
-export function parseScenes(content: string): ReadingScenes | null {
-    return parseJson(content, readingScenesSchema);
+/** A text's sentences, as written (the last may lack its full stop). */
+export function sentencesOf(text: string): string[] {
+    return (
+        text
+            .match(/[^.!?…]+(?:[.!?…]+["»”]?|$)/g)
+            ?.map((s) => s.trim())
+            .filter(Boolean) ?? [text]
+    );
+}
+
+/** What's shown of the hook before paying: its first sentences, never all. */
+export function hookOf(text: string): string {
+    const sentences = sentencesOf(text);
+    const shown =
+        sentences.length > HOOK_SENTENCES
+            ? HOOK_SENTENCES
+            : Math.max(1, sentences.length - 1);
+    return sentences.slice(0, shown).join(" ");
 }
 
 /**
- * `readings.teaser` holds the free scenes (Venus, Mars) as JSON; older
- * readings, a paragraph. `null` means a paragraph.
+ * The teaser a locked reading's page gets: the hook cut to what's free.
+ * The rest stays on the server until it's paid for.
  */
-export function parseFreeScenes(teaser: string): FreeScenes | null {
-    return parseJson(teaser, freeScenesSchema);
+export function lockTeaser(teaser: string, plan: ReadingPlan): string {
+    const texts = parseTexts(teaser);
+    const hook = texts && sceneText(texts, plan.hook.key);
+    return hook
+        ? JSON.stringify({ ...texts, [plan.hook.key]: hookOf(hook) })
+        : teaser;
 }
 
-/** The free part as plain text: the paid reading's <inicio>, the judge. */
-export function freeAsText(teaser: string): string {
-    const free = parseFreeScenes(teaser);
-    return free ? `## Venus\n${free.venus}\n\n## Marte\n${free.mars}` : teaser;
+/** The free part as plain text: the paid prompt's <inicio>, the judge. */
+export function freeAsText(teaser: string, plan: ReadingPlan): string {
+    const texts = parseTexts(teaser);
+    if (!texts) return teaser;
+    return [...plan.free, plan.hook]
+        .map((scene) => {
+            const text = sceneText(texts, scene.key);
+            return text && `## ${scene.label}\n${text}`;
+        })
+        .filter(Boolean)
+        .join("\n\n");
 }
-
-/** What's shown next to each scene, for anyone reading the text alone. */
-const SCENE_LABELS = {
-    venusMars: "Venus y Marte, juntos",
-    moonPhase: "La Luna con que naciste",
-    moon: "La Luna",
-    sun: "El Sol",
-    moonSun: "La Luna y el Sol, juntos",
-    question: "Tu pregunta",
-    gesture: "Un gesto para esta semana",
-} as const satisfies Partial<Record<keyof ReadingScenes, string>>;
 
 /**
- * The whole reading as plain text with a heading per scene, the free
- * scenes first: the chat's <lectura> and the eval's judge read it like
- * this. Markdown passes through.
+ * Everything they read, free scenes first, as plain text with a heading
+ * per scene: the chat's <lectura> and the eval's judge read it like this.
+ * Markdown passes through.
  */
-export function readingAsText(content: string, teaser = ""): string {
-    const scenes = parseScenes(content);
-    if (!scenes) return content;
-    const free = parseFreeScenes(teaser);
-    const venus = free?.venus ?? scenes.venus;
-    const mars = free?.mars ?? scenes.mars;
-    const section = (key: keyof typeof SCENE_LABELS) =>
-        `## ${SCENE_LABELS[key]}\n${scenes[key]}`;
+export function readingAsText(
+    content: string,
+    teaser: string,
+    plan: ReadingPlan,
+): string {
+    const paid = parseTexts(content);
+    if (!paid) return content;
+    // The free scenes live in the teaser; older readings carry them here.
+    const texts = { ...paid, ...parseTexts(teaser) };
+    const sections = scenesOf(plan).map((scene) => {
+        if (scene.kind === "moments") {
+            const moments = sceneMoments(texts);
+            return moments.length
+                ? `## ${scene.label}\n${moments.map((m) => m.text).join("\n\n")}`
+                : null;
+        }
+        const text = sceneText(texts, scene.key);
+        return text && `## ${scene.label}\n${text}`;
+    });
+    const closing = sceneText(texts, "closing");
     return [
-        scenes.opening,
-        venus && `## Venus\n${venus}`,
-        mars && `## Marte\n${mars}`,
-        section("venusMars"),
-        section("moonPhase"),
-        section("moon"),
-        section("sun"),
-        section("moonSun"),
-        section("question"),
-        `## Lo que viene\n${scenes.moments.map((m) => m.text).join("\n\n")}`,
-        section("gesture"),
-        `**${scenes.closing}**`,
+        // Readings from before the free scenes opened with one.
+        sceneText(paid, "opening"),
+        ...sections,
+        closing && `**${closing}**`,
     ]
         .filter(Boolean)
         .join("\n\n");

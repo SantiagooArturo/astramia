@@ -5,13 +5,11 @@ import type {
     chatMessageSchema,
     chatTurnSchema,
     createReadingSchema,
-    freeScenesSchema,
     natalChartSchema,
     natalPlacementSchema,
     quizAnswerSchema,
     readingBlockSchema,
     readingProfileSchema,
-    readingScenesSchema,
     readingSchema,
     readingSummarySchema,
     readingTopicSchema,
@@ -34,5 +32,3 @@ export type NatalChart = z.infer<typeof natalChartSchema>;
 export type SkyEvent = z.infer<typeof skyEventSchema>;
 export type VenusOutlook = z.infer<typeof venusOutlookSchema>;
 export type ReadingBlock = z.infer<typeof readingBlockSchema>;
-export type ReadingScenes = z.infer<typeof readingScenesSchema>;
-export type FreeScenes = z.infer<typeof freeScenesSchema>;

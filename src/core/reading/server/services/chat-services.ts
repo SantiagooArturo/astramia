@@ -1,6 +1,7 @@
 import "server-only";
 import { ServerConfig } from "@/config/server-config";
 import { stream } from "@/core/ai/server/repository/llm";
+import { planFor } from "@/core/reading/domain/plan";
 import { AI_TASKS, chatSystemPrompt } from "@/core/reading/domain/prompts";
 import { CHAT_LIMITS } from "@/core/reading/domain/schemas";
 import type { ChatMessage } from "@/core/reading/domain/types";
@@ -73,6 +74,7 @@ export async function sendChatMessageService(
                     row.content,
                     row.teaser,
                     askedAt,
+                    planFor(row.topic),
                 ),
                 messages: [
                     ...history.map((m) => ({

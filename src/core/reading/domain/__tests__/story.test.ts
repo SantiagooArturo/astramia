@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { natalChart, readingOutlook } from "../chart";
+import { LOVE_PLAN, sceneMoments } from "../plan";
+import { hookOf, lockTeaser, sentencesOf } from "../reading-content";
 import { SAMPLE_FREE, SAMPLE_READING, SAMPLE_SCENES } from "../sample-reading";
 import {
     buildStory,
@@ -21,6 +23,7 @@ const skyAhead = readingOutlook(
 
 function input(overrides: Partial<StoryInput> = {}): StoryInput {
     return {
+        topic: "amor",
         teaser: SAMPLE_READING.teaser,
         content: SAMPLE_READING.content,
         chart,
@@ -274,7 +277,7 @@ describe("buildStory, a reading written per scene", () => {
 
     it("moves Venus to each moment as it's read", () => {
         expect(at(3).map((s) => s.visual)).toEqual(
-            SAMPLE_SCENES.moments.map((m) => ({
+            sceneMoments(SAMPLE_SCENES).map((m) => ({
                 kind: "venusPath",
                 events: skyAhead,
                 focus: m.event - 1,
@@ -290,7 +293,7 @@ describe("buildStory, a reading written per scene", () => {
                     ...SAMPLE_SCENES,
                     moments: [
                         { event: 9, text: "Nunca." },
-                        ...SAMPLE_SCENES.moments,
+                        ...sceneMoments(SAMPLE_SCENES),
                     ],
                 }),
             }),
@@ -325,10 +328,11 @@ describe("a reading after the free scenes", () => {
         expect(story.steps.slice(0, 3)).toMatchObject([
             { kind: "scene", text: SAMPLE_FREE.venus },
             { kind: "scene", text: SAMPLE_FREE.mars },
-            { kind: "scene", text: SAMPLE_SCENES.venusMars },
+            // The hook, whole now: the free part's own text.
+            { kind: "scene", text: SAMPLE_FREE.venusMars },
         ]);
         expect(story.steps.some((s) => s.kind === "prologue")).toBe(false);
-        // What was bought starts with the two together.
+        // A buyer comes back to the hook, to read what was blurred.
         expect(story.continueAt).toBe(2);
     });
 });
@@ -346,12 +350,16 @@ describe("a reading bought with an old preview", () => {
 });
 
 describe("the preview, before paying", () => {
+    const locked = lockTeaser(JSON.stringify(SAMPLE_FREE), LOVE_PLAN);
     const preview = previewStory({
-        teaser: JSON.stringify(SAMPLE_FREE),
+        topic: "amor",
+        teaser: locked,
         chart,
+        question: null,
+        skyAhead: [],
     });
 
-    it("shows Venus and Mars, then their scene together blurred", () => {
+    it("shows Venus and Mars, then stops at their scene together", () => {
         expect(preview.steps.map((s) => s.kind)).toEqual([
             "scene",
             "scene",
@@ -360,16 +368,36 @@ describe("the preview, before paying", () => {
         expect(preview.steps.map((s) => s.visual)).toEqual([
             { kind: "planet", body: "Venus", sign: "Aries" },
             { kind: "planet", body: "Marte", sign: "Sagitario" },
-            { kind: "pair", bodies: ["Venus", "Marte"], locked: true },
+            { kind: "pair", bodies: ["Venus", "Marte"] },
         ]);
-        expect(preview.steps[2]).toMatchObject({
-            kind: "door",
-            title: "Venus y Marte",
-        });
+    });
+
+    it("stops at the peak: the hook's first sentences, never the rest", () => {
+        const door = preview.steps[2];
+        expect(door).toMatchObject({ kind: "door", title: "Venus y Marte" });
+        const full = String(SAMPLE_FREE.venusMars);
+        const shown = door.kind === "door" ? (door.text ?? "") : "";
+        expect(shown).toBe(sentencesOf(full).slice(0, 2).join(" "));
+        // What's locked never reaches the page.
+        expect(locked).not.toContain(sentencesOf(full)[2]);
     });
 
     it("opens with the old paragraph for readings made before", () => {
-        const old = previewStory({ teaser: SAMPLE_READING.teaser, chart });
+        const old = previewStory({
+            topic: "amor",
+            teaser: SAMPLE_READING.teaser,
+            chart,
+            question: null,
+            skyAhead: [],
+        });
         expect(old.steps.map((s) => s.kind)).toEqual(["prologue", "door"]);
+    });
+});
+
+describe("the hook's free part", () => {
+    it("keeps the first two sentences, and hides one when it can", () => {
+        expect(hookOf("Uno. Dos. Tres. Cuatro.")).toBe("Uno. Dos.");
+        expect(hookOf("Uno. Dos.")).toBe("Uno.");
+        expect(hookOf("Solo una")).toBe("Solo una");
     });
 });

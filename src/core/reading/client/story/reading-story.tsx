@@ -29,6 +29,10 @@ export const CHAT_ANCHOR = "chat";
 const COVER_STEP = -1;
 const COVER = { visual: { kind: "system" }, chapter: null } as const;
 
+/** Under the blur where the hook goes on: never the real text. */
+const LOCKED_FILLER =
+    "Lo que sigue tiene una razón en tu carta, y también una salida. No es casualidad: se repite, se puede ver venir y se puede cambiar. Aquí está lo que pasa, por qué pasa y lo que puedes hacer distinto desde esta semana.";
+
 /** Text arrives softly as its step reaches the middle of the screen. */
 const ENTER = {
     initial: { opacity: 0, y: 28 },
@@ -171,25 +175,51 @@ function StepContent({
                 </motion.div>
             );
         case "door":
-            // The next scene, blurred behind: its title, and the page's box.
+            // The hook at its peak: its first sentences, the rest blurred
+            // (never on the page: that's filler), and the page's box.
             return (
                 <div className="flex flex-col gap-4">
-                    <motion.p
+                    {step.eyebrow && (
+                        <motion.p
+                            {...ENTER}
+                            className="font-mono text-[11px] text-astral-gold uppercase tracking-[0.24em]"
+                        >
+                            {step.eyebrow}
+                        </motion.p>
+                    )}
+                    {step.title && (
+                        <motion.h3
+                            {...ENTER}
+                            className="text-balance font-display text-4xl leading-[1.02] sm:text-5xl lg:text-6xl"
+                        >
+                            {step.title}
+                        </motion.h3>
+                    )}
+                    <motion.div
                         {...ENTER}
-                        className="font-mono text-[11px] text-astral-gold uppercase tracking-[0.24em]"
+                        transition={{ ...ENTER.transition, delay: 0.35 }}
+                        className={cn("flex flex-col gap-1", CARD)}
                     >
-                        {step.eyebrow}
-                    </motion.p>
-                    <motion.h3
-                        {...ENTER}
-                        className="text-balance font-display text-4xl leading-[1.02] sm:text-5xl lg:text-6xl"
-                    >
-                        {step.title}
-                    </motion.h3>
+                        {step.text && (
+                            <p className="text-pretty text-lg leading-relaxed sm:text-xl sm:leading-relaxed">
+                                {renderInline(step.text)}
+                            </p>
+                        )}
+                        <p
+                            aria-hidden
+                            className="line-clamp-3 select-none text-pretty text-lg leading-relaxed blur-[6px] sm:text-xl sm:leading-relaxed"
+                            style={{
+                                maskImage:
+                                    "linear-gradient(to bottom, black 30%, transparent)",
+                            }}
+                        >
+                            {LOCKED_FILLER}
+                        </p>
+                    </motion.div>
                     {door && (
                         <motion.div
                             {...ENTER}
-                            transition={{ ...ENTER.transition, delay: 0.35 }}
+                            transition={{ ...ENTER.transition, delay: 0.6 }}
                         >
                             {door}
                         </motion.div>
@@ -268,6 +298,7 @@ export function ReadingStory({
         () =>
             content
                 ? buildStory({
+                      topic: reading.topic,
                       teaser: reading.teaser,
                       content,
                       chart: reading.chart,
@@ -275,8 +306,11 @@ export function ReadingStory({
                       skyAhead: reading.skyAhead,
                   })
                 : previewStory({
+                      topic: reading.topic,
                       teaser: reading.teaser,
                       chart: reading.chart,
+                      question: reading.question,
+                      skyAhead: reading.skyAhead,
                   }),
         [reading, content],
     );
@@ -446,6 +480,11 @@ export function ReadingStory({
                                 className={cn(
                                     "flex flex-col justify-end pb-[10svh] lg:justify-center lg:pb-0",
                                     stepHeight(s),
+                                    // On a phone the door's text starts under
+                                    // the image (both in sight), the box a
+                                    // scroll below.
+                                    s.kind === "door" &&
+                                        "max-lg:justify-start max-lg:pt-[48svh]",
                                 )}
                             >
                                 <StepContent step={s} door={door} />

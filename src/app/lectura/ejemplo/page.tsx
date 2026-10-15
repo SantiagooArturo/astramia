@@ -8,6 +8,8 @@ import {
 } from "@/core/reading/client/screens/reading-screen";
 import { ReadingStory } from "@/core/reading/client/story/reading-story";
 import { natalChart, readingOutlook } from "@/core/reading/domain/chart";
+import { LOVE_PLAN } from "@/core/reading/domain/plan";
+import { lockTeaser } from "@/core/reading/domain/reading-content";
 import {
     SAMPLE_FREE,
     SAMPLE_READING,
@@ -55,7 +57,8 @@ export default async function SampleReadingPage({
         SAMPLE_READING.birthTime,
         SAMPLE_READING.birthTimeZone,
     );
-    const { opening, venus, mars, ...paid } = SAMPLE_SCENES;
+    // Written as now: the free scenes (and the hook) in `teaser`, the rest here.
+    const { opening, venus, mars, venusMars, ...paid } = SAMPLE_SCENES;
     const reading: Reading = {
         id: SAMPLE_READING.id,
         topic: "amor",
@@ -66,7 +69,6 @@ export default async function SampleReadingPage({
         birthPlace: SAMPLE_READING.birthPlace,
         chart,
         locked: false,
-        // As written now: the free scenes in `teaser`, the rest here.
         content: JSON.stringify(paid),
         question: storyQuestion(SAMPLE_READING.answers),
         skyAhead: readingOutlook(
@@ -79,7 +81,13 @@ export default async function SampleReadingPage({
     if (vista === "bloqueada")
         return (
             <LockedReadingScreen
-                reading={{ ...reading, locked: true, content: null }}
+                reading={{
+                    ...reading,
+                    locked: true,
+                    content: null,
+                    // As the server sends it: the hook cut to its free part.
+                    teaser: lockTeaser(reading.teaser, LOVE_PLAN),
+                }}
                 payment="none"
             />
         );

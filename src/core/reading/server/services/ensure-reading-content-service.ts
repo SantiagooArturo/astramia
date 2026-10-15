@@ -2,7 +2,8 @@ import "server-only";
 import { getLogger } from "@logtape/logtape";
 import { ServerConfig } from "@/config/server-config";
 import { generateObject } from "@/core/ai/server/repository/llm";
-import { AI_TASKS, READING_PROMPT } from "@/core/reading/domain/prompts";
+import { planFor } from "@/core/reading/domain/plan";
+import { AI_TASKS, paidPrompt } from "@/core/reading/domain/prompts";
 import type { Reading } from "@/core/reading/domain/types";
 import {
     AppErrors,
@@ -35,16 +36,13 @@ async function writeReadingContent(row: ReadingRow): Promise<string | null> {
     if (!claimed) return null;
 
     try {
-        // One text per scene of the story, stored as JSON (see parseScenes).
+        // One text per scene after the free ones, stored as JSON (see plan.ts).
+        const prompt = paidPrompt(planFor(row.topic));
         const scenes = await generateObject({
             model: ServerConfig.ai.models.reading,
-            system: READING_PROMPT.system,
-            prompt: READING_PROMPT.prompt(
-                toProfile(row),
-                row.teaser,
-                new Date(),
-            ),
-            schema: READING_PROMPT.schema,
+            system: prompt.system,
+            prompt: prompt.prompt(toProfile(row), row.teaser, new Date()),
+            schema: prompt.schema,
             ...AI_TASKS.reading,
             usage: {
                 purpose: "reading",

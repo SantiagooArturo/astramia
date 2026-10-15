@@ -20,18 +20,15 @@ import { aiReasoningSchema } from "@/core/ai/domain/schemas";
 import type { AiPurpose } from "@/core/ai/domain/types";
 import { toAiUsage } from "@/core/ai/domain/usage";
 import { natalChart, venusOutlook } from "@/core/reading/domain/chart";
+import { LOVE_PLAN, sceneText } from "@/core/reading/domain/plan";
 import * as currentPrompts from "@/core/reading/domain/prompts";
 import { describeAnswer, tratoOf } from "@/core/reading/domain/quiz";
 import {
     freeAsText,
-    parseScenes,
+    parseTexts,
     readingAsText,
 } from "@/core/reading/domain/reading-content";
-import type {
-    QuizAnswer,
-    ReadingProfile,
-    ReadingScenes,
-} from "@/core/reading/domain/types";
+import type { QuizAnswer, ReadingProfile } from "@/core/reading/domain/types";
 
 type Profile = ReadingProfile & { name: string; chatQuestion: string };
 
@@ -342,7 +339,8 @@ async function judge(
         reasoning: "medium",
         maxOutputTokens: 6000,
         output: Output.object({ schema: verdictSchema }),
-        system: `Eres editora de un producto de astrología de pago en español latinoamericano, exigente con la calidad literaria y con la precisión. Evalúas sin piedad: un 5 es excepcional y raro; un texto correcto pero genérico es un 2. El público es masivo (llega desde TikTok e Instagram) y no sabe astrología: un texto que solo entiende quien sabe astrología falla, por bien escrito que esté. Juzgas solo contra los datos dados: cualquier dato astrológico que no esté en ellos es un invento.`,
+        system: `Eres editora de un producto de astrología de pago en español latinoamericano, exigente con la calidad literaria y con la precisión. Evalúas sin piedad: un 5 es excepcional y raro; un texto correcto pero genérico es un 2. El público es masivo (llega desde TikTok e Instagram) y no sabe astrología: un texto que solo entiende quien sabe astrología falla, por bien escrito que esté. Juzgas solo contra los datos dados: cualquier dato astrológico que no esté en ellos es un invento.
+Así se lee: una historia en el celular, una escena por pantalla junto a su imagen. La pantalla ya pone cada título ("Venus estaba en Aries", la fase de la Luna con su nombre y qué es, su pregunta), así que el texto no tiene por qué repetirlo. El gancho gratuito son las primeras escenas: su última se corta tras sus dos primeras frases, borrosa, y quien paga la termina de leer y sigue con la lectura pagada, que continúa desde ahí sin repetirlas.`,
         prompt: `<datos>\n${groundTruth(profile)}\n</datos>\n\n<gancho_gratuito>\n${teaser}\n</gancho_gratuito>\n\n<lectura_pagada>\n${reading}\n</lectura_pagada>\n\n<chat>\nPregunta: ${profile.chatQuestion}\nRespuesta: ${chat}\n</chat>`,
     });
     return {
@@ -381,7 +379,7 @@ function readability(text: string) {
 }
 
 /** Bodies each single-body scene is shown next to. */
-const ON_SCREEN: Partial<Record<keyof ReadingScenes, string[]>> = {
+const ON_SCREEN: Record<string, string[]> = {
     venus: ["Venus"],
     mars: ["Marte"],
     moon: ["Luna"],
@@ -391,15 +389,14 @@ const ON_SCREEN: Partial<Record<keyof ReadingScenes, string[]>> = {
  * Scenes that talk about a body that isn't on screen ("venus: … tu Marte …"):
  * the story shows one body at a time, its text should follow.
  */
-function crossTalk(content: string): string[] {
-    const scenes = parseScenes(content);
-    if (!scenes) return [];
+function crossTalk(teaser: string, content: string): string[] {
+    const texts = { ...parseTexts(content), ...parseTexts(teaser) };
     return Object.entries(ON_SCREEN).flatMap(([key, shown]) =>
         ["Venus", "Marte", "Luna", "Sol"]
-            .filter((body) => !shown?.includes(body))
+            .filter((body) => !shown.includes(body))
             .filter((body) =>
                 new RegExp(`(?<!\\p{L})${body}(?!\\p{L})`, "u").test(
-                    scenes[key as keyof ReadingScenes] as string,
+                    sceneText(texts, key) ?? "",
                 ),
             )
             .map((body) => `${key}→${body}`),
@@ -416,7 +413,7 @@ async function runProfile(prompts: PromptModule, profile: Profile) {
                 : undefined,
     });
     // The free scenes (or, for older prompts, a paragraph) as read.
-    const teaserText = freeAsText(teaser.text);
+    const teaserText = freeAsText(teaser.text, LOVE_PLAN);
     const reading = await call("reading", prompts, {
         system: prompts.READING_PROMPT.system,
         prompt: prompts.READING_PROMPT.prompt(profile, teaser.text, TODAY),
@@ -426,7 +423,9 @@ async function runProfile(prompts: PromptModule, profile: Profile) {
                 : undefined,
     });
     // Free and paid scenes together: everything the person reads.
-    const readingText = readingAsText(reading.text, teaser.text);
+    const readingText = readingAsText(reading.text, teaser.text, LOVE_PLAN);
+    // What paying adds: the judge reads it apart from the free scenes.
+    const paidText = readingAsText(reading.text, "", LOVE_PLAN);
     const chat = await call("chat", prompts, {
         system: prompts.chatSystemPrompt(
             profile,
@@ -439,7 +438,7 @@ async function runProfile(prompts: PromptModule, profile: Profile) {
     const { verdict, costUsd } = await judge(
         profile,
         teaserText,
-        readingText,
+        paidText,
         chat.text,
     );
     const all = [readingText, chat.text].join("\n");
@@ -455,7 +454,7 @@ async function runProfile(prompts: PromptModule, profile: Profile) {
             readingWords: words(readingText),
             ...readability(readingText),
             teaserWordsPerSentence: readability(teaserText).wordsPerSentence,
-            crossTalk: crossTalk(reading.text),
+            crossTalk: crossTalk(teaser.text, reading.text),
             chatWords: words(chat.text),
             cut: [teaser, reading, chat].some(
                 (c) => c.finishReason === "length",

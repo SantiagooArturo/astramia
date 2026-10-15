@@ -1,4 +1,6 @@
 import { natalChart, readingOutlook } from "@/core/reading/domain/chart";
+import { planFor } from "@/core/reading/domain/plan";
+import { lockTeaser } from "@/core/reading/domain/reading-content";
 import { storyQuestion } from "@/core/reading/domain/story";
 import type {
     ChatMessage,
@@ -10,14 +12,19 @@ import type {
     ReadingRow,
 } from "@/server/drizzle/schemas/reading-schema";
 
-/** Row → wire. Drops `content` while the reading is locked. */
+/**
+ * Row → wire. While the reading is locked, `content` stays on the server
+ * and so does the hook's text past its free sentences.
+ */
 export function toReading(row: ReadingRow): Reading {
     const locked = row.unlockedAt === null;
     return {
         id: row.id,
         topic: row.topic,
         sunSign: row.sunSign,
-        teaser: row.teaser,
+        teaser: locked
+            ? lockTeaser(row.teaser, planFor(row.topic))
+            : row.teaser,
         birthDate: row.birthDate,
         birthTime: row.birthTime,
         birthPlace: row.birthPlace,

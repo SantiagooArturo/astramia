@@ -1,8 +1,15 @@
 import type { AiPurpose, AiReasoning } from "@/core/ai/domain/types";
 import { longDate, natalChart, readingOutlook } from "./chart";
+import {
+    freeSchema,
+    HOOK_SENTENCES,
+    LOVE_PLAN,
+    type PlanScene,
+    paidSchema,
+    type ReadingPlan,
+} from "./plan";
 import { describeAnswer, type Trato, tratoOf } from "./quiz";
 import { freeAsText, readingAsText } from "./reading-content";
-import { freeScenesSchema, paidScenesSchema } from "./schemas";
 import type { ReadingProfile } from "./types";
 
 /**
@@ -154,91 +161,129 @@ ${events.join("\n")}
 }
 
 /**
- * The free part, before paying: the story's first two scenes, Venus and
- * Mars, each beside its planet. No guessing first: the chart explains.
+ * How a scene is written: shared by every reading, whatever its plan. The
+ * scenes themselves (order, length, what each one says) come from it.
  */
-export const TEASER_PROMPT = {
-    system: `${SOUL}
+const SCENE_RULES = `La lectura se ve como una historia: cada campo aparece en pantalla junto a una imagen, y la persona lo lee mientras la mira. Escribe para lo que está viendo:
+- Cada campo habla solo de lo que muestra su imagen. Mientras ve a Venus no hables de Marte, de la Luna ni del Sol. Un campo "juntos" habla solo de esos dos astros.
+- Nada se repite: un campo "juntos" no resume lo que ya dijeron los anteriores; cuenta lo nuevo, lo que pasa cuando los dos actúan a la vez.
+- La pantalla ya puso el título ("Venus estaba en Aries", "Había Luna menguante", su pregunta): no empieces repitiéndolo. Puedes nombrar el signo dentro del texto.
+- Frases cortas, como pide <lectura-fácil>: cada campo se lee de un vistazo en el celular. Respeta el rango de palabras de cada uno. Sin Markdown: ni títulos, ni negritas, ni listas, ni comillas para citar sus respuestas.`;
+
+/** "3. moon (30 a 45 palabras, junto a la Luna en su signo): …" */
+function sceneLine(scene: PlanScene, n: number): string {
+    const size =
+        scene.kind === "moments"
+            ? scene.beside
+            : `${scene.words[0]} a ${scene.words[1]} palabras, ${scene.beside}`;
+    return `${n}. ${scene.key} (${size}): ${scene.brief}`;
+}
+
+/** The words a list of scenes adds up to, rounded to tens. */
+function totalWords(
+    scenes: readonly PlanScene[],
+    extra: readonly [number, number] = [0, 0],
+): [number, number] {
+    const [min, max] = scenes.reduce(
+        ([lo, hi], s) => [
+            lo + s.words[0] * (s.count?.[0] ?? 1),
+            hi + s.words[1] * (s.count?.[1] ?? 1),
+        ],
+        extra,
+    );
+    return [Math.round(min / 10) * 10, Math.round(max / 10) * 10];
+}
+
+/**
+ * The free part, before paying: the plan's first scenes and its hook,
+ * whose first sentences are the last thing read free. No guessing first:
+ * the chart explains.
+ */
+export function freePrompt(plan: ReadingPlan) {
+    const scenes = [...plan.free, plan.hook];
+    const [min, max] = totalWords(scenes);
+    return {
+        system: `${SOUL}
 
 ${METHOD}
 
 <tarea>
-Escribe las dos primeras escenas de su lectura de amor. Es lo único que verá antes de decidir si paga por el resto. Cada escena aparece en pantalla junto a su planeta, que ya tiene título ("Venus estaba en Aries"). Tiene que sentir que la viste: no porque adivinaste, sino porque su carta lo explica.
+Escribe las primeras escenas de su lectura ${plan.of}. Es lo único que verá antes de decidir si paga por el resto. Cada escena aparece en pantalla junto a su imagen, que ya tiene título ("Venus estaba en Aries"). Tiene que sentir que la viste: no porque adivinaste, sino porque su carta lo explica.
 </tarea>
 
 <escenas>
-1. venus (30 a 45 palabras, junto a Venus en su signo): empieza por lo que es Venus, en palabras simples, y lo que dice la suya. Después, una escena concreta de su vida que lo muestre, cruzada con una de sus <respuestas>.
-2. mars (30 a 45 palabras, junto a Marte en su signo): lo que es Marte en palabras simples, y cómo desea: qué lo enciende y qué lo apaga, con un detalle de sus <respuestas>. Termina con una frase que deje abierta la pregunta de qué pasa cuando su Venus y su Marte actúan a la vez, sin responderla: eso viene en la lectura completa.
-- Cada escena habla solo de su planeta. En venus no nombres a Marte, la Luna ni el Sol. En mars, solo la última frase puede nombrar a Venus.
-- Frases cortas, como pide <lectura-fácil>. Sin Markdown, títulos, saludos ni comillas para citar sus respuestas.
+${SCENE_RULES}
+
+En este orden:
+${scenes.map((scene, i) => sceneLine(scene, i + 1)).join("\n")}
+La última, ${plan.hook.key}, es donde se corta lo gratis: sus ${HOOK_SENTENCES} primeras frases se leen antes de pagar. Que cuenten qué pasa y se corten en el punto más intrigante, sin dar la respuesta. Las frases que siguen la dan, concreta y honesta: eso se lee al pagar.
+Entre ${min} y ${max} palabras en total.
 </escenas>
 
 <proceso>
-Antes de escribir, en tu razonamiento: elige qué respuesta explica mejor su Venus y cuál su Marte; elige una escena reconocible para cada uno; decide qué pregunta dejas abierta; revisa <prohibido>, el tuteo, el <trato>, que no le diste género a la otra persona, que ninguna frase pasa de 20 palabras y que lo entendería a la primera alguien que nunca leyó de astrología.
+Antes de escribir, en tu razonamiento: elige qué respuesta explica mejor cada escena; elige una escena reconocible para cada una; decide dónde se corta ${plan.hook.key} y qué pregunta deja en el aire; revisa <prohibido>, el tuteo, el <trato>, que no le diste género a la otra persona, que ninguna frase pasa de 20 palabras y que lo entendería a la primera alguien que nunca leyó de astrología.
 </proceso>
 
 <ejemplo>
 Muestra la forma, no las palabras: no copies sus arranques, imágenes ni cierres.
 
-Para alguien con Venus en Acuario y Marte en Tauro (le gusta alguien, se aleja cuando se pone serio, necesita libertad):
-venus: Venus habla de cómo te enamoras. La tuya está en Acuario: quieres querer con la puerta abierta. Por eso respondes rápido, con chistes y audios largos. Hasta el día en que te preguntan qué son. Ahí tardas horas en contestar.
-mars: Marte es cómo deseas. El tuyo está en Tauro: vas lento, pero cuando quieres, no sueltas. Te enciende lo que se toca, como un abrazo largo. Y aquí empieza la pregunta: qué pasa cuando tu Venus pide aire y tu Marte pide quedarse.
+${plan.example}
 </ejemplo>`,
-    /** The model fills the two free scenes. */
-    schema: freeScenesSchema,
-    prompt: (profile: ReadingProfile) => describeProfile(profile),
-};
+        /** The model fills the free scenes and the hook. */
+        schema: freeSchema(plan),
+        prompt: (profile: ReadingProfile) => describeProfile(profile),
+    };
+}
 
-export const READING_PROMPT = {
-    system: `${SOUL}
+/** Once paid: the rest of the plan, from where the hook was cut. */
+export function paidPrompt(plan: ReadingPlan) {
+    const [min, max] = totalWords(plan.paid, plan.closing.words);
+    const closing = plan.paid.length + 1;
+    return {
+        system: `${SOUL}
 
 ${METHOD}
 
 <tarea>
-Escribe la lectura completa que la persona acaba de pagar. Ya leyó las escenas de Venus y de Marte (<inicio>): continúas desde ahí, sin repetirlas, y respondes la pregunta con que terminó Marte. Al terminar tiene que quedar la sensación de que alguien entendió su vida amorosa con una precisión casi incómoda, y algo concreto para hacer esta misma semana.
+Escribe el resto de la lectura ${plan.of} que la persona acaba de pagar. Ya leyó las primeras escenas (<inicio>): continúas desde ahí, sin repetirlas. Al terminar tiene que quedar la sensación de que alguien entendió ${plan.about} con una precisión casi incómoda, y algo concreto para hacer esta misma semana.
 </tarea>
 
 <escenas>
-La lectura se ve como una historia: cada campo aparece en pantalla junto a una imagen, y la persona lo lee mientras la mira. Escribe para lo que está viendo:
-- Cada campo habla solo de lo que muestra su imagen. Mientras ve a Venus no hables de Marte, de la Luna ni del Sol. Un campo "juntos" habla solo de esos dos astros.
-- Nada se repite: un campo "juntos" no resume lo que ya dijeron los anteriores; cuenta lo nuevo, lo que pasa cuando los dos actúan a la vez.
-- La pantalla ya puso el título ("Venus estaba en Aries", "Había Luna menguante", su pregunta): no empieces repitiéndolo. Puedes nombrar el signo dentro del texto.
-- Frases cortas, como pide <lectura-fácil>: cada campo se lee de un vistazo en el celular. Respeta el rango de palabras de cada uno. Sin Markdown: ni títulos, ni negritas, ni listas, ni comillas para citar sus respuestas.
+${SCENE_RULES}
 
 En este orden:
-1. venusMars (40 a 60 palabras, junto a Venus y Marte): responde la pregunta con que terminó <inicio>: qué se repite en su vida amorosa cuando los dos actúan a la vez, y por qué. Si en <carta> hay un aspecto entre ellos, cuéntalo sin su nombre técnico.
-2. moonPhase (15 a 30 palabras, junto a la Luna en la fase con que nació): qué dice esa Luna de su forma de amar. La pantalla ya mostró la fase y qué es: no la expliques ni la nombres.
-3. moon (30 a 45 palabras, junto a la Luna en su signo): qué necesita para sentirse en casa con alguien. Si la Luna es incierta, dilo con un matiz honesto.
-4. sun (25 a 40 palabras, junto al Sol en su signo, el que conoce): su signo de siempre, visto desde el amor.
-5. moonSun (40 a 60 palabras, junto a la Luna y el Sol): solo esos dos: lo que necesita y de dónde viene lo que más le dolió.
-6. question (60 a 85 palabras, bajo su pregunta): respóndela con honestidad y matices: qué muestra su carta, qué señales mirar, qué depende de su decisión. Nunca una predicción cerrada.
-7. moments (junto a Venus viajando por los próximos meses): elige 2 o 3 momentos de <cielo>, por su número, sobre todo los que tocan sus signos. Para cada uno, 20 a 35 palabras que empiecen con su fecha tal como viene ("A finales de octubre…") y digan qué le abre o le pide según su carta. Usa solo <cielo>.
-8. gesture (30 a 45 palabras): una acción concreta y pequeña, hecha para esta persona, que pueda hacer esta semana (algo que se pueda hacer un martes cualquiera, no "ámate más").
-9. closing (8 a 16 palabras): una sola frase memorable que querría guardar.
-Entre 350 y 480 palabras en total.
+${plan.paid.map((scene, i) => sceneLine(scene, i + 1)).join("\n")}
+${closing}. closing (${plan.closing.words[0]} a ${plan.closing.words[1]} palabras): ${plan.closing.brief}
+Entre ${min} y ${max} palabras en total.
 </escenas>
 
 <proceso>
-Antes de escribir, en tu razonamiento: (1) define su contradicción central en una frase; (2) asigna cada una de sus cinco respuestas al campo y al planeta que mejor la explican; (3) elige tres escenas de la vida diaria, distintas entre sí; (4) elige de <cielo> los momentos que más le hablan; (5) al terminar, verifica: cada campo habla solo de lo suyo; la Luna y el Sol explicados en palabras simples la primera vez (Venus y Marte ya se explicaron en <inicio>); las cinco respuestas usadas sin citarlas; al menos un aspecto si <carta> trae alguno, contado sin su nombre técnico; ningún dato fuera de <carta> y <cielo>; nada de <prohibido> ni metáforas repetidas; ninguna frase de más de 20 palabras ni palabras difíciles; tuteo; el <trato> pedido en cada adjetivo; la otra persona sin género; cada campo en su rango y entre 350 y 480 palabras en total.
+Antes de escribir, en tu razonamiento: (1) define su contradicción central en una frase; (2) asigna cada una de sus cinco respuestas al campo y al astro que mejor la explican; (3) elige tres escenas de la vida diaria, distintas entre sí; (4) elige de <cielo> los momentos que más le hablan; (5) al terminar, verifica: cada campo habla solo de lo suyo; cada astro que aparece por primera vez, explicado en palabras simples (los de <inicio> ya se explicaron); las cinco respuestas usadas sin citarlas; al menos un aspecto si <carta> trae alguno, contado sin su nombre técnico; ningún dato fuera de <carta> y <cielo>; nada de <prohibido> ni metáforas repetidas; ninguna frase de más de 20 palabras ni palabras difíciles; tuteo; el <trato> pedido en cada adjetivo; la otra persona sin género; cada campo en su rango y entre ${min} y ${max} palabras en total.
 </proceso>`,
-    /** The model fills one text per scene, after the free ones. */
-    schema: paidScenesSchema,
-    prompt: (profile: ReadingProfile, teaser: string, today: Date) =>
-        `${describeProfile(profile)}
+        /** The model fills the rest of the scenes. */
+        schema: paidSchema(plan),
+        prompt: (profile: ReadingProfile, teaser: string, today: Date) =>
+            `${describeProfile(profile)}
 
 ${describeSky(profile, today)}
 
 <inicio>
-${freeAsText(teaser)}
+${freeAsText(teaser, plan)}
 </inicio>`,
-};
+    };
+}
+
+/** The love reading's prompts (the only reading so far). */
+export const TEASER_PROMPT = freePrompt(LOVE_PLAN);
+export const READING_PROMPT = paidPrompt(LOVE_PLAN);
 
 export function chatSystemPrompt(
     profile: ReadingProfile,
     reading: string,
-    /** The free scenes (Venus, Mars): also part of what they read. */
+    /** The free scenes: also part of what they read. */
     teaser: string,
     today: Date,
+    plan: ReadingPlan = LOVE_PLAN,
 ): string {
     const [sun] = natalChart(
         profile.birthDate,
@@ -248,7 +293,7 @@ export function chatSystemPrompt(
     return `${SOUL}
 
 <tarea>
-Conversas con la persona sobre su lectura de amor, que ya leyó (<lectura>). Eres la misma voz que la escribió y recuerdas todo lo que dijiste. Están en medio de la conversación: no saludes ni comentes la pregunta; respóndela.
+Conversas con la persona sobre su lectura ${plan.of}, que ya leyó (<lectura>). Eres la misma voz que la escribió y recuerdas todo lo que dijiste. Están en medio de la conversación: no saludes ni comentes la pregunta; respóndela.
 En la página le respondes como su Sol, el de su carta. No hace falta decirlo, pero si te pregunta quién eres: eres su Sol en ${sun.sign}, la voz con IA de Astramia que escribió su lectura.
 </tarea>
 
@@ -266,6 +311,6 @@ ${describeProfile(profile)}
 ${describeSky(profile, today)}
 
 <lectura>
-${readingAsText(reading, teaser)}
+${readingAsText(reading, teaser, plan)}
 </lectura>`;
 }
