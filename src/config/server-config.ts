@@ -47,6 +47,8 @@ export const ServerConfig = {
     /** Single sanctioned read of the Node built-in. */
     isProduction: process.env.NODE_ENV === "production",
     isDevelopment: process.env.NODE_ENV === "development",
+    /** The live site; Vercel previews and local builds aren't. */
+    isLiveSite: env.VERCEL_ENV === "production",
 } as const;
 
 /**

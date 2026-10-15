@@ -2,12 +2,12 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
-import { Send } from "lucide-react";
+import { ArrowUp } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { CHAT_LIMITS } from "@/core/reading/domain/schemas";
 import type { ChatMessage } from "@/core/reading/domain/types";
 import { Button } from "@/frontend/components/ui/button";
-import { Spinner } from "@/frontend/components/ui/spinner";
 import { Textarea } from "@/frontend/components/ui/textarea";
 import { cn } from "@/frontend/lib/utils";
 import { renderInline } from "./reading-text";
@@ -27,6 +27,14 @@ function textOf(message: UIMessage): string {
 }
 
 const HOUR_MS = 60 * 60 * 1000;
+
+/** A blank box is the hardest part: a few first questions to tap. */
+const SUGGESTIONS = [
+    "¿Por qué me pasa siempre lo mismo?",
+    "¿Qué hago esta semana con lo que siento?",
+    "Explícame mejor mi Venus",
+    "¿Cómo sé si alguien me conviene?",
+];
 
 /**
  * Formatted after mount: the server doesn't know the visitor's time zone, and
@@ -48,21 +56,88 @@ function useLocalTime(iso: string | null): string | null {
 }
 
 /**
- * Chat about the reading. History lives on the server, so the request only
- * carries the new question (`{ text }`), validated by `chatTurnSchema`.
+ * Their Sun, the one that rose at the end of the story. It breathes while
+ * waiting and burns brighter while it answers.
+ */
+function Sun({
+    speaking,
+    className,
+}: {
+    speaking: boolean;
+    className?: string;
+}) {
+    const reducedMotion = useReducedMotion();
+    return (
+        <div aria-hidden className={cn("relative", className)}>
+            <motion.div
+                className="absolute inset-[-55%] rounded-full blur-2xl"
+                style={{
+                    background:
+                        "radial-gradient(circle, oklch(0.82 0.16 70 / 55%), transparent 65%)",
+                }}
+                animate={
+                    reducedMotion
+                        ? undefined
+                        : speaking
+                          ? { opacity: [0.7, 1, 0.7], scale: [1, 1.12, 1] }
+                          : { opacity: [0.45, 0.7, 0.45], scale: [1, 1.04, 1] }
+                }
+                transition={{
+                    duration: speaking ? 1.4 : 5,
+                    repeat: Number.POSITIVE_INFINITY,
+                    ease: "easeInOut",
+                }}
+            />
+            <motion.div
+                className="absolute inset-[-30%] rounded-full opacity-70 blur-[3px]"
+                style={{
+                    background:
+                        "repeating-conic-gradient(from 0deg, oklch(0.88 0.14 80 / 55%) 0deg 4deg, transparent 4deg 15deg)",
+                    maskImage:
+                        "radial-gradient(circle, black 35%, transparent 70%)",
+                }}
+                animate={reducedMotion ? undefined : { rotate: 360 }}
+                transition={{
+                    duration: speaking ? 20 : 90,
+                    repeat: Number.POSITIVE_INFINITY,
+                    ease: "linear",
+                }}
+            />
+            <div
+                className="relative size-full rounded-full"
+                style={{
+                    background:
+                        "radial-gradient(circle at 40% 36%, #fffbe8 0%, #ffd66b 30%, #f2a531 64%, #c8641a 100%)",
+                    boxShadow: "inset -10px -12px 30px rgb(120 40 0 / 35%)",
+                }}
+            />
+        </div>
+    );
+}
+
+/**
+ * Chat about the reading, as the story's last chapter: their Sun answers.
+ * History lives on the server, so the request only carries the new question
+ * (`{ text }`), validated by `chatTurnSchema`.
  */
 export function ReadingChat({
     readingId,
     initialMessages,
     expiresAt,
+    sunSign,
+    demo = false,
 }: {
     readingId: string;
     initialMessages: ChatMessage[];
     /** `null` until the first question: that's when the hours start. */
     expiresAt: string | null;
+    sunSign: string;
+    /** The /lectura/ejemplo preview: shows the chat, never sends. */
+    demo?: boolean;
 }) {
     const [input, setInput] = useState("");
     const [openUntil, setOpenUntil] = useState(expiresAt);
+    const [demoNote, setDemoNote] = useState(false);
     const transport = useMemo(
         () =>
             new DefaultChatTransport<UIMessage>({
@@ -85,10 +160,13 @@ export function ReadingChat({
     const busy = status === "submitted" || status === "streaming";
     const closed = expired || exhausted;
 
-    function submit(event: React.FormEvent) {
-        event.preventDefault();
-        const text = input.trim();
+    function ask(question: string) {
+        const text = question.trim();
         if (!text || busy || closed) return;
+        if (demo) {
+            setDemoNote(true);
+            return;
+        }
         // The server opens the same window with this question.
         if (!openUntil)
             setOpenUntil(
@@ -103,81 +181,156 @@ export function ReadingChat({
     const closesAt = useLocalTime(openUntil);
 
     return (
-        <section
-            aria-label="Chat sobre tu lectura"
-            className="flex flex-col gap-4 rounded-2xl border border-astral-ink bg-card/40 p-4 sm:p-6"
-        >
-            <header className="flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="font-display text-2xl">Pregúntale a tu carta</h2>
-                <p className="font-mono text-[11px] text-muted-foreground uppercase tracking-[0.16em]">
-                    {expired
-                        ? "Chat cerrado"
-                        : !openUntil
-                          ? `${CHAT_LIMITS.hours} horas desde tu primera pregunta`
-                          : closesAt
-                            ? `Abierto hasta las ${closesAt}`
-                            : "Chat abierto"}
-                </p>
-            </header>
+        <div className="relative overflow-hidden px-5 pt-16 pb-24 sm:px-8">
+            <div
+                aria-hidden
+                className="absolute inset-x-0 top-0 h-[60svh]"
+                style={{
+                    background:
+                        "radial-gradient(ellipse 70% 60% at 50% 25%, oklch(0.78 0.14 60 / 22%), transparent 70%)",
+                    // No edge where it meets the sunrise above.
+                    maskImage:
+                        "linear-gradient(to bottom, transparent, black 35%)",
+                }}
+            />
+            <div className="relative mx-auto flex max-w-2xl flex-col gap-10">
+                <header className="flex flex-col items-center gap-6 text-center">
+                    <Sun speaking={busy} className="size-28 sm:size-32" />
+                    <div className="flex flex-col gap-3">
+                        <p className="font-mono text-[11px] text-astral-gold uppercase tracking-[0.24em]">
+                            Último capítulo
+                        </p>
+                        <h2 className="text-balance font-display text-5xl leading-[1.02] sm:text-6xl">
+                            Tu Sol en {sunSign} te escucha
+                        </h2>
+                        <p className="mx-auto max-w-md text-pretty text-lg text-muted-foreground">
+                            La misma voz que escribió tu lectura. Pregúntale lo
+                            que quieras sobre ella.
+                        </p>
+                        <p className="font-mono text-[11px] text-muted-foreground uppercase tracking-[0.16em]">
+                            {expired
+                                ? "Chat cerrado"
+                                : !openUntil
+                                  ? `${CHAT_LIMITS.hours} horas desde tu primera pregunta`
+                                  : closesAt
+                                    ? `Abierto hasta las ${closesAt}`
+                                    : "Chat abierto"}
+                        </p>
+                    </div>
+                </header>
 
-            <ol className="flex flex-col gap-3">
-                {messages.map((message) => (
-                    <li
-                        key={message.id}
-                        className={cn(
-                            "max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-relaxed sm:text-base",
-                            message.role === "user"
-                                ? "self-end bg-astral-gold/15"
-                                : "self-start bg-background/60",
+                {messages.length > 0 && (
+                    <ol className="flex flex-col gap-6">
+                        {messages.map((message) =>
+                            message.role === "assistant" ? (
+                                <motion.li
+                                    key={message.id}
+                                    initial={{ opacity: 0, y: 8 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="flex gap-3"
+                                >
+                                    <Sun
+                                        speaking={false}
+                                        className="mt-2 size-3 shrink-0"
+                                    />
+                                    <p className="whitespace-pre-wrap text-pretty text-lg leading-relaxed">
+                                        {renderInline(textOf(message))}
+                                    </p>
+                                </motion.li>
+                            ) : (
+                                <li
+                                    key={message.id}
+                                    className="max-w-[85%] self-end whitespace-pre-wrap rounded-2xl rounded-br-sm bg-astral-gold/15 px-4 py-3 leading-relaxed"
+                                >
+                                    {textOf(message)}
+                                </li>
+                            ),
                         )}
-                    >
-                        {message.role === "assistant"
-                            ? renderInline(textOf(message))
-                            : textOf(message)}
-                    </li>
-                ))}
-                {status === "submitted" && (
-                    <li className="self-start px-4 py-3 text-muted-foreground">
-                        <Spinner />
-                    </li>
+                        {status === "submitted" && (
+                            <li className="flex items-center gap-3 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.18em]">
+                                <Sun speaking className="size-3" />
+                                Tu Sol está pensando…
+                            </li>
+                        )}
+                    </ol>
                 )}
-            </ol>
 
-            {error && (
-                <p role="alert" className="text-destructive text-sm">
-                    No pudimos responder ahora. Inténtalo otra vez.
-                </p>
-            )}
+                {error && (
+                    <p role="alert" className="text-destructive text-sm">
+                        No pudimos responder ahora. Inténtalo otra vez.
+                    </p>
+                )}
 
-            {closed ? (
-                <p className="text-muted-foreground text-sm">
-                    {expired
-                        ? "Tus horas de chat terminaron. Tu lectura sigue aquí cuando quieras volver."
-                        : "Llegaste al límite de preguntas de esta lectura."}
-                </p>
-            ) : (
-                <form onSubmit={submit} className="flex items-end gap-2">
-                    <Textarea
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter" && !e.shiftKey) submit(e);
-                        }}
-                        maxLength={CHAT_LIMITS.maxMessageChars}
-                        placeholder="¿Qué quieres saber de tu lectura?"
-                        aria-label="Tu pregunta"
-                        className="min-h-12 resize-none"
-                    />
-                    <Button
-                        type="submit"
-                        size="icon"
-                        disabled={busy || !input.trim()}
-                        aria-label="Enviar"
-                    >
-                        <Send />
-                    </Button>
-                </form>
-            )}
-        </section>
+                {closed ? (
+                    <p className="text-center text-muted-foreground">
+                        {expired
+                            ? "Tus horas de chat terminaron. Tu lectura sigue aquí cuando quieras volver."
+                            : "Llegaste al límite de preguntas de esta lectura."}
+                    </p>
+                ) : (
+                    <div className="flex flex-col gap-4">
+                        {asked === 0 && (
+                            <ul
+                                aria-label="Preguntas para empezar"
+                                className="flex flex-wrap justify-center gap-2"
+                            >
+                                {SUGGESTIONS.map((question) => (
+                                    <li key={question}>
+                                        <button
+                                            type="button"
+                                            onClick={() => ask(question)}
+                                            disabled={busy}
+                                            className="rounded-full border border-astral-gold/30 bg-background/40 px-4 py-2 text-sm transition-colors hover:border-astral-gold hover:bg-astral-gold/10"
+                                        >
+                                            {question}
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                ask(input);
+                            }}
+                            className="flex items-end gap-2 rounded-3xl border border-astral-gold/30 bg-background/60 p-2 backdrop-blur-md focus-within:border-astral-gold"
+                        >
+                            <Textarea
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" && !e.shiftKey) {
+                                        e.preventDefault();
+                                        ask(input);
+                                    }
+                                }}
+                                maxLength={CHAT_LIMITS.maxMessageChars}
+                                placeholder="Escríbele a tu Sol…"
+                                aria-label="Tu pregunta"
+                                className="min-h-11 resize-none border-0 bg-transparent text-base shadow-none focus-visible:ring-0 dark:bg-transparent"
+                            />
+                            <Button
+                                type="submit"
+                                size="icon"
+                                disabled={busy || !input.trim()}
+                                aria-label="Enviar"
+                                className="size-11 shrink-0 rounded-full"
+                            >
+                                <ArrowUp />
+                            </Button>
+                        </form>
+                        {demoNote && (
+                            <p
+                                role="status"
+                                className="text-center text-muted-foreground text-sm"
+                            >
+                                Esto es un ejemplo: aquí el Sol no responde. En
+                                tu lectura, sí.
+                            </p>
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
     );
 }

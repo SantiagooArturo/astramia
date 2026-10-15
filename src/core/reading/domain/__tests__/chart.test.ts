@@ -84,14 +84,26 @@ describe("venusOutlook", () => {
             {
                 when: "finales de octubre",
                 text: "Venus entra en Libra (tu signo solar)",
+                kind: "entra",
+                sign: "Libra",
+                month: 9,
+                mine: ["Sol"],
             },
             {
                 when: "mediados de noviembre",
                 text: "Venus retoma su marcha directa en Libra (tu signo solar)",
+                kind: "directa",
+                sign: "Libra",
+                month: 10,
+                mine: ["Sol"],
             },
             {
                 when: "principios de diciembre",
                 text: "Venus entra en Escorpio",
+                kind: "entra",
+                sign: "Escorpio",
+                month: 11,
+                mine: [],
             },
         ]);
     });

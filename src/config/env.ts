@@ -27,6 +27,8 @@ export const env = createEnv({
         AI_MODEL_CHAT: z.string().default(DEFAULT_AI_MODELS.chat),
         /** Served by the Gateway when a call's own model fails. */
         AI_MODEL_FALLBACK: z.string().default(DEFAULT_AI_MODELS.fallback),
+        /** Set by Vercel: which kind of deployment this is. */
+        VERCEL_ENV: z.enum(["production", "preview", "development"]).optional(),
     },
     client: {
         NEXT_PUBLIC_APP_URL: z.url(),
@@ -46,6 +48,7 @@ export const env = createEnv({
         AI_MODEL_READING: process.env.AI_MODEL_READING,
         AI_MODEL_CHAT: process.env.AI_MODEL_CHAT,
         AI_MODEL_FALLBACK: process.env.AI_MODEL_FALLBACK,
+        VERCEL_ENV: process.env.VERCEL_ENV,
         NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     },
     emptyStringAsUndefined: true,

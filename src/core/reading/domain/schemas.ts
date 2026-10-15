@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { MoonPhaseName } from "@/core/landing/domain/ephemeris";
 import type { Element } from "@/core/landing/domain/zodiac";
 import { PRIVACY_COMMITMENTS } from "@/core/legal/domain/policies";
 import { isTimeZone } from "./chart";
@@ -105,7 +106,7 @@ export const natalChartSchema = z.object({
     placements: z.array(natalPlacementSchema),
     aspects: z.array(aspectSchema),
     dominantElement: z.custom<Element>().nullable(),
-    moonPhase: z.string(),
+    moonPhase: z.custom<MoonPhaseName>(),
     /**
      * Without a birth time the Moon (≈13°/day) may change sign that day:
      * the sign at midnight and at the end of the day. `null` when certain.
@@ -113,7 +114,18 @@ export const natalChartSchema = z.object({
     moonRange: z.object({ early: z.string(), late: z.string() }).nullable(),
 });
 
-export const skyEventSchema = z.object({ when: z.string(), text: z.string() });
+export const skyEventSchema = z.object({
+    /** "finales de octubre": dates are ±1 day, so no false precision. */
+    when: z.string(),
+    /** The sentence <cielo> gives the model. */
+    text: z.string(),
+    kind: z.enum(["entra", "retrograda", "directa"]),
+    sign: z.string(),
+    /** 0–11, for drawing the months ahead. */
+    month: z.number(),
+    /** The person's placements in that sign. */
+    mine: z.array(z.enum(["Sol", "Venus", "Luna"])),
+});
 
 export const venusOutlookSchema = z.object({
     sign: z.string(),
@@ -135,6 +147,10 @@ export const readingSchema = z.object({
     chart: natalChartSchema,
     locked: z.boolean(),
     content: z.string().nullable(),
+    /** What they wanted to know first, as a question; the story's chapter III. */
+    question: z.string().nullable(),
+    /** Venus after the reading was written (what its text talks about); empty while locked. */
+    skyAhead: z.array(skyEventSchema),
     chatExpiresAt: z.string().nullable(),
     createdAt: z.string(),
 });

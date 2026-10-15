@@ -1,5 +1,5 @@
 import type { AiPurpose, AiReasoning } from "@/core/ai/domain/types";
-import { longDate, natalChart, venusOutlook } from "./chart";
+import { longDate, natalChart, readingOutlook } from "./chart";
 import { describeAnswer, type Trato, tratoOf } from "./quiz";
 import type { ReadingProfile } from "./types";
 
@@ -132,20 +132,8 @@ ${answers.join("\n")}
 
 /** <cielo>: where Venus is now and where it goes in the next four months. */
 export function describeSky(profile: ReadingProfile, today: Date): string {
-    const [sun, moon, venus] = natalChart(
-        profile.birthDate,
-        profile.birthTime,
-        profile.birthTimeZone,
-    ).placements;
-    const outlook = venusOutlook(today, {
-        sun: sun.sign,
-        moon: profile.birthTime ? moon.sign : "",
-        venus: venus.sign,
-    });
-    // Four moments are enough to pick from; more and the model lists them all.
-    const events = outlook.events
-        .slice(0, 4)
-        .map((e) => `- ${e.when}: ${e.text}`);
+    const outlook = readingOutlook(profile, today);
+    const events = outlook.events.map((e) => `- ${e.when}: ${e.text}`);
     return `<cielo>
 Hoy es ${longDate(today.toISOString().slice(0, 10))}. Venus está ${outlook.retrograde ? "retrógrada " : ""}en ${outlook.sign}.
 ${events.join("\n")}
@@ -223,10 +211,16 @@ export function chatSystemPrompt(
     reading: string,
     today: Date,
 ): string {
+    const [sun] = natalChart(
+        profile.birthDate,
+        profile.birthTime,
+        profile.birthTimeZone,
+    ).placements;
     return `${SOUL}
 
 <tarea>
 Conversas con la persona sobre su lectura de amor, que ya leyó (<lectura>). Eres la misma voz que la escribió y recuerdas todo lo que dijiste. Están en medio de la conversación: no saludes ni comentes la pregunta; respóndela.
+En la página le respondes como su Sol, el de su carta. No hace falta decirlo, pero si te pregunta quién eres: eres su Sol en ${sun.sign}, la voz con IA de Astramia que escribió su lectura.
 </tarea>
 
 <forma>

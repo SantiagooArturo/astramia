@@ -8,6 +8,7 @@ import { ReadingChat } from "../components/reading-chat";
 import { ReadingText } from "../components/reading-text";
 import { RefreshWhile } from "../components/refresh-while";
 import { UnlockButton } from "../components/unlock-button";
+import { ReadingStory } from "../story/reading-story";
 import { ReadingShell } from "./reading-shell";
 
 /** Placeholder under the blur. Never the real reading: that stays on the server. */
@@ -117,6 +118,28 @@ export function LockedReadingScreen({
     );
 }
 
+/** While the full text is written: their chart draws itself, as before. */
+function WritingScreen({
+    reading,
+    notice,
+    refresh = false,
+}: {
+    reading: Reading;
+    notice?: React.ReactNode;
+    /** The text is being written elsewhere: poll until it lands. */
+    refresh?: boolean;
+}) {
+    return (
+        <ReadingShell>
+            {notice}
+            <Header reading={reading} />
+            <ReadingText text={reading.teaser} />
+            {refresh && <RefreshWhile />}
+            <WritingReading reading={reading} />
+        </ReadingShell>
+    );
+}
+
 export function UnlockedReadingScreen({
     reading,
     content,
@@ -129,14 +152,11 @@ export function UnlockedReadingScreen({
     notice?: React.ReactNode;
 }) {
     return (
-        <ReadingShell>
-            {notice}
-            <Header reading={reading} />
-            <ReadingText text={reading.teaser} />
-            <Suspense fallback={<WritingReading reading={reading} />}>
-                {content}
-            </Suspense>
-        </ReadingShell>
+        <Suspense
+            fallback={<WritingScreen reading={reading} notice={notice} />}
+        >
+            {content}
+        </Suspense>
     );
 }
 
@@ -157,28 +177,31 @@ export function ReadingBody({
     reading,
     messages,
     account,
+    notice,
 }: {
     reading: Reading;
     messages: ChatMessage[];
     /** Between the reading and the chat: save it in an account, or "saved". */
     account?: React.ReactNode;
+    /** On the cover (e.g. "it only lives in this browser"). */
+    notice?: React.ReactNode;
 }) {
     if (!reading.content)
-        return (
-            <>
-                <RefreshWhile />
-                <WritingReading reading={reading} />
-            </>
-        );
+        return <WritingScreen reading={reading} notice={notice} refresh />;
     return (
-        <>
-            <ReadingText text={reading.content} />
-            {account}
-            <ReadingChat
-                readingId={reading.id}
-                initialMessages={messages}
-                expiresAt={reading.chatExpiresAt}
-            />
-        </>
+        <ReadingStory
+            reading={reading}
+            content={reading.content}
+            notice={notice}
+            account={account}
+            chat={
+                <ReadingChat
+                    readingId={reading.id}
+                    initialMessages={messages}
+                    expiresAt={reading.chatExpiresAt}
+                    sunSign={reading.sunSign}
+                />
+            }
+        />
     );
 }

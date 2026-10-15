@@ -111,13 +111,17 @@ export async function claimReadingGeneration(
     return rows.length > 0;
 }
 
+/**
+ * `null` releases the claim. A saved text keeps `generatingAt`: it dates the
+ * sky the text talks about.
+ */
 export async function saveReadingContent(
     id: string,
     content: string | null,
 ): Promise<void> {
     await db
         .update(readings)
-        .set({ content, generatingAt: null })
+        .set(content === null ? { content, generatingAt: null } : { content })
         .where(eq(readings.id, id));
 }
 

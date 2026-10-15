@@ -76,11 +76,19 @@ export default async function ReadingPage({
         <SavedInAccount email={session.user.email} />
     );
 
+    const notice = anonymous ? <SaveAccountNotice /> : undefined;
     return (
         <UnlockedReadingScreen
             reading={reading.data}
-            notice={anonymous ? <SaveAccountNotice /> : undefined}
-            content={<FullReading userId={userId} id={id} account={account} />}
+            notice={notice}
+            content={
+                <FullReading
+                    userId={userId}
+                    id={id}
+                    account={account}
+                    notice={notice}
+                />
+            }
         />
     );
 }
@@ -89,10 +97,12 @@ async function FullReading({
     userId,
     id,
     account,
+    notice,
 }: {
     userId: string;
     id: string;
     account: React.ReactNode;
+    notice: React.ReactNode;
 }) {
     const [reading, messages] = await Promise.all([
         ensureReadingContentService(userId, id),
@@ -104,6 +114,7 @@ async function FullReading({
             reading={reading.data}
             messages={messages.ok ? messages.data : []}
             account={account}
+            notice={notice}
         />
     );
 }

@@ -38,7 +38,10 @@ export const readings = pgTable(
             .notNull(),
         teaser: text("teaser").notNull(),
         content: text("content"),
-        /** Set while the full reading is being written, as a soft lock. */
+        /**
+         * When the full reading started being written: a soft lock while
+         * `content` is null, then the day its sky (Venus ahead) refers to.
+         */
         generatingAt: timestamp("generating_at"),
         unlockedAt: timestamp("unlocked_at"),
         chatExpiresAt: timestamp("chat_expires_at"),

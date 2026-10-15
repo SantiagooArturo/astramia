@@ -175,7 +175,8 @@ export interface MoonPhase {
     waxing: boolean;
 }
 
-const PHASE_NAMES: MoonPhaseName[] = [
+/** The cycle in order from the new Moon: phase `i` is `i / 8` of a lunar month. */
+export const PHASE_NAMES: readonly MoonPhaseName[] = [
     "Luna nueva",
     "Luna creciente",
     "Cuarto creciente",

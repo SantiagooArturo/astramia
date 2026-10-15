@@ -211,6 +211,40 @@ function motion(from: number, to: number): number {
 }
 
 /**
+ * Venus after a reading written on `today`: what <cielo> tells the model and
+ * the story draws, so both name the same moments. Without a birth time the
+ * Moon's sign isn't flagged.
+ */
+export function readingOutlook(
+    birth: {
+        birthDate: string;
+        birthTime: string | null;
+        birthTimeZone: string | null;
+    },
+    today: Date,
+): VenusOutlook {
+    const [sun, moon, venus] = natalChart(
+        birth.birthDate,
+        birth.birthTime,
+        birth.birthTimeZone,
+    ).placements;
+    const outlook = venusOutlook(today, {
+        sun: sun.sign,
+        moon: birth.birthTime ? moon.sign : "",
+        venus: venus.sign,
+    });
+    // Four moments are enough to pick from; more and the model lists them all.
+    return { ...outlook, events: outlook.events.slice(0, 4) };
+}
+
+/** How <cielo> says an event touches the person's chart. */
+const MINE_TEXT = {
+    Sol: "tu signo solar",
+    Venus: "el signo de tu Venus",
+    Luna: "el signo de tu Luna",
+} as const;
+
+/**
  * Venus over the next `days`: sign ingresses (flagging the person's own
  * signs) and retrograde stations, sampled daily at noon UTC.
  */
@@ -227,13 +261,39 @@ export function venusOutlook(
     );
     const at = (i: number) =>
         venusLongitude(julianDay(new Date(noon + i * DAY_MS)));
-    const mine = (sign: string) => {
-        const tags = [
-            sign === natal.sun && "tu signo solar",
-            sign === natal.venus && "el signo de tu Venus",
-            sign === natal.moon && "el signo de tu Luna",
-        ].filter(Boolean);
-        return tags.length ? ` (${tags.join(" y ")})` : "";
+    /** Which of the person's placements share `sign`. */
+    const mine = (sign: string): SkyEvent["mine"] =>
+        (
+            [
+                ["Sol", natal.sun],
+                ["Venus", natal.venus],
+                ["Luna", natal.moon],
+            ] as const
+        )
+            .filter(([, natalSign]) => natalSign === sign)
+            .map(([body]) => body);
+    const event = (
+        date: Date,
+        kind: SkyEvent["kind"],
+        sign: string,
+    ): SkyEvent => {
+        const tags = mine(sign);
+        const verb = {
+            entra: "entra en",
+            retrograda: "empieza a retrogradar en",
+            directa: "retoma su marcha directa en",
+        }[kind];
+        const owned = tags.length
+            ? ` (${tags.map((body) => MINE_TEXT[body]).join(" y ")})`
+            : "";
+        return {
+            when: approximateDate(date),
+            text: `Venus ${verb} ${sign}${owned}`,
+            kind,
+            sign,
+            month: date.getUTCMonth(),
+            mine: tags,
+        };
     };
 
     const events: SkyEvent[] = [];
@@ -246,17 +306,11 @@ export function venusOutlook(
         const backwards = motion(previous, current) < 0;
         const sign = longitudeToSign(current).sign.name;
         if (backwards !== retrograde)
-            events.push({
-                when: approximateDate(date),
-                text: backwards
-                    ? `Venus empieza a retrogradar en ${sign}${mine(sign)}`
-                    : `Venus retoma su marcha directa en ${sign}${mine(sign)}`,
-            });
+            events.push(
+                event(date, backwards ? "retrograda" : "directa", sign),
+            );
         if (longitudeToSign(previous).sign.name !== sign)
-            events.push({
-                when: approximateDate(date),
-                text: `Venus entra en ${sign}${mine(sign)}`,
-            });
+            events.push(event(date, "entra", sign));
         retrograde = backwards;
         previous = current;
     }

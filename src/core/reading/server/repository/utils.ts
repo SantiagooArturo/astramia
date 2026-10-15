@@ -1,4 +1,5 @@
-import { natalChart } from "@/core/reading/domain/chart";
+import { natalChart, readingOutlook } from "@/core/reading/domain/chart";
+import { storyQuestion } from "@/core/reading/domain/story";
 import type {
     ChatMessage,
     Reading,
@@ -21,6 +22,15 @@ export function toReading(row: ReadingRow): Reading {
         chart: natalChart(row.birthDate, row.birthTime, row.birthTimeZone),
         locked,
         content: locked ? null : row.content,
+        question: storyQuestion(row.answers),
+        // Texts written before `generatingAt` was kept: the checkout wrote
+        // them, minutes from the unlock.
+        skyAhead: locked
+            ? []
+            : readingOutlook(
+                  row,
+                  row.generatingAt ?? row.unlockedAt ?? row.createdAt,
+              ).events,
         chatExpiresAt: row.chatExpiresAt?.toISOString() ?? null,
         createdAt: row.createdAt.toISOString(),
     };
