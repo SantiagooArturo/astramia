@@ -10,6 +10,7 @@ import type { ChatMessage } from "@/core/reading/domain/types";
 import { Button } from "@/frontend/components/ui/button";
 import { Textarea } from "@/frontend/components/ui/textarea";
 import { cn } from "@/frontend/lib/utils";
+import { Globe } from "../story/globe";
 import { renderInline } from "./reading-text";
 
 function toUIMessage(message: ChatMessage): UIMessage {
@@ -115,6 +116,41 @@ function Sun({
     );
 }
 
+/** The Sun that rose at dawn, real-looking, glowing harder while it answers. */
+function SpeakingSun({ speaking }: { speaking: boolean }) {
+    const reducedMotion = useReducedMotion();
+    return (
+        <div aria-hidden className="relative size-60 sm:size-72">
+            <motion.div
+                className="absolute inset-[22%] rounded-full blur-2xl"
+                style={{
+                    background:
+                        "radial-gradient(circle, oklch(0.82 0.16 70 / 55%), transparent 65%)",
+                }}
+                animate={
+                    reducedMotion
+                        ? undefined
+                        : speaking
+                          ? { opacity: [0.6, 1, 0.6], scale: [1, 1.15, 1] }
+                          : { opacity: 0.45, scale: 1 }
+                }
+                transition={{
+                    duration: 1.4,
+                    repeat: speaking ? Number.POSITIVE_INFINITY : 0,
+                    ease: "easeInOut",
+                }}
+            />
+            <Globe
+                body="Sol"
+                className="relative size-full"
+                fallback={
+                    <Sun speaking={speaking} className="absolute inset-[28%]" />
+                }
+            />
+        </div>
+    );
+}
+
 /**
  * Chat about the reading, as the story's last chapter: their Sun answers.
  * History lives on the server, so the request only carries the new question
@@ -195,7 +231,7 @@ export function ReadingChat({
             />
             <div className="relative mx-auto flex max-w-2xl flex-col gap-10">
                 <header className="flex flex-col items-center gap-6 text-center">
-                    <Sun speaking={busy} className="size-28 sm:size-32" />
+                    <SpeakingSun speaking={busy} />
                     <div className="flex flex-col gap-3">
                         <p className="font-mono text-[11px] text-astral-gold uppercase tracking-[0.24em]">
                             Último capítulo

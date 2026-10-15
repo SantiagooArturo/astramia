@@ -198,6 +198,12 @@ export function longDate(isoDate: string): string {
     return `${d} de ${MONTHS_ES[m - 1]} de ${y}`;
 }
 
+/** "19 feb 2001", for small labels. */
+export function shortDate(isoDate: string): string {
+    const [y, m, d] = isoDate.split("-").map(Number);
+    return `${d} ${MONTHS_ES[m - 1].slice(0, 3)} ${y}`;
+}
+
 /** "principios de noviembre": dates are ±1 day, so no false precision. */
 export function approximateDate(date: Date): string {
     const day = date.getUTCDate();

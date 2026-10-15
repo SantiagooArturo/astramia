@@ -6,6 +6,7 @@ import type { MoonPhaseName } from "@/core/landing/domain/ephemeris";
 import { ZODIAC_SIGNS } from "@/core/landing/domain/zodiac";
 import type { StoryBody } from "@/core/reading/domain/story";
 import { CONSTELLATIONS } from "../constellations";
+import { Globe } from "../globe";
 import { phaseAt, phaseFraction } from "./moon-phase-scene";
 
 /** Each body in colors people already picture for it. */
@@ -32,7 +33,40 @@ const ORBS: Record<
 
 const MOON_GLOW = "oklch(0.92 0.03 270 / 30%)";
 
-const SIZE = "size-[min(30vw,140px)] lg:size-[170px]";
+/** The drawn sphere sits inside its canvas; the Sun leaves room for its corona. */
+const GLOBE_SIZE: Record<StoryBody, string> = {
+    Sol: "size-[min(80vw,330px)] lg:size-[440px]",
+    Luna: "size-[min(36vw,160px)] lg:size-[200px]",
+    Venus: "size-[min(40vw,180px)] lg:size-[230px]",
+    Marte: "size-[min(40vw,180px)] lg:size-[230px]",
+};
+
+/** Without WebGL: the plain sphere it used to be. */
+function FlatOrb({
+    body,
+    moonPhase,
+}: {
+    body: StoryBody;
+    moonPhase: MoonPhaseName;
+}) {
+    const size = "size-[min(30vw,140px)] lg:size-[170px]";
+    if (body === "Luna")
+        return (
+            <MoonDisc
+                phase={phaseAt(phaseFraction(moonPhase))}
+                className={size}
+            />
+        );
+    return (
+        <div
+            className={`rounded-full ${size}`}
+            style={{
+                background: ORBS[body].surface,
+                boxShadow: "inset -14px -18px 40px rgb(0 0 0 / 45%)",
+            }}
+        />
+    );
+}
 
 function Orb({
     body,
@@ -41,43 +75,13 @@ function Orb({
     body: StoryBody;
     moonPhase: MoonPhaseName;
 }) {
-    const reducedMotion = useReducedMotion();
-    if (body === "Luna")
-        return (
-            <MoonDisc
-                phase={phaseAt(phaseFraction(moonPhase))}
-                className={SIZE}
-            />
-        );
-    const orb = ORBS[body];
     return (
-        <div className={`relative ${SIZE}`}>
-            {body === "Sol" && (
-                <motion.div
-                    aria-hidden
-                    className="absolute inset-[-38%] rounded-full opacity-80 blur-md"
-                    style={{
-                        background:
-                            "repeating-conic-gradient(from 0deg, oklch(0.88 0.14 80 / 55%) 0deg 4deg, transparent 4deg 15deg)",
-                        maskImage:
-                            "radial-gradient(circle, black 30%, transparent 70%)",
-                    }}
-                    animate={reducedMotion ? undefined : { rotate: 360 }}
-                    transition={{
-                        duration: 90,
-                        repeat: Number.POSITIVE_INFINITY,
-                        ease: "linear",
-                    }}
-                />
-            )}
-            <div
-                className="relative size-full rounded-full"
-                style={{
-                    background: orb.surface,
-                    boxShadow: `0 0 60px 10px ${orb.glow}, inset -14px -18px 40px rgb(0 0 0 / 45%)`,
-                }}
-            />
-        </div>
+        <Globe
+            body={body}
+            phase={body === "Luna" ? phaseFraction(moonPhase) : undefined}
+            className={GLOBE_SIZE[body]}
+            fallback={<FlatOrb body={body} moonPhase={moonPhase} />}
+        />
     );
 }
 
@@ -91,11 +95,13 @@ export function PlanetScene({
     sign,
     signs,
     moonPhase,
+    born,
 }: {
     body: StoryBody;
     sign: string;
     signs?: readonly [string, string];
     moonPhase: MoonPhaseName;
+    born: string;
 }) {
     const reducedMotion = useReducedMotion();
     const figure = CONSTELLATIONS[sign];
@@ -200,7 +206,7 @@ export function PlanetScene({
                 animate={{ opacity: 1 }}
                 transition={{ duration: quick(0.8), delay: quick(1.2) }}
             >
-                {body} · {zodiac?.glyph} {signLabel}
+                {born} · {body} en {zodiac?.glyph} {signLabel}
             </motion.p>
         </div>
     );

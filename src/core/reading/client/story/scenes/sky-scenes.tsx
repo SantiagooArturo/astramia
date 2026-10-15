@@ -4,16 +4,19 @@ import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
 import type { NatalChart } from "@/core/reading/domain/types";
 import { NatalWheel, WHEEL_DRAW_STEPS } from "../../components/natal-wheel";
+import { Globe } from "../globe";
 
-const WHEEL_SIZE = "w-[min(84vw,400px)] lg:w-[520px]";
+const WHEEL_SIZE = "w-[min(70vw,360px)] lg:w-[520px]";
 
 /** Their chart drawing itself, body by body, then turning very slowly. */
 export function SkyScene({
     chart,
     litAspects = false,
+    caption,
 }: {
     chart: NatalChart;
     litAspects?: boolean;
+    caption?: string;
 }) {
     const reducedMotion = useReducedMotion();
     const [drawn, setDrawn] = useState(reducedMotion ? WHEEL_DRAW_STEPS : 0);
@@ -35,7 +38,7 @@ export function SkyScene({
     }, [reducedMotion]);
 
     return (
-        <div className="flex h-full w-full items-center justify-center">
+        <div className="flex h-full w-full flex-col items-center justify-start gap-4 pt-4 lg:justify-center lg:gap-5 lg:pt-0">
             <div className={`relative aspect-square ${WHEEL_SIZE}`}>
                 <motion.div
                     aria-hidden
@@ -62,6 +65,11 @@ export function SkyScene({
                     className="relative"
                 />
             </div>
+            {caption && (
+                <p className="font-mono text-[11px] text-astral-gold uppercase tracking-[0.22em]">
+                    {caption}
+                </p>
+            )}
         </div>
     );
 }
@@ -139,28 +147,26 @@ export function DawnScene() {
             />
             <motion.div
                 aria-hidden
-                className="absolute left-1/2 size-[min(70vw,420px)] -translate-x-1/2"
-                initial={{ bottom: reducedMotion ? "-14%" : "-45%" }}
-                animate={{ bottom: "-14%" }}
+                className="absolute bottom-0 left-1/2 size-[min(120vw,680px)]"
+                initial={{ x: "-50%", y: reducedMotion ? "42%" : "75%" }}
+                animate={{ x: "-50%", y: "42%" }}
                 transition={{
                     duration: reducedMotion ? 0 : 3.2,
                     ease: [0.2, 0.7, 0.2, 1],
                 }}
             >
-                {/* A gradient halo: a blurred shadow this big is slow on phones. */}
-                <div
-                    className="absolute inset-[-45%] rounded-full"
-                    style={{
-                        background:
-                            "radial-gradient(circle, oklch(0.8 0.15 70 / 50%) 30%, oklch(0.75 0.15 60 / 18%) 50%, transparent 70%)",
-                    }}
-                />
-                <div
-                    className="relative size-full rounded-full"
-                    style={{
-                        background:
-                            "radial-gradient(circle at 50% 40%, #fffbe8 0%, #ffd66b 30%, #f2a531 62%, #c8641a 100%)",
-                    }}
+                <Globe
+                    body="Sol"
+                    className="size-full"
+                    fallback={
+                        <div
+                            className="absolute inset-[18%] rounded-full"
+                            style={{
+                                background:
+                                    "radial-gradient(circle at 50% 40%, #fffbe8 0%, #ffd66b 30%, #f2a531 62%, #c8641a 100%)",
+                            }}
+                        />
+                    }
                 />
             </motion.div>
         </div>

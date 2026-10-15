@@ -9,6 +9,7 @@ import {
     PHASE_NAMES,
 } from "@/core/landing/domain/ephemeris";
 import { cn } from "@/frontend/lib/utils";
+import { Globe } from "../globe";
 
 /** From the new Moon round to theirs: long enough to see, short enough to wait. */
 const SETTLE_SECONDS = 4.2;
@@ -32,7 +33,13 @@ export function phaseFraction(name: MoonPhaseName): number {
  * were born under. The row of eight phases says "this is a cycle" to anyone,
  * and marks where theirs stopped.
  */
-export function MoonPhaseScene({ phase }: { phase: MoonPhaseName }) {
+export function MoonPhaseScene({
+    phase,
+    born,
+}: {
+    phase: MoonPhaseName;
+    born: string;
+}) {
     const reducedMotion = useReducedMotion();
     const target = phaseFraction(phase);
     const [fraction, setFraction] = useState(reducedMotion ? target : 0);
@@ -64,9 +71,16 @@ export function MoonPhaseScene({ phase }: { phase: MoonPhaseName }) {
                     animate={{ opacity: settled ? 1 : 0.35 }}
                     transition={{ duration: 1.2 }}
                 />
-                <MoonDisc
-                    phase={current}
+                <Globe
+                    body="Luna"
+                    phase={current.fraction}
                     className="relative size-[min(52vw,240px)] lg:size-[300px]"
+                    fallback={
+                        <MoonDisc
+                            phase={current}
+                            className="relative size-[min(52vw,240px)] lg:size-[300px]"
+                        />
+                    }
                 />
             </div>
             <ol aria-hidden className="flex items-center gap-2.5 sm:gap-3">
@@ -93,7 +107,7 @@ export function MoonPhaseScene({ phase }: { phase: MoonPhaseName }) {
                     settled ? "text-astral-gold" : "text-muted-foreground",
                 )}
             >
-                {current.name}
+                {settled ? `${born} · ${current.name}` : current.name}
             </p>
         </div>
     );

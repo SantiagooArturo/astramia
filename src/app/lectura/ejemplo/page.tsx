@@ -47,6 +47,8 @@ export default function SampleReadingPage() {
         sunSign: chart.placements[0].sign,
         teaser: SAMPLE_READING.teaser,
         birthDate: SAMPLE_READING.birthDate,
+        birthTime: SAMPLE_READING.birthTime,
+        birthPlace: SAMPLE_READING.birthPlace,
         chart,
         locked: false,
         content: SAMPLE_READING.content,

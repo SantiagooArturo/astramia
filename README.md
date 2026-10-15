@@ -83,6 +83,15 @@ refuses OAuth; then a 6-digit code by e-mail (`RESEND_API_KEY`; Better Auth
 session (and its reading) comes along. No passwords to forget. Until Resend is
 set up, production falls back to e-mail + password; development logs codes.
 
+The unlocked reading is told as a story on scroll (`core/reading/client/story`):
+`domain/story.ts` splits the text along READING_PROMPT's five sections and
+pairs each idea with a scene computed from the chart (never from the model),
+so it works for every reading already written. Bodies are WebGL spheres
+(`story/globe.tsx`) with NASA's public-domain maps in `public/planets/`
+(Moon: LRO, SVS 4720; Mars: Viking, NASA 3D Resources); the Sun and Venus's
+clouds are drawn in the shader. `/lectura/ejemplo` shows it with a sample
+reading everywhere but the live site.
+
 Birth times are read in the browser's IANA zone (`readings.birth_time_zone`,
 `America/Lima` when missing), so historical summer times count. Better Auth's
 rate limits live in the `rate_limit` table, shared by every serverless

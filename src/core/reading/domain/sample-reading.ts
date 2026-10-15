@@ -13,6 +13,7 @@ export const SAMPLE_READING = {
     birthDate: "2001-02-19",
     birthTime: "21:30",
     birthTimeZone: "America/Lima",
+    birthPlace: "Lima",
     /** When its text was written: its "Lo que viene" starts here. */
     writtenAt: "2026-10-15T12:00:00.000Z",
     answers: [

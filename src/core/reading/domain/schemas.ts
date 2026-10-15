@@ -143,6 +143,9 @@ export const readingSchema = z.object({
     sunSign: z.string(),
     teaser: z.string(),
     birthDate: z.string(),
+    /** HH:mm, when they knew it: the story says what its sky was computed for. */
+    birthTime: z.string().nullable(),
+    birthPlace: z.string().nullable(),
     /** Drawn while the full text is being written. */
     chart: natalChartSchema,
     locked: z.boolean(),

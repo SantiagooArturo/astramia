@@ -11,7 +11,7 @@ import Link from "next/link";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Starfield } from "@/core/landing/client/effects";
 import { AstramiaLogo } from "@/core/landing/client/sections/astramia-logo";
-import { longDate } from "@/core/reading/domain/chart";
+import { longDate, shortDate } from "@/core/reading/domain/chart";
 import { buildStory, type StoryStep } from "@/core/reading/domain/story";
 import type { Reading } from "@/core/reading/domain/types";
 import { cn } from "@/frontend/lib/utils";
@@ -128,6 +128,18 @@ function StepContent({ step }: { step: StoryStep }) {
     }
 }
 
+/**
+ * Nothing on screen is made up: every scene is their sky, computed for the
+ * day (and hour, and place) they gave. The cover says so.
+ */
+function computedFrom(reading: Reading): string {
+    const when = reading.birthTime
+        ? `${longDate(reading.birthDate)}, a las ${reading.birthTime}`
+        : longDate(reading.birthDate);
+    const where = reading.birthPlace ? `, en ${reading.birthPlace}` : "";
+    return `Calculado con la posición real del Sol, la Luna, Venus y Marte el ${when}${where}.`;
+}
+
 /** Steps that introduce something get the whole screen; text, a bit less. */
 function stepHeight(step: StoryStep): string {
     return step.kind === "paragraph" || step.kind === "note"
@@ -230,7 +242,7 @@ export function ReadingStory({
                             <AstramiaLogo className="scale-90 max-sm:[&>span]:hidden" />
                         </Link>
                         <AnimatePresence mode="wait">
-                            {chapter && (
+                            {chapter && !inChat && (
                                 <motion.p
                                     key={chapter.numeral}
                                     initial={{ opacity: 0, y: -4 }}
@@ -275,6 +287,7 @@ export function ReadingStory({
                             <StoryStage
                                 visual={step.visual}
                                 chart={reading.chart}
+                                born={shortDate(reading.birthDate)}
                             />
                         </div>
                         {/* Keeps text legible where it slides over the scene. */}
@@ -308,6 +321,9 @@ export function ReadingStory({
                                 <p className="max-w-md text-pretty text-lg text-muted-foreground">
                                     Así estaba el cielo cuando naciste. Esta es
                                     la historia que cuenta sobre cómo amas.
+                                </p>
+                                <p className="max-w-md text-pretty font-mono text-[11px] text-muted-foreground uppercase leading-relaxed tracking-[0.14em]">
+                                    {computedFrom(reading)}
                                 </p>
                             </motion.div>
                             <ScrollCue />

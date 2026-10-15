@@ -19,6 +19,8 @@ export function toReading(row: ReadingRow): Reading {
         sunSign: row.sunSign,
         teaser: row.teaser,
         birthDate: row.birthDate,
+        birthTime: row.birthTime,
+        birthPlace: row.birthPlace,
         chart: natalChart(row.birthDate, row.birthTime, row.birthTimeZone),
         locked,
         content: locked ? null : row.content,

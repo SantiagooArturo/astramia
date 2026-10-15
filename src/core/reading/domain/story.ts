@@ -93,35 +93,35 @@ export const MOON_PHASES: Record<
     { title: string; note: string }
 > = {
     "Luna nueva": {
-        title: "La Luna nueva",
+        title: "Había Luna nueva",
         note: "Es la noche en que la Luna no se ve: pasa entre la Tierra y el Sol y nos da la espalda. Con ella empieza un ciclo. Quien nace así suele empezar las cosas sin mapa y aprende en el camino.",
     },
     "Luna creciente": {
-        title: "La Luna creciente",
+        title: "Había Luna creciente",
         note: "Asoma un hilo de luz que cada noche se hace más grande. Es la Luna del impulso: quien nace así va hacia lo que quiere aunque todavía no lo vea completo.",
     },
     "Cuarto creciente": {
-        title: "El cuarto creciente",
+        title: "Había cuarto creciente",
         note: "Se ve media Luna y la luz sigue aumentando. Es la Luna de las decisiones: quien nace así se mueve mejor cuando le toca elegir.",
     },
     "Gibosa creciente": {
-        title: "La Luna gibosa creciente",
+        title: "Había Luna gibosa creciente",
         note: "Está casi llena: le falta un borde para completarse. Es la Luna que afina: quien nace así quiere que las cosas queden bien, no solo que pasen.",
     },
     "Luna llena": {
-        title: "La Luna llena",
+        title: "Había Luna llena",
         note: "La Tierra queda entre el Sol y la Luna, y la vemos entera. Es la Luna de lo que se ve: quien nace así se entiende a sí mismo a través de sus relaciones.",
     },
     "Gibosa menguante": {
-        title: "La Luna gibosa menguante",
+        title: "Había Luna gibosa menguante",
         note: "Acaba de pasar la Luna llena y la luz empieza a recogerse. Es la Luna que comparte: quien nace así suele ser a quien le cuentan todo.",
     },
     "Cuarto menguante": {
-        title: "El cuarto menguante",
+        title: "Había cuarto menguante",
         note: "Otra vez media Luna, pero ahora la luz se va. Es la Luna que revisa: quien nace así sabe, antes que nadie, cuándo algo ya no le queda.",
     },
     "Luna menguante": {
-        title: "La Luna menguante",
+        title: "Había Luna menguante",
         note: "Queda un hilo de luz antes de que la Luna desaparezca y todo empiece de nuevo. Es la Luna que suelta: quien nace así reconoce rápido lo que termina y se queda con lo que vale.",
     },
 };
@@ -153,22 +153,22 @@ function chapterPlan(input: StoryInput): {
 
     const venus: Intro = {
         kind: "title",
-        eyebrow: "Cómo te enamoras",
-        title: `Venus en ${sign("Venus")}`,
+        eyebrow: "El día que naciste",
+        title: `Venus estaba en ${sign("Venus")}`,
         line: "Venus es el planeta del amor: marca qué te atrae y cómo te entregas.",
         visual: { kind: "planet", body: "Venus", sign: sign("Venus") },
     };
     const mars: Intro = {
         kind: "title",
-        eyebrow: "Cómo deseas",
-        title: `Marte en ${sign("Marte")}`,
+        eyebrow: "Ese mismo día",
+        title: `Marte estaba en ${sign("Marte")}`,
         line: "Marte es el impulso: cómo vas por lo que quieres, y cómo peleas.",
         visual: { kind: "planet", body: "Marte", sign: sign("Marte") },
     };
     const moonPhase: Intro[] = [
         {
             kind: "title",
-            eyebrow: "La Luna el día que naciste",
+            eyebrow: "El día que naciste",
             title: MOON_PHASES[phase].title,
             visual: { kind: "moonPhase", phase },
         },
@@ -182,8 +182,8 @@ function chapterPlan(input: StoryInput): {
     const moon: Intro = range
         ? {
               kind: "title",
-              eyebrow: "Lo que necesitas para estar en paz",
-              title: `Luna entre ${range.early} y ${range.late}`,
+              eyebrow: "El día que naciste",
+              title: `La Luna estaba entre ${range.early} y ${range.late}`,
               line: "Ese día la Luna cambió de signo: sin tu hora exacta, tiene un pie en cada uno.",
               visual: {
                   kind: "planet",
@@ -194,16 +194,16 @@ function chapterPlan(input: StoryInput): {
           }
         : {
               kind: "title",
-              eyebrow: "Lo que necesitas para estar en paz",
-              title: `Luna en ${sign("Luna")}`,
+              eyebrow: "El día que naciste",
+              title: `La Luna estaba en ${sign("Luna")}`,
               line: "La Luna es tu mundo emocional: lo que necesitas para sentirte en casa con alguien.",
               visual: { kind: "planet", body: "Luna", sign: sign("Luna") },
           };
     const sun: Intro = {
         kind: "title",
-        eyebrow: "Tu centro",
-        title: `Sol en ${sign("Sol")}`,
-        line: "Tu signo: lo que te da energía y lo que no negocias.",
+        eyebrow: "El día que naciste",
+        title: `El Sol estaba en ${sign("Sol")}`,
+        line: `Por eso eres ${sign("Sol")}: es lo que te da energía y lo que no negocias.`,
         visual: { kind: "planet", body: "Sol", sign: sign("Sol") },
     };
 
@@ -235,9 +235,9 @@ function chapterPlan(input: StoryInput): {
                 ? [
                       {
                           kind: "title",
-                          eyebrow: "Los próximos meses",
+                          eyebrow: "Desde hoy",
                           title: "El camino de Venus",
-                          line: "Hacia dónde se mueve el planeta del amor, y cuándo toca tu carta.",
+                          line: "Ya no es el cielo de cuando naciste: es el de los próximos meses, y cuándo pasa por tus signos.",
                           visual: { kind: "venusPath", events: input.skyAhead },
                       },
                   ]

@@ -77,10 +77,10 @@ describe("buildStory", () => {
             ),
         ).toEqual([
             "chapter",
-            "La Luna menguante",
+            "Había Luna menguante",
             "note:Qué es",
-            "Luna en Capricornio",
-            "Sol en Piscis",
+            "La Luna estaba en Capricornio",
+            "El Sol estaba en Piscis",
             "paragraph",
             "paragraph",
         ]);
@@ -161,15 +161,15 @@ describe("buildStory", () => {
         const noTime = natalChart("2001-02-21", null, "America/Lima");
         const steps = buildStory(input({ chart: noTime })).steps;
         const moon = steps.find(
-            (s) => s.kind === "title" && s.title.startsWith("Luna"),
+            (s) => s.kind === "title" && s.title.startsWith("La Luna estaba"),
         );
         if (noTime.moonRange)
             expect(moon).toMatchObject({
-                title: `Luna entre ${noTime.moonRange.early} y ${noTime.moonRange.late}`,
+                title: `La Luna estaba entre ${noTime.moonRange.early} y ${noTime.moonRange.late}`,
             });
         else
             expect(moon).toMatchObject({
-                title: expect.stringMatching(/^Luna en /),
+                title: expect.stringMatching(/^La Luna estaba en /),
             });
     });
 

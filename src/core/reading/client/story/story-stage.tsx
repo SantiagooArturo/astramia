@@ -8,12 +8,26 @@ import { PlanetScene } from "./scenes/planet-scene";
 import { DawnScene, SkyScene, StarScene } from "./scenes/sky-scenes";
 import { VenusPathScene } from "./scenes/venus-path-scene";
 
-function Scene({ visual, chart }: { visual: StoryVisual; chart: NatalChart }) {
+function Scene({
+    visual,
+    chart,
+    born,
+}: {
+    visual: StoryVisual;
+    chart: NatalChart;
+    born: string;
+}) {
     switch (visual.kind) {
         case "sky":
-            return <SkyScene chart={chart} />;
+            return <SkyScene chart={chart} caption={`Tu cielo · ${born}`} />;
         case "wheel":
-            return <SkyScene chart={chart} litAspects />;
+            return (
+                <SkyScene
+                    chart={chart}
+                    litAspects
+                    caption={`Tu cielo · ${born}`}
+                />
+            );
         case "planet":
             return (
                 <PlanetScene
@@ -21,10 +35,11 @@ function Scene({ visual, chart }: { visual: StoryVisual; chart: NatalChart }) {
                     sign={visual.sign}
                     signs={visual.signs}
                     moonPhase={chart.moonPhase}
+                    born={born}
                 />
             );
         case "moonPhase":
-            return <MoonPhaseScene phase={visual.phase} />;
+            return <MoonPhaseScene phase={visual.phase} born={born} />;
         case "venusPath":
             return <VenusPathScene events={visual.events} />;
         case "star":
@@ -43,9 +58,12 @@ function Scene({ visual, chart }: { visual: StoryVisual; chart: NatalChart }) {
 export function StoryStage({
     visual,
     chart,
+    born,
 }: {
     visual: StoryVisual;
     chart: NatalChart;
+    /** "19 feb 2001": every birth-sky scene says which day it shows. */
+    born: string;
 }) {
     return (
         <AnimatePresence initial={false}>
@@ -57,7 +75,7 @@ export function StoryStage({
                 exit={{ opacity: 0, scale: 0.97 }}
                 transition={{ duration: 0.9, ease: "easeInOut" }}
             >
-                <Scene visual={visual} chart={chart} />
+                <Scene visual={visual} chart={chart} born={born} />
             </motion.div>
         </AnimatePresence>
     );
