@@ -133,11 +133,10 @@ function StepContent({ step }: { step: StoryStep }) {
  * day (and hour, and place) they gave. The cover says so.
  */
 function computedFrom(reading: Reading): string {
-    const when = reading.birthTime
-        ? `${longDate(reading.birthDate)}, a las ${reading.birthTime}`
-        : longDate(reading.birthDate);
+    // The date is in the line above; this one adds the hour and place.
+    const when = reading.birthTime ? ` a las ${reading.birthTime}` : "";
     const where = reading.birthPlace ? `, en ${reading.birthPlace}` : "";
-    return `Calculado con la posición real del Sol, la Luna, Venus y Marte el ${when}${where}.`;
+    return `Calculado con la posición real del Sol, la Luna, Venus y Marte${when || where ? `${when}${where}` : " ese día"}.`;
 }
 
 /** Steps that introduce something get the whole screen; text, a bit less. */
@@ -316,11 +315,12 @@ export function ReadingStory({
                                     Tu lectura de amor · {reading.sunSign}
                                 </p>
                                 <h1 className="text-balance font-display text-5xl leading-[1.02] sm:text-6xl lg:text-7xl">
-                                    El cielo del {longDate(reading.birthDate)}
+                                    Los astros el día que naciste
                                 </h1>
                                 <p className="max-w-md text-pretty text-lg text-muted-foreground">
-                                    Así estaba el cielo cuando naciste. Esta es
-                                    la historia que cuenta sobre cómo amas.
+                                    Así estaba el cielo el{" "}
+                                    {longDate(reading.birthDate)}. Esta es la
+                                    historia que cuenta sobre cómo amas.
                                 </p>
                                 <p className="max-w-md text-pretty font-mono text-[11px] text-muted-foreground uppercase leading-relaxed tracking-[0.14em]">
                                     {computedFrom(reading)}
