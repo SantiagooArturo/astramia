@@ -1,14 +1,29 @@
 import "server-only";
+import { getLogger } from "@logtape/logtape";
 import { after } from "next/server";
 import type { CheckoutResponse } from "@/core/payment/domain/types";
 import { createCheckoutService } from "@/core/payment/server/services/create-checkout-service";
-import { AppErrors, type AsyncAppResult, err } from "@/server/common/responses";
+import { isOwner } from "@/server/auth/owner";
+import {
+    AppErrors,
+    type AsyncAppResult,
+    err,
+    ok,
+} from "@/server/common/responses";
 import { findReading } from "../repository/readings";
 import { prepareReadingContentService } from "./ensure-reading-content-service";
+import { unlockReadingService } from "./unlock-reading-service";
+
+const logger = getLogger(["server", "reading"]);
 
 /** Opens the checkout that unlocks one of the caller's own locked readings. */
 export async function startReadingCheckoutService(
-    user: { id: string; email: string; isAnonymous?: boolean | null },
+    user: {
+        id: string;
+        email: string;
+        emailVerified: boolean;
+        isAnonymous?: boolean | null;
+    },
     readingId: string,
     origin: string,
 ): AsyncAppResult<CheckoutResponse> {
@@ -17,6 +32,17 @@ export async function startReadingCheckoutService(
         if (!row) return err(AppErrors.notFound({ targets: ["reading"] }));
         if (row.unlockedAt)
             return err(AppErrors.conflict({ targets: ["reading"] }));
+
+        // The owner skips the gateway: unlocked here, back on the reading.
+        if (await isOwner(user)) {
+            await unlockReadingService(user.id, row.id);
+            logger.info("Owner unlocked reading {id} without paying", {
+                id: row.id,
+            });
+            return ok({
+                checkoutUrl: new URL(`/lectura/r/${row.id}`, origin).toString(),
+            });
+        }
 
         const checkout = await createCheckoutService({
             userId: user.id,
