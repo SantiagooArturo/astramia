@@ -1,7 +1,6 @@
 "use client";
 
 import { motion, useReducedMotion } from "motion/react";
-import type { CSSProperties } from "react";
 import { MoonDisc } from "@/core/landing/client/effects";
 import type { MoonPhaseName } from "@/core/landing/domain/ephemeris";
 import { ZODIAC_SIGNS } from "@/core/landing/domain/zodiac";
@@ -189,7 +188,6 @@ export function PlanetScene({
                             repeat: Number.POSITIVE_INFINITY,
                             ease: "easeInOut",
                         }}
-                        style={{ "--glow": glow } as CSSProperties}
                     >
                         <Orb body={body} moonPhase={moonPhase} />
                     </motion.div>
