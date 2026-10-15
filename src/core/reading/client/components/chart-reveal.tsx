@@ -8,8 +8,18 @@ import { longDate } from "@/core/reading/domain/chart";
 import type { AspectName, NatalChart } from "@/core/reading/domain/types";
 
 const C = 200;
-/** The hook arrives in ~3 s, so its wheel completes faster. */
-const STEP_MS = { teaser: 750, reading: 1700 } as const;
+/**
+ * One caption every ~3.5 s: long enough to read it while it sits still. At
+ * 0.75 s (the old hook pace) each one faded out before it finished fading in.
+ * A short wait shows fewer captions, so the telling ones come first.
+ */
+const STEP_MS = 3500;
+/** The wheel draws on its own, quicker clock: the hook's wait is ~5 s. */
+const DRAW_MS = { teaser: 800, reading: 1700 } as const;
+/** Sun, Moon, Venus, Mars, then the aspects. */
+const DRAW_STEPS = 5;
+/** Slow, eased crossfade: the wait should feel calm, not hurried. */
+const FADE = { duration: 0.8, ease: "easeInOut" } as const;
 
 /** U+FE0E keeps ♀/♂ as text glyphs instead of emoji. */
 const GLYPHS: Record<string, string> = {
@@ -55,12 +65,12 @@ function captions(
     const [sun, moon, venus, mars] = chart.placements;
     const lines = [
         `Trazando el cielo del ${longDate(birthDate)}`,
-        `Tu Sol en ${sun.sign}`,
+        `Venus en ${venus.sign}: cómo amas`,
         chart.moonRange
             ? `Tu Luna, entre ${chart.moonRange.early} y ${chart.moonRange.late}`
             : `Tu Luna en ${moon.sign}`,
-        `Venus en ${venus.sign}: cómo amas`,
         `Marte en ${mars.sign}: cómo deseas`,
+        `Tu Sol en ${sun.sign}`,
     ];
     const aspect = chart.aspects[0];
     lines.push(
@@ -82,7 +92,8 @@ function captions(
 /**
  * The wait, made part of the reading: the person's own chart is drawn on a
  * zodiac wheel (their real placements and aspects) while the model writes,
- * with captions naming what is being "read". Loops on the last caption.
+ * with captions naming what is being "read", slow enough to read them. Loops
+ * on the last caption.
  */
 export function ChartReveal({
     chart,
@@ -100,6 +111,7 @@ export function ChartReveal({
     );
     const last = lines.length - 1;
     const [step, setStep] = useState(0);
+    const [drawn, setDrawn] = useState(0);
 
     useEffect(() => {
         if (reducedMotion) {
@@ -108,10 +120,22 @@ export function ChartReveal({
         }
         const timer = window.setInterval(
             () => setStep((s) => Math.min(s + 1, last)),
-            STEP_MS[mode],
+            STEP_MS,
         );
         return () => window.clearInterval(timer);
-    }, [last, mode, reducedMotion]);
+    }, [last, reducedMotion]);
+
+    useEffect(() => {
+        if (reducedMotion) {
+            setDrawn(DRAW_STEPS);
+            return;
+        }
+        const timer = window.setInterval(
+            () => setDrawn((d) => Math.min(d + 1, DRAW_STEPS)),
+            DRAW_MS[mode],
+        );
+        return () => window.clearInterval(timer);
+    }, [mode, reducedMotion]);
 
     // Conjunct planets would overlap: the later ones move inwards.
     const placed = chart.placements.map((p, i, all) => {
@@ -152,7 +176,7 @@ export function ChartReveal({
                     aria-hidden="true"
                     className="relative h-full w-full overflow-visible"
                     animate={
-                        reducedMotion || step < last
+                        reducedMotion || drawn < DRAW_STEPS
                             ? undefined
                             : { rotate: 360 }
                     }
@@ -243,7 +267,7 @@ export function ChartReveal({
                                 strokeLinecap="round"
                                 initial={{ pathLength: 0, opacity: 0 }}
                                 animate={
-                                    step >= 5
+                                    drawn >= DRAW_STEPS
                                         ? { pathLength: 1, opacity: 0.85 }
                                         : { pathLength: 0, opacity: 0 }
                                 }
@@ -256,7 +280,7 @@ export function ChartReveal({
                     })}
 
                     {placed.map((p, i) => {
-                        const shown = step >= i + 1;
+                        const shown = drawn >= i + 1;
                         return (
                             <motion.g
                                 key={p.body}
@@ -316,10 +340,10 @@ export function ChartReveal({
                         role="status"
                         aria-live="polite"
                         className="text-pretty font-display text-2xl sm:text-3xl"
-                        initial={{ opacity: 0, y: reducedMotion ? 0 : 8 }}
+                        initial={{ opacity: 0, y: reducedMotion ? 0 : 4 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: reducedMotion ? 0 : -8 }}
-                        transition={{ duration: reducedMotion ? 0 : 0.5 }}
+                        exit={{ opacity: 0, y: reducedMotion ? 0 : -4 }}
+                        transition={reducedMotion ? { duration: 0 } : FADE}
                     >
                         {step === last ? (
                             <ShimmerText>{lines[step]}…</ShimmerText>
