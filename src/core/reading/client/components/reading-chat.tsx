@@ -56,6 +56,54 @@ function useLocalTime(iso: string | null): string | null {
     return time;
 }
 
+/** "Tu Sol está pensando" with its dots coming and going: . .. ... */
+function Thinking() {
+    const reducedMotion = useReducedMotion();
+    const [dots, setDots] = useState(3);
+    useEffect(() => {
+        if (reducedMotion) return;
+        const timer = window.setInterval(
+            () => setDots((d) => (d % 3) + 1),
+            420,
+        );
+        return () => window.clearInterval(timer);
+    }, [reducedMotion]);
+    return (
+        <span>
+            Tu Sol está pensando
+            {/* Fixed width: the line doesn't twitch as dots come and go. */}
+            <span className="inline-block w-[3ch] text-left">
+                {".".repeat(dots)}
+            </span>
+        </span>
+    );
+}
+
+/**
+ * A reply as it streams: each new word fades in from a soft blur; words
+ * already shown keep their place (keyed by position), so nothing replays.
+ */
+function FlowingText({ text }: { text: string }) {
+    let position = 0;
+    return text.split(/(\*\*[^*]+\*\*)/).map((part, p) => {
+        const bold = part.startsWith("**") && part.endsWith("**");
+        const words = (bold ? part.slice(2, -2) : part.replace(/\*/g, ""))
+            .split(/(\s+)/)
+            .map((word) => {
+                const key = position++;
+                return /^\s*$/.test(word) ? (
+                    word
+                ) : (
+                    <span key={key} className="animate-word-in">
+                        {word}
+                    </span>
+                );
+            });
+        // Parts only grow at the end: their position is their identity.
+        return bold ? <strong key={p}>{words}</strong> : words;
+    });
+}
+
 /**
  * Their Sun, the one that rose at the end of the story. It breathes while
  * waiting and burns brighter while it answers.
@@ -116,7 +164,7 @@ function Sun({
     );
 }
 
-/** The Sun that rose at dawn, real-looking, glowing harder while it answers. */
+/** Their Sun, real-looking, glowing harder while it answers. */
 function SpeakingSun({ speaking }: { speaking: boolean }) {
     const reducedMotion = useReducedMotion();
     return (
@@ -161,6 +209,7 @@ export function ReadingChat({
     initialMessages,
     expiresAt,
     sunSign,
+    closing = null,
     demo = false,
 }: {
     readingId: string;
@@ -168,9 +217,12 @@ export function ReadingChat({
     /** `null` until the first question: that's when the hours start. */
     expiresAt: string | null;
     sunSign: string;
+    /** The reading's last line: the first thing the Sun says as it rises. */
+    closing?: string | null;
     /** The /lectura/ejemplo preview: shows the chat, never sends. */
     demo?: boolean;
 }) {
+    const reducedMotion = useReducedMotion();
     const [input, setInput] = useState("");
     const [openUntil, setOpenUntil] = useState(expiresAt);
     const [demoNote, setDemoNote] = useState(false);
@@ -183,6 +235,10 @@ export function ReadingChat({
                 }),
             }),
         [readingId],
+    );
+    // Replies from earlier visits are shown still; only new ones flow in.
+    const [initialIds] = useState(
+        () => new Set(initialMessages.map((m) => m.id)),
     );
     const { messages, sendMessage, status, error } = useChat({
         messages: initialMessages.map(toUIMessage),
@@ -224,19 +280,40 @@ export function ReadingChat({
                 style={{
                     background:
                         "radial-gradient(ellipse 70% 60% at 50% 25%, oklch(0.78 0.14 60 / 22%), transparent 70%)",
-                    // No edge where it meets the sunrise above.
+                    // No edge where it meets the story above.
                     maskImage:
                         "linear-gradient(to bottom, transparent, black 35%)",
                 }}
             />
             <div className="relative mx-auto flex max-w-2xl flex-col gap-10">
                 <header className="flex flex-col items-center gap-6 text-center">
-                    <SpeakingSun speaking={busy} />
-                    <div className="flex flex-col gap-3">
-                        <p className="font-mono text-[11px] text-astral-gold uppercase tracking-[0.24em]">
-                            Último capítulo
-                        </p>
-                        <h2 className="text-balance font-display text-5xl leading-[1.02] sm:text-6xl">
+                    {/* The night ends: their Sun rises, once, and stays. */}
+                    <motion.div
+                        initial={reducedMotion ? false : { opacity: 0, y: 120 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true, amount: 0.3 }}
+                        transition={{ duration: 2.4, ease: [0.2, 0.7, 0.2, 1] }}
+                    >
+                        <SpeakingSun speaking={busy} />
+                    </motion.div>
+                    {closing && (
+                        <motion.figure
+                            initial={reducedMotion ? false : { opacity: 0 }}
+                            whileInView={{ opacity: 1 }}
+                            viewport={{ once: true }}
+                            transition={{ duration: 1.6, delay: 1.2 }}
+                            className="flex flex-col gap-3"
+                        >
+                            <blockquote className="text-balance font-display text-4xl text-astral-gold-soft leading-tight sm:text-5xl">
+                                {closing}
+                            </blockquote>
+                            <figcaption className="font-mono text-[11px] text-astral-gold uppercase tracking-[0.24em]">
+                                Tu Sol en {sunSign}
+                            </figcaption>
+                        </motion.figure>
+                    )}
+                    <div className="flex flex-col gap-3 pt-6">
+                        <h2 className="text-balance font-display text-3xl leading-[1.05] sm:text-4xl">
                             Tu Sol en {sunSign} te escucha
                         </h2>
                         <p className="mx-auto max-w-md text-pretty text-lg text-muted-foreground">
@@ -270,7 +347,13 @@ export function ReadingChat({
                                         className="mt-2 size-3 shrink-0"
                                     />
                                     <p className="whitespace-pre-wrap text-pretty text-lg leading-relaxed">
-                                        {renderInline(textOf(message))}
+                                        {initialIds.has(message.id) ? (
+                                            renderInline(textOf(message))
+                                        ) : (
+                                            <FlowingText
+                                                text={textOf(message)}
+                                            />
+                                        )}
                                     </p>
                                 </motion.li>
                             ) : (
@@ -285,7 +368,7 @@ export function ReadingChat({
                         {status === "submitted" && (
                             <li className="flex items-center gap-3 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.18em]">
                                 <Sun speaking className="size-3" />
-                                Tu Sol está pensando…
+                                <Thinking />
                             </li>
                         )}
                     </ol>

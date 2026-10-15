@@ -119,7 +119,7 @@ export function PlanetScene({
                     background: `radial-gradient(circle, ${glow}, transparent 70%)`,
                 }}
             />
-            <div className="relative aspect-square w-[min(92vw,440px)] lg:w-[560px]">
+            <div className="relative aspect-square w-[min(82vw,370px)] lg:w-[560px]">
                 {figure && (
                     <svg
                         viewBox="0 0 100 100"
@@ -201,7 +201,7 @@ export function PlanetScene({
             </div>
             <motion.p
                 aria-hidden
-                className="-mt-4 font-mono text-[11px] text-astral-gold uppercase tracking-[0.22em] lg:-mt-6"
+                className="-mt-6 font-mono text-[11px] text-astral-gold uppercase tracking-[0.22em] max-lg:hidden"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: quick(0.8), delay: quick(1.2) }}

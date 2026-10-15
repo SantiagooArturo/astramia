@@ -1,7 +1,7 @@
 import "server-only";
 import { getLogger } from "@logtape/logtape";
 import { ServerConfig } from "@/config/server-config";
-import { generate } from "@/core/ai/server/repository/llm";
+import { generateObject } from "@/core/ai/server/repository/llm";
 import { AI_TASKS, READING_PROMPT } from "@/core/reading/domain/prompts";
 import type { Reading } from "@/core/reading/domain/types";
 import {
@@ -35,7 +35,8 @@ async function writeReadingContent(row: ReadingRow): Promise<string | null> {
     if (!claimed) return null;
 
     try {
-        const content = await generate({
+        // One text per scene of the story, stored as JSON (see parseScenes).
+        const scenes = await generateObject({
             model: ServerConfig.ai.models.reading,
             system: READING_PROMPT.system,
             prompt: READING_PROMPT.prompt(
@@ -43,6 +44,7 @@ async function writeReadingContent(row: ReadingRow): Promise<string | null> {
                 row.teaser,
                 new Date(),
             ),
+            schema: READING_PROMPT.schema,
             ...AI_TASKS.reading,
             usage: {
                 purpose: "reading",
@@ -50,8 +52,9 @@ async function writeReadingContent(row: ReadingRow): Promise<string | null> {
                 referenceId: row.id,
             },
         });
-        await saveReadingContent(row.id, content.trim());
-        return content.trim();
+        const content = JSON.stringify(scenes);
+        await saveReadingContent(row.id, content);
+        return content;
     } catch (cause) {
         // Release the claim so the next open retries right away.
         await saveReadingContent(row.id, null);

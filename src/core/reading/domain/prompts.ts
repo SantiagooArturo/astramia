@@ -1,6 +1,8 @@
 import type { AiPurpose, AiReasoning } from "@/core/ai/domain/types";
 import { longDate, natalChart, readingOutlook } from "./chart";
 import { describeAnswer, type Trato, tratoOf } from "./quiz";
+import { readingAsText } from "./reading-content";
+import { readingScenesSchema } from "./schemas";
 import type { ReadingProfile } from "./types";
 
 /**
@@ -133,7 +135,10 @@ ${answers.join("\n")}
 /** <cielo>: where Venus is now and where it goes in the next four months. */
 export function describeSky(profile: ReadingProfile, today: Date): string {
     const outlook = readingOutlook(profile, today);
-    const events = outlook.events.map((e) => `- ${e.when}: ${e.text}`);
+    // Numbered: the reading's `moments` refer to them by number.
+    const events = outlook.events.map(
+        (e, i) => `${i + 1}. ${e.when}: ${e.text}`,
+    );
     return `<cielo>
 Hoy es ${longDate(today.toISOString().slice(0, 10))}. Venus está ${outlook.retrograde ? "retrógrada " : ""}en ${outlook.sign}.
 ${events.join("\n")}
@@ -182,20 +187,34 @@ ${METHOD}
 Escribe la lectura completa que la persona acaba de pagar. Ya leyó el primer párrafo (<inicio>): continúas desde ahí, sin repetirlo, y cumples lo que prometió. Al terminar tiene que quedar la sensación de que alguien entendió su vida amorosa con una precisión casi incómoda, y algo concreto para hacer esta misma semana.
 </tarea>
 
-<estructura>
-Markdown, 650 a 850 palabras: un párrafo de apertura y, en cada sección, dos párrafos como máximo (de 3 a 5 frases). No repitas entre comillas sus respuestas ni su pregunta. Los títulos (##) los escribes tú: cortos, sugerentes y propios de esta persona (nunca "Tu patrón en el amor", "Introducción" ni "Conclusión"). En este orden:
-1. Sin título: un párrafo que resuelve de inmediato el misterio con que terminó <inicio>.
-2. Cómo ama: Venus y Marte. Cómo se enamora, cómo desea, qué enciende y qué apaga su deseo; por qué se repite lo que se repite.
-3. Lo que necesita: la Luna y el Sol. Qué necesita para sentirse en casa con alguien y de dónde viene lo que más le dolió.
-4. Su pregunta: responde lo que quiere saber primero, con honestidad y matices: qué muestra su carta, qué señales mirar, qué depende de su decisión. Nunca una predicción cerrada.
-5. Lo que viene: usa solo <cielo>. Elige dos o tres momentos (no todos), con las fechas tal como vienen, y di qué le abre o le pide cada uno según su carta, en un solo párrafo.
-6. Un gesto: un solo párrafo con una acción concreta y pequeña, hecha para esta persona, que pueda hacer esta semana (algo que se pueda hacer un martes cualquiera, no "ámate más").
-Termina con una sola frase breve en **negrita**, memorable, que querría guardar. Aparte de esa, como mucho dos frases en negrita en todo el texto.
-</estructura>
+<escenas>
+La lectura se ve como una historia: cada campo aparece en pantalla junto a una imagen, y la persona lo lee mientras la mira. Escribe para lo que está viendo:
+- Cada campo habla solo de lo que muestra su imagen. Mientras ve a Venus no hables de Marte, de la Luna ni del Sol. Un campo "juntos" habla solo de esos dos astros.
+- Nada se repite: un campo "juntos" no resume lo que ya dijeron los anteriores; cuenta lo nuevo, lo que pasa cuando los dos actúan a la vez.
+- La pantalla ya puso el título ("Venus estaba en Aries", "Había Luna menguante", su pregunta): no empieces repitiéndolo. Puedes nombrar el signo dentro del texto.
+- Frases cortas: cada campo se lee de un vistazo en el celular. Respeta el rango de palabras de cada uno. Sin Markdown: ni títulos, ni negritas, ni listas, ni comillas para citar sus respuestas.
+
+En este orden:
+1. opening (25 a 40 palabras): resuelve de inmediato el misterio con que terminó <inicio>.
+2. venus (30 a 45 palabras, junto a Venus en su signo): cómo se enamora, qué le atrae. La primera vez que la nombres, di en la misma frase qué mueve Venus.
+3. mars (30 a 45 palabras, junto a Marte en su signo): cómo desea, qué enciende y qué apaga su deseo.
+4. venusMars (40 a 60 palabras, junto a Venus y Marte): qué se repite en su vida amorosa cuando los dos actúan a la vez, y por qué. Si en <carta> hay un aspecto entre ellos, cuéntalo sin su nombre técnico.
+5. moonPhase (15 a 30 palabras, junto a la Luna en la fase con que nació): qué dice esa Luna de su forma de amar. La pantalla ya mostró la fase y qué es: no la expliques ni la nombres.
+6. moon (30 a 45 palabras, junto a la Luna en su signo): qué necesita para sentirse en casa con alguien. Si la Luna es incierta, dilo con un matiz honesto.
+7. sun (25 a 40 palabras, junto al Sol en su signo, el que conoce): su signo de siempre, visto desde el amor.
+8. moonSun (40 a 60 palabras, junto a la Luna y el Sol): solo esos dos: lo que necesita y de dónde viene lo que más le dolió.
+9. question (60 a 85 palabras, bajo su pregunta): respóndela con honestidad y matices: qué muestra su carta, qué señales mirar, qué depende de su decisión. Nunca una predicción cerrada.
+10. moments (junto a Venus viajando por los próximos meses): elige 2 o 3 momentos de <cielo>, por su número, sobre todo los que tocan sus signos. Para cada uno, 20 a 35 palabras que empiecen con su fecha tal como viene ("A finales de octubre…") y digan qué le abre o le pide según su carta. Usa solo <cielo>.
+11. gesture (30 a 45 palabras): una acción concreta y pequeña, hecha para esta persona, que pueda hacer esta semana (algo que se pueda hacer un martes cualquiera, no "ámate más").
+12. closing (8 a 16 palabras): una sola frase memorable que querría guardar.
+Entre 450 y 600 palabras en total.
+</escenas>
 
 <proceso>
-Antes de escribir, en tu razonamiento: (1) define su contradicción central en una frase; (2) asigna cada una de sus cinco respuestas a la sección y al planeta que mejor la explican; (3) elige tres escenas concretas, distintas entre sí; (4) elige de <cielo> los momentos que más le hablan, sobre todo si tocan sus signos; (5) al terminar, verifica: Sol, Luna, Venus y Marte nombrados; las cinco respuestas usadas sin citarlas; al menos un aspecto si <carta> trae alguno, contado sin su nombre técnico; cada planeta explicado en palabras simples la primera vez; ningún dato fuera de <carta> y <cielo>; ninguna respuesta entre comillas; nada de <prohibido> ni metáforas repetidas; tuteo; el <trato> pedido en cada adjetivo; la otra persona sin género; entre 650 y 850 palabras.
+Antes de escribir, en tu razonamiento: (1) define su contradicción central en una frase; (2) asigna cada una de sus cinco respuestas al campo y al planeta que mejor la explican; (3) elige tres escenas de la vida diaria, distintas entre sí; (4) elige de <cielo> los momentos que más le hablan; (5) al terminar, verifica: cada campo habla solo de lo suyo; Sol, Luna, Venus y Marte explicados en palabras simples la primera vez; las cinco respuestas usadas sin citarlas; al menos un aspecto si <carta> trae alguno, contado sin su nombre técnico; ningún dato fuera de <carta> y <cielo>; nada de <prohibido> ni metáforas repetidas; tuteo; el <trato> pedido en cada adjetivo; la otra persona sin género; cada campo en su rango y entre 450 y 600 palabras en total.
 </proceso>`,
+    /** The model fills one text per scene of the story. */
+    schema: readingScenesSchema,
     prompt: (profile: ReadingProfile, teaser: string, today: Date) =>
         `${describeProfile(profile)}
 
@@ -237,6 +256,6 @@ ${describeProfile(profile)}
 ${describeSky(profile, today)}
 
 <lectura>
-${reading}
+${readingAsText(reading)}
 </lectura>`;
 }

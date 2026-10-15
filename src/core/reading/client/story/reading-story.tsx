@@ -103,27 +103,56 @@ function StepContent({ step }: { step: StoryStep }) {
                     </p>
                 </motion.div>
             );
+        case "scene":
+            return (
+                <div className="flex flex-col gap-4">
+                    {step.eyebrow && (
+                        <motion.p
+                            {...ENTER}
+                            className="font-mono text-[11px] text-astral-gold uppercase tracking-[0.24em]"
+                        >
+                            {step.eyebrow}
+                        </motion.p>
+                    )}
+                    {step.title && (
+                        <motion.h3
+                            {...ENTER}
+                            className="text-balance font-display text-4xl leading-[1.02] sm:text-5xl lg:text-6xl"
+                        >
+                            {step.title}
+                        </motion.h3>
+                    )}
+                    <motion.div
+                        {...ENTER}
+                        transition={{ ...ENTER.transition, delay: 0.35 }}
+                        className={cn("flex flex-col gap-3", CARD)}
+                    >
+                        {step.note && (
+                            <p className="text-pretty text-muted-foreground italic leading-relaxed">
+                                {step.note}
+                            </p>
+                        )}
+                        <p className="text-pretty text-lg leading-relaxed sm:text-xl sm:leading-relaxed">
+                            {renderInline(step.text)}
+                        </p>
+                    </motion.div>
+                </div>
+            );
         case "paragraph":
             return (
-                <motion.p
+                <motion.div
                     {...ENTER}
-                    className={cn(
-                        "text-pretty text-lg leading-relaxed sm:text-xl sm:leading-relaxed",
-                        CARD,
+                    className={cn("flex flex-col gap-3", CARD)}
+                >
+                    {step.heading && (
+                        <h3 className="text-balance font-display text-2xl text-astral-gold sm:text-3xl">
+                            {step.heading}
+                        </h3>
                     )}
-                >
-                    {renderInline(step.text)}
-                </motion.p>
-            );
-        case "quote":
-            return (
-                <motion.blockquote
-                    {...ENTER}
-                    transition={{ ...ENTER.transition, duration: 1.6 }}
-                    className="text-balance text-center font-display text-4xl text-astral-gold-soft leading-tight [text-shadow:0_2px_24px_rgb(0_0_0/70%)] sm:text-5xl lg:text-left lg:text-6xl"
-                >
-                    {step.text}
-                </motion.blockquote>
+                    <p className="text-pretty text-lg leading-relaxed sm:text-xl sm:leading-relaxed">
+                        {renderInline(step.text)}
+                    </p>
+                </motion.div>
             );
     }
 }
@@ -141,16 +170,22 @@ function computedFrom(reading: Reading): string {
 
 /** Steps that introduce something get the whole screen; text, a bit less. */
 function stepHeight(step: StoryStep): string {
-    return step.kind === "paragraph" || step.kind === "note"
-        ? "min-h-[85svh]"
-        : "min-h-[100svh]";
+    switch (step.kind) {
+        case "paragraph":
+        case "note":
+            return "min-h-[75svh]";
+        case "scene":
+            return "min-h-[90svh]";
+        default:
+            return "min-h-[100svh]";
+    }
 }
 
 /**
  * The paid reading, told on scroll. A stage holds one scene at a time (their
  * sky, the Moon settling on their phase, Venus over its sign…) while the
- * text slides over it on a phone or beside it on a wide screen. It ends at
- * dawn, where the chat (the Sun) takes over.
+ * text slides over it on a phone or beside it on a wide screen. Then their
+ * Sun rises, says the reading's last line, and takes their questions.
  */
 export function ReadingStory({
     reading,
@@ -223,7 +258,6 @@ export function ReadingStory({
 
     const step = story.steps[active] ?? story.steps[0];
     const chapter = step.chapter === null ? null : story.chapters[step.chapter];
-    const dawn = step.visual.kind === "dawn";
 
     return (
         <MotionConfig reducedMotion="user">
@@ -275,14 +309,8 @@ export function ReadingStory({
                     className="relative z-10 lg:grid lg:grid-cols-2"
                 >
                     <div className="sticky top-0 h-svh overflow-hidden lg:self-start">
-                        <div
-                            className={cn(
-                                "absolute inset-x-0 top-0 lg:inset-0 lg:h-auto lg:pt-0",
-                                // The sunrise needs the whole screen; the rest
-                                // keep the bottom for the text.
-                                dawn ? "h-svh" : "h-[60svh] pt-12",
-                            )}
-                        >
+                        {/* On a phone the bottom half is the text's. */}
+                        <div className="absolute inset-x-0 top-0 h-[50svh] pt-12 lg:inset-0 lg:h-auto lg:pt-0">
                             <StoryStage
                                 visual={step.visual}
                                 chart={reading.chart}
@@ -292,10 +320,7 @@ export function ReadingStory({
                         {/* Keeps text legible where it slides over the scene. */}
                         <div
                             aria-hidden
-                            className={cn(
-                                "absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-background via-background/70 to-transparent transition-opacity duration-700 lg:hidden",
-                                dawn && "opacity-0",
-                            )}
+                            className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-background via-background/70 to-transparent lg:hidden"
                         />
                     </div>
 
@@ -341,12 +366,6 @@ export function ReadingStory({
                                 className={cn(
                                     "flex flex-col justify-end pb-[10svh] lg:justify-center lg:pb-0",
                                     stepHeight(s),
-                                    s.kind === "quote" &&
-                                        "max-lg:justify-start max-lg:pt-[18svh]",
-                                    // Alone on a quiet night: the middle of the screen.
-                                    s.kind === "chapter" &&
-                                        s.visual.kind === "night" &&
-                                        "max-lg:justify-center max-lg:pb-0",
                                 )}
                             >
                                 <StepContent step={s} />

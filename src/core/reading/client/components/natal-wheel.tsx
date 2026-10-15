@@ -18,7 +18,7 @@ export const BODY_GLYPHS: Record<string, string> = {
     Marte: "♂︎",
 };
 
-const ASPECT_COLOR: Record<AspectName, string> = {
+export const ASPECT_COLOR: Record<AspectName, string> = {
     conjunción: "var(--astral-violet)",
     sextil: "var(--astral-cyan)",
     trígono: "var(--astral-gold)",

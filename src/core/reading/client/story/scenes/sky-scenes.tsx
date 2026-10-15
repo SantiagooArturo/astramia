@@ -4,7 +4,6 @@ import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
 import type { NatalChart } from "@/core/reading/domain/types";
 import { NatalWheel, WHEEL_DRAW_STEPS } from "../../components/natal-wheel";
-import { Globe } from "../globe";
 
 const WHEEL_SIZE = "w-[min(70vw,360px)] lg:w-[520px]";
 
@@ -122,53 +121,6 @@ export function StarScene() {
                     <path d={STAR} fill="var(--astral-gold)" />
                 </motion.svg>
             </div>
-        </div>
-    );
-}
-
-/**
- * The night ends: a sun rises from the bottom edge. It's the same sun that
- * answers in the chat right after.
- */
-export function DawnScene() {
-    const reducedMotion = useReducedMotion();
-    return (
-        <div className="relative h-full w-full overflow-hidden">
-            <motion.div
-                aria-hidden
-                className="absolute inset-x-0 bottom-0 h-full"
-                style={{
-                    background:
-                        "radial-gradient(ellipse 100% 85% at 50% 100%, oklch(0.78 0.14 60 / 40%), oklch(0.7 0.15 40 / 24%) 30%, oklch(0.6 0.15 20 / 11%) 55%, oklch(0.5 0.1 300 / 4%) 75%, transparent 95%)",
-                }}
-                initial={{ opacity: reducedMotion ? 1 : 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: reducedMotion ? 0 : 2.4 }}
-            />
-            <motion.div
-                aria-hidden
-                className="absolute bottom-0 left-1/2 size-[min(120vw,680px)]"
-                initial={{ x: "-50%", y: reducedMotion ? "42%" : "75%" }}
-                animate={{ x: "-50%", y: "42%" }}
-                transition={{
-                    duration: reducedMotion ? 0 : 3.2,
-                    ease: [0.2, 0.7, 0.2, 1],
-                }}
-            >
-                <Globe
-                    body="Sol"
-                    className="size-full"
-                    fallback={
-                        <div
-                            className="absolute inset-[18%] rounded-full"
-                            style={{
-                                background:
-                                    "radial-gradient(circle at 50% 40%, #fffbe8 0%, #ffd66b 30%, #f2a531 62%, #c8641a 100%)",
-                            }}
-                        />
-                    }
-                />
-            </motion.div>
         </div>
     );
 }

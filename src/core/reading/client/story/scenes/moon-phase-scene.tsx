@@ -103,7 +103,7 @@ export function MoonPhaseScene({
             <p
                 aria-hidden
                 className={cn(
-                    "font-mono text-[11px] uppercase tracking-[0.2em] transition-colors duration-700",
+                    "font-mono text-[11px] uppercase tracking-[0.2em] transition-colors duration-700 max-lg:hidden",
                     settled ? "text-astral-gold" : "text-muted-foreground",
                 )}
             >

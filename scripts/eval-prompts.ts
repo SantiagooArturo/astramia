@@ -22,7 +22,15 @@ import { toAiUsage } from "@/core/ai/domain/usage";
 import { natalChart, venusOutlook } from "@/core/reading/domain/chart";
 import * as currentPrompts from "@/core/reading/domain/prompts";
 import { describeAnswer, tratoOf } from "@/core/reading/domain/quiz";
-import type { QuizAnswer, ReadingProfile } from "@/core/reading/domain/types";
+import {
+    parseScenes,
+    readingAsText,
+} from "@/core/reading/domain/reading-content";
+import type {
+    QuizAnswer,
+    ReadingProfile,
+    ReadingScenes,
+} from "@/core/reading/domain/types";
 
 type Profile = ReadingProfile & { name: string; chatQuestion: string };
 
@@ -173,7 +181,7 @@ interface Call {
 async function call(
     task: AiPurpose,
     prompts: PromptModule,
-    input: { system: string; prompt: string },
+    input: { system: string; prompt: string; schema?: z.ZodType },
 ): Promise<Call> {
     const settings = prompts.AI_TASKS?.[task];
     const reasoning =
@@ -194,9 +202,13 @@ async function call(
         prompt: input.prompt,
         maxOutputTokens,
         reasoning,
+        // A reading written per scene comes back as an object (stored as JSON).
+        ...(input.schema
+            ? { output: Output.object({ schema: input.schema }) }
+            : {}),
     });
     return {
-        text: result.text.trim(),
+        text: input.schema ? JSON.stringify(result.output) : result.text.trim(),
         finishReason: result.finishReason,
         outputTokens: result.usage.outputTokens,
         reasoningTokens: result.usage.outputTokenDetails?.reasoningTokens,
@@ -239,6 +251,9 @@ const verdictSchema = z.object({
             "acción concreta, pequeña, hecha para esta persona",
         ),
         magia: score.describe("¿se siente mágica, increíble, digna de pagar?"),
+        escenas: score.describe(
+            "si viene por escenas (## Venus, ## Marte…): 5 si cada una habla solo de su astro y ninguna repite a otra; si es un texto corrido, 3",
+        ),
     }),
     chat: z.object({
         utilidad: score,
@@ -347,6 +362,32 @@ const OTHER_GENDER =
     /(?<!\p{L})(?<!desde )(él|ella|novio|novia|chico|chica)(?!\p{L})/giu;
 const words = (text: string) => text.split(/\s+/).filter(Boolean).length;
 
+/** Bodies each single-body scene is shown next to. */
+const ON_SCREEN: Partial<Record<keyof ReadingScenes, string[]>> = {
+    venus: ["Venus"],
+    mars: ["Marte"],
+    moon: ["Luna"],
+    sun: ["Sol"],
+};
+/**
+ * Scenes that talk about a body that isn't on screen ("venus: … tu Marte …"):
+ * the story shows one body at a time, its text should follow.
+ */
+function crossTalk(content: string): string[] {
+    const scenes = parseScenes(content);
+    if (!scenes) return [];
+    return Object.entries(ON_SCREEN).flatMap(([key, shown]) =>
+        ["Venus", "Marte", "Luna", "Sol"]
+            .filter((body) => !shown?.includes(body))
+            .filter((body) =>
+                new RegExp(`(?<!\\p{L})${body}(?!\\p{L})`, "u").test(
+                    scenes[key as keyof ReadingScenes] as string,
+                ),
+            )
+            .map((body) => `${key}→${body}`),
+    );
+}
+
 async function runProfile(prompts: PromptModule, profile: Profile) {
     const teaser = await call("teaser", prompts, {
         system: prompts.TEASER_PROMPT.system,
@@ -355,7 +396,12 @@ async function runProfile(prompts: PromptModule, profile: Profile) {
     const reading = await call("reading", prompts, {
         system: prompts.READING_PROMPT.system,
         prompt: prompts.READING_PROMPT.prompt(profile, teaser.text, TODAY),
+        schema:
+            "schema" in prompts.READING_PROMPT
+                ? prompts.READING_PROMPT.schema
+                : undefined,
     });
+    const readingText = readingAsText(reading.text);
     const chat = await call("chat", prompts, {
         system: prompts.chatSystemPrompt(profile, reading.text, TODAY),
         prompt: profile.chatQuestion,
@@ -363,10 +409,10 @@ async function runProfile(prompts: PromptModule, profile: Profile) {
     const { verdict, costUsd } = await judge(
         profile,
         teaser.text,
-        reading.text,
+        readingText,
         chat.text,
     );
-    const all = [teaser.text, reading.text, chat.text].join("\n");
+    const all = [teaser.text, readingText, chat.text].join("\n");
     return {
         profile: profile.name,
         teaser,
@@ -376,7 +422,8 @@ async function runProfile(prompts: PromptModule, profile: Profile) {
         judgeCostUsd: costUsd,
         checks: {
             teaserWords: words(teaser.text),
-            readingWords: words(reading.text),
+            readingWords: words(readingText),
+            crossTalk: crossTalk(reading.text),
             chatWords: words(chat.text),
             cut: [teaser, reading, chat].some(
                 (c) => c.finishReason === "length",
@@ -436,6 +483,8 @@ const summary = {
     "lectura.respuesta": rubric((v) => v.lectura.respuesta_a_su_pregunta),
     "lectura.gesto": rubric((v) => v.lectura.gesto_final),
     "lectura.magia": rubric((v) => v.lectura.magia),
+    "lectura.escenas": rubric((v) => v.lectura.escenas),
+    astroAjeno: results.reduce((n, r) => n + r.checks.crossTalk.length, 0),
     "chat.utilidad": rubric((v) => v.chat.utilidad),
     "chat.anclaje": rubric((v) => v.chat.anclaje),
     "chat.honestidad": rubric((v) => v.chat.honestidad),

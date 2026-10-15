@@ -140,3 +140,25 @@
         }
     }
 }
+
+/* A streamed word arriving: out of a soft blur, never a jump. */
+@keyframes word-in {
+    from {
+        opacity: 0;
+        filter: blur(6px);
+    }
+    to {
+        opacity: 1;
+        filter: blur(0);
+    }
+}
+
+.animate-word-in {
+    animation: word-in 0.55s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .animate-word-in {
+        animation: none;
+    }
+}

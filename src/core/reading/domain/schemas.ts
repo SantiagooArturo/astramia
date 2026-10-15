@@ -198,3 +198,57 @@ export const readingBlockSchema = z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("heading"), text: z.string() }),
     z.object({ kind: z.literal("paragraph"), text: z.string() }),
 ]);
+
+/**
+ * The paid reading as the model writes it now: one short text per scene of
+ * the story, each shown next to the body it talks about. Stored as JSON in
+ * `readings.content`; older readings hold Markdown (see `parseScenes`).
+ */
+export const readingScenesSchema = z.object({
+    opening: z
+        .string()
+        .describe("2-3 frases: resuelve el misterio con que terminó el inicio"),
+    venus: z
+        .string()
+        .describe("2-3 frases, solo Venus: cómo se enamora y qué le atrae"),
+    mars: z
+        .string()
+        .describe("2-3 frases, solo Marte: cómo desea y va por lo que quiere"),
+    venusMars: z
+        .string()
+        .describe("3-4 frases: Venus y Marte juntos, qué se repite y por qué"),
+    moonPhase: z
+        .string()
+        .describe("1-2 frases: qué dice de su forma de amar su Luna natal"),
+    moon: z
+        .string()
+        .describe("2-3 frases, solo la Luna: qué necesita para estar en paz"),
+    sun: z.string().describe("2 frases, solo el Sol: su signo en el amor"),
+    moonSun: z
+        .string()
+        .describe(
+            "3-4 frases: Luna y Sol juntos, lo que necesita y lo que le dolió",
+        ),
+    question: z
+        .string()
+        .describe("4-6 frases: responde lo que quiere saber primero"),
+    moments: z
+        .array(
+            z.object({
+                event: z
+                    .number()
+                    .int()
+                    .min(1)
+                    .describe("número del momento en <cielo>"),
+                text: z
+                    .string()
+                    .describe("1-2 frases que empiezan con su fecha"),
+            }),
+        )
+        .min(1)
+        .max(4),
+    gesture: z
+        .string()
+        .describe("2-3 frases: una acción pequeña para esta semana"),
+    closing: z.string().describe("una sola frase breve y memorable"),
+});

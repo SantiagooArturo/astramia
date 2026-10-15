@@ -4,8 +4,9 @@ import { AnimatePresence, motion } from "motion/react";
 import { type StoryVisual, visualKey } from "@/core/reading/domain/story";
 import type { NatalChart } from "@/core/reading/domain/types";
 import { MoonPhaseScene } from "./scenes/moon-phase-scene";
+import { PairScene } from "./scenes/pair-scene";
 import { PlanetScene } from "./scenes/planet-scene";
-import { DawnScene, SkyScene, StarScene } from "./scenes/sky-scenes";
+import { SkyScene, StarScene } from "./scenes/sky-scenes";
 import { VenusPathScene } from "./scenes/venus-path-scene";
 
 function Scene({
@@ -41,13 +42,15 @@ function Scene({
         case "moonPhase":
             return <MoonPhaseScene phase={visual.phase} born={born} />;
         case "venusPath":
-            return <VenusPathScene events={visual.events} />;
+            return (
+                <VenusPathScene events={visual.events} focus={visual.focus} />
+            );
         case "star":
             return <StarScene />;
-        case "dawn":
-            return <DawnScene />;
-        case "night":
-            return null;
+        case "pair":
+            return (
+                <PairScene bodies={visual.bodies} chart={chart} born={born} />
+            );
     }
 }
 

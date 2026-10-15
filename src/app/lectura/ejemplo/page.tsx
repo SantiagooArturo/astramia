@@ -4,8 +4,11 @@ import { ServerConfig } from "@/config/server-config";
 import { ReadingChat } from "@/core/reading/client/components/reading-chat";
 import { ReadingStory } from "@/core/reading/client/story/reading-story";
 import { natalChart, readingOutlook } from "@/core/reading/domain/chart";
-import { SAMPLE_READING } from "@/core/reading/domain/sample-reading";
-import { storyQuestion } from "@/core/reading/domain/story";
+import {
+    SAMPLE_READING,
+    SAMPLE_SCENES,
+} from "@/core/reading/domain/sample-reading";
+import { closingLine, storyQuestion } from "@/core/reading/domain/story";
 import type { ChatMessage, Reading } from "@/core/reading/domain/types";
 
 export const metadata: Metadata = {
@@ -51,7 +54,7 @@ export default function SampleReadingPage() {
         birthPlace: SAMPLE_READING.birthPlace,
         chart,
         locked: false,
-        content: SAMPLE_READING.content,
+        content: JSON.stringify(SAMPLE_SCENES),
         question: storyQuestion(SAMPLE_READING.answers),
         skyAhead: readingOutlook(
             SAMPLE_READING,
@@ -63,7 +66,7 @@ export default function SampleReadingPage() {
     return (
         <ReadingStory
             reading={reading}
-            content={SAMPLE_READING.content}
+            content={reading.content ?? ""}
             chat={
                 <ReadingChat
                     readingId={reading.id}
@@ -71,6 +74,7 @@ export default function SampleReadingPage() {
                     expiresAt={null}
                     sunSign={reading.sunSign}
                     demo
+                    closing={closingLine(reading.content ?? "")}
                 />
             }
         />

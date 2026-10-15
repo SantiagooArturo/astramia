@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { natalChart, readingOutlook } from "../chart";
-import { SAMPLE_READING } from "../sample-reading";
+import { SAMPLE_READING, SAMPLE_SCENES } from "../sample-reading";
 import {
     buildStory,
+    closingLine,
     type StoryInput,
     storyQuestion,
     visualKey,
@@ -40,8 +41,12 @@ describe("buildStory", () => {
             { numeral: "IV", label: "Lo que viene" },
             { numeral: "V", label: "Un gesto" },
         ]);
+        // No title alone on an empty screen: each heading leads its text.
+        expect(story.steps.some((s) => s.kind === "chapter")).toBe(false);
         expect(
-            story.steps.filter((s) => s.kind === "chapter").map((s) => s.title),
+            story.steps.flatMap((s) =>
+                s.kind === "paragraph" && s.heading ? [s.heading] : [],
+            ),
         ).toEqual([
             "Entras corriendo, sales caminando",
             "Lo que tu calma necesita",
@@ -76,7 +81,6 @@ describe("buildStory", () => {
                       : s.kind,
             ),
         ).toEqual([
-            "chapter",
             "Había Luna menguante",
             "note:Qué es",
             "La Luna estaba en Capricornio",
@@ -84,14 +88,12 @@ describe("buildStory", () => {
             "paragraph",
             "paragraph",
         ]);
-        // The card opens on a quiet night: the Moon starts with its title.
-        expect(second[0].visual).toEqual({ kind: "night" });
-        expect(second[1].visual).toEqual({
+        expect(second[0].visual).toEqual({
             kind: "moonPhase",
             phase: "Luna menguante",
         });
         // The text stays over the last thing it was introduced with.
-        expect(visualKey(second[5].visual)).toBe("planet:Sol");
+        expect(visualKey(second[4].visual)).toBe("planet:Sol");
     });
 
     it("introduces Venus and Mars with their signs", () => {
@@ -120,13 +122,10 @@ describe("buildStory", () => {
         ]);
     });
 
-    it("ends on the bold line, taken out of the last chapter", () => {
-        const last = story.steps.at(-1);
-        expect(last).toMatchObject({
-            kind: "quote",
-            text: "Lo que es para ti no necesita que corras: necesita que lo veas venir.",
-            visual: { kind: "dawn" },
-        });
+    it("hands the bold line to the Sun, out of the last chapter", () => {
+        expect(closingLine(SAMPLE_READING.content)).toBe(
+            "Lo que es para ti no necesita que corras: necesita que lo veas venir.",
+        );
         expect(
             story.steps.some(
                 (s) => s.kind === "paragraph" && s.text.includes("**"),
@@ -139,9 +138,9 @@ describe("buildStory", () => {
             "bonito.\n\n**",
             "bonito. **",
         );
-        const steps = buildStory(input({ content: glued })).steps;
-        expect(steps.at(-1)).toMatchObject({ kind: "quote" });
-        expect(steps.at(-2)).toMatchObject({
+        const glue = buildStory(input({ content: glued }));
+        expect(closingLine(glued)).toBe(closingLine(SAMPLE_READING.content));
+        expect(glue.steps.at(-1)).toMatchObject({
             kind: "paragraph",
             text: expect.stringMatching(/mensaje bonito\.$/),
         });
@@ -191,7 +190,6 @@ describe("buildStory", () => {
             "paragraph",
             "chapter",
             "paragraph",
-            "quote",
         ]);
         expect(story.steps.some((s) => s.kind === "title")).toBe(false);
     });
@@ -203,5 +201,109 @@ describe("storyQuestion", () => {
             storyQuestion([{ questionId: "pregunta", optionId: "quedarme" }]),
         ).toBe("¿Me quedo o me voy?");
         expect(storyQuestion([])).toBeNull();
+    });
+});
+
+describe("buildStory, a reading written per scene", () => {
+    const scenes = buildStory(
+        input({ content: JSON.stringify(SAMPLE_SCENES) }),
+    );
+    const at = (chapter: number | null) =>
+        scenes.steps.filter((s) => s.chapter === chapter);
+
+    it("shows each body with its own text, then the two together", () => {
+        expect(
+            at(0).map((s) => (s.kind === "scene" ? s.title : s.kind)),
+        ).toEqual([
+            "Venus estaba en Aries",
+            "Marte estaba en Sagitario",
+            "Venus y Marte",
+        ]);
+        expect(at(0).map((s) => s.visual)).toEqual([
+            { kind: "planet", body: "Venus", sign: "Aries" },
+            { kind: "planet", body: "Marte", sign: "Sagitario" },
+            { kind: "pair", bodies: ["Venus", "Marte"] },
+        ]);
+        expect(at(0).map((s) => s.kind === "scene" && s.text)).toEqual([
+            SAMPLE_SCENES.venus,
+            SAMPLE_SCENES.mars,
+            SAMPLE_SCENES.venusMars,
+        ]);
+    });
+
+    it("puts what the Moon phase is next to what it says about them", () => {
+        const [phase, moon, sun, pair] = at(1);
+        expect(phase).toMatchObject({
+            kind: "scene",
+            title: "Había Luna menguante",
+            note: expect.stringMatching(/^Queda un hilo de luz/),
+            text: SAMPLE_SCENES.moonPhase,
+        });
+        expect(moon).toMatchObject({ title: "La Luna estaba en Capricornio" });
+        expect(sun).toMatchObject({
+            eyebrow: "Por eso eres Piscis",
+            title: "El Sol estaba en Piscis",
+        });
+        expect(pair.visual).toEqual({ kind: "pair", bodies: ["Luna", "Sol"] });
+    });
+
+    it("has no title alone on an empty screen", () => {
+        expect(scenes.steps.some((s) => s.kind === "chapter")).toBe(false);
+        expect(scenes.steps.some((s) => s.kind === "title")).toBe(false);
+    });
+
+    it("splits a long answer over two screens under their question", () => {
+        const [first, second] = at(2);
+        expect(first).toMatchObject({
+            kind: "scene",
+            title: "¿Cuándo llega alguien para mí?",
+        });
+        expect(second).toMatchObject({ kind: "paragraph" });
+        expect(
+            [first, second]
+                .map((s) =>
+                    s.kind === "scene" || s.kind === "paragraph" ? s.text : "",
+                )
+                .join(" "),
+        ).toBe(SAMPLE_SCENES.question);
+    });
+
+    it("moves Venus to each moment as it's read", () => {
+        expect(at(3).map((s) => s.visual)).toEqual(
+            SAMPLE_SCENES.moments.map((m) => ({
+                kind: "venusPath",
+                events: skyAhead,
+                focus: m.event - 1,
+            })),
+        );
+        expect(new Set(at(3).map((s) => visualKey(s.visual))).size).toBe(1);
+    });
+
+    it("drops a moment that points to no event", () => {
+        const story = buildStory(
+            input({
+                content: JSON.stringify({
+                    ...SAMPLE_SCENES,
+                    moments: [
+                        { event: 9, text: "Nunca." },
+                        ...SAMPLE_SCENES.moments,
+                    ],
+                }),
+            }),
+        );
+        expect(
+            story.steps.some((s) => s.kind === "scene" && s.text === "Nunca."),
+        ).toBe(false);
+    });
+
+    it("ends on the gesture and hands the closing line to the Sun", () => {
+        expect(scenes.steps.at(-1)).toMatchObject({
+            kind: "scene",
+            text: SAMPLE_SCENES.gesture,
+            visual: { kind: "star" },
+        });
+        expect(closingLine(JSON.stringify(SAMPLE_SCENES))).toBe(
+            SAMPLE_SCENES.closing,
+        );
     });
 });

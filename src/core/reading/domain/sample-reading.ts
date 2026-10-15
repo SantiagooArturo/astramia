@@ -1,4 +1,4 @@
-import type { QuizAnswer } from "./types";
+import type { QuizAnswer, ReadingScenes } from "./types";
 
 /**
  * A complete paid reading, written the way READING_PROMPT asks, for the
@@ -55,3 +55,41 @@ Esta semana, cuando sientas el impulso de contestar al instante o de proponer el
 
 **Lo que es para ti no necesita que corras: necesita que lo veas venir.**`,
 } as const;
+
+/**
+ * The same chart's reading written per scene, as READING_PROMPT writes it
+ * now (generated with it; one typo fixed): what /lectura/ejemplo shows.
+ */
+export const SAMPLE_SCENES: ReadingScenes = {
+    opening:
+        "Entras a todo o nada porque confundes la prisa con el interés real. Ahora mismo, mientras dejas atrás a tu ex, sigues con el teléfono en la mano esperando una señal que llene ese vacío rápido.",
+    venus: "Con Venus, que marca qué te atrae, en Aries, te enamoras en cinco minutos. No sabes esperar ni fingir desinterés. Si alguien te gusta, propones el plan, mandas el primer mensaje y pones toda la carne en el asador desde el día uno.",
+    mars: "Marte, el planeta que enciende tu deseo y tus ganas de actuar, está en Sagitario. Te conquista la risa fácil, los planes improvisados un martes a medianoche y sentir que esa persona es, antes que nada, tu mejor par para reírte del mundo.",
+    venusMars:
+        "Cuando tu forma de enamorarte y tu deseo se juntan, eres puro impulso. Tomas la iniciativa, resuelves los silencios y sostienes la conversación. El problema es que haces todo el trabajo al principio: dejas a la otra persona tan cómoda recibiendo que después te quedas cansada, llevando la cuenta secreta de todo lo que diste sin que te lo pidieran.",
+    moonPhase:
+        "Naciste bajo un cielo que ya sabía soltar. Por eso intuyes cuándo algo se terminó mucho antes de decirlo en voz alta, aunque te quedes intentando un poco más.",
+    moon: "Tu Luna, que habla de lo que necesitas para sentirte segura y en casa, está en Capricornio. Por dentro eres seria y leal. No te sirven las promesas en el aire: necesitas hechos, constancia y saber que cuentan contigo cuando el día pesa.",
+    sun: "Eres Piscis, y en el amor eso significa que escuchas lo que nadie dice. Captas el cambio de tono en un saludo de dos palabras y te entregas con una ternura sin defensas.",
+    moonSun:
+        "Aquí nace tu dolor más grande. Como Piscis, absorbes todo; con la Luna en Capricornio, te callas para parecer fuerte. Cuando la otra persona se vuelve fría o mira hacia otro lado como si no existieras, no haces un escándalo: te tragas el nudo en la garganta, sigues cumpliendo y te rompes a solas.",
+    question:
+        "Quieres saber cuándo llega alguien nuevo, pero tu carta muestra que tu Sol y tu Marte tiran para lados opuestos: una parte de ti aún duele lo que terminó, mientras la otra ya quiere salir corriendo a buscar una historia que la distraiga. Hoy Venus parece ir hacia atrás en el cielo, y eso pide limpiar la casa emocional antes de abrir la puerta. Alguien afín a ti se acerca cuando dejes de apurar los tiempos; mira hacia el verano.",
+    moments: [
+        {
+            event: 1,
+            text: "A finales de octubre, Venus entra en Libra, justo enfrente de tu Venus en Aries: notarás con claridad quién hace el esfuerzo de buscarte y quién solo espera que tú resuelvas todo.",
+        },
+        {
+            event: 2,
+            text: "A mediados de noviembre, Venus deja de ir hacia atrás en Libra y el aire se limpia: lo que seguía doliendo de tu ruptura pierde peso y vuelves a sentir curiosidad real por conocer gente.",
+        },
+        {
+            event: 4,
+            text: "A principios de enero, Venus entra en Sagitario y toca a tu Marte: es tu ventana más clara para cruzarte con alguien que traiga risa, complicidad y ganas de compartir planes sin que tengas que empujar.",
+        },
+    ],
+    gesture:
+        "Esta semana, cuando sientas el impulso de escribirle a alguien para llenar un rato de silencio, deja el celular boca abajo en otra mesa durante veinte minutos. Deja que la otra persona tenga el espacio de buscarte a ti.",
+    closing: "Quien es para ti no necesita que corras para alcanzarlo.",
+};

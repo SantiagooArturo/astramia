@@ -133,7 +133,7 @@ describe("chart", () => {
         expect(sky).toContain("Hoy es 14 de octubre de 2026");
         expect(sky).toContain("Venus está retrógrada en Escorpio");
         expect(sky).toContain(
-            "- finales de octubre: Venus entra en Libra (tu signo solar)",
+            "1. finales de octubre: Venus entra en Libra (tu signo solar)",
         );
     });
 });

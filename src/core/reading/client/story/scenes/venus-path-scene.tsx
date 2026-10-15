@@ -1,7 +1,7 @@
 "use client";
 
 import { animate, motion, useReducedMotion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ZODIAC_SIGNS } from "@/core/landing/domain/zodiac";
 import type { SkyEvent } from "@/core/reading/domain/types";
 import { cn } from "@/frontend/lib/utils";
@@ -56,26 +56,38 @@ const LEG_SECONDS = 1.3;
  * and stops at each moment the text talks about, lit in gold when it
  * touches their chart.
  */
-export function VenusPathScene({ events }: { events: readonly SkyEvent[] }) {
+export function VenusPathScene({
+    events,
+    focus,
+}: {
+    events: readonly SkyEvent[];
+    /** The moment being read: Venus travels there. None: the whole path. */
+    focus?: number;
+}) {
     const reducedMotion = useReducedMotion();
     const stops = events.map((_, i) => (i + 1) / (events.length + 0.5));
-    const [t, setT] = useState(reducedMotion ? 1 : 0);
+    const target = focus === undefined ? 1 : (stops[focus] ?? 1);
+    const [t, setT] = useState(reducedMotion ? target : 0);
+    const tRef = useRef(t);
+    tRef.current = t;
 
+    // From wherever Venus is to the moment now being read.
     useEffect(() => {
         if (reducedMotion) {
-            setT(1);
+            setT(target);
             return;
         }
-        const controls = animate(0, 1, {
-            duration: LEG_SECONDS * (events.length + 0.5),
+        const from = tRef.current;
+        const controls = animate(from, target, {
+            duration: Math.max(0.8, Math.abs(target - from) * LEG_SECONDS * 3),
             ease: "easeInOut",
-            delay: 0.6,
+            delay: from === 0 ? 0.6 : 0,
             onUpdate: setT,
         });
         return () => controls.stop();
-    }, [events.length, reducedMotion]);
+    }, [target, reducedMotion]);
 
-    const venus = along(t * 0.98);
+    const venus = along(focus === undefined ? t * 0.98 : t);
 
     return (
         <div className="flex h-full w-full items-center justify-center">
@@ -110,7 +122,8 @@ export function VenusPathScene({ events }: { events: readonly SkyEvent[] }) {
 
                 {events.map((event, i) => {
                     const at = along(stops[i]);
-                    const reached = t >= stops[i];
+                    const reached = t >= stops[i] - 0.001;
+                    const current = focus === i;
                     const own = event.mine.length > 0;
                     const glyph = ZODIAC_SIGNS.find(
                         (s) => s.name === event.sign,
@@ -123,7 +136,7 @@ export function VenusPathScene({ events }: { events: readonly SkyEvent[] }) {
                             <circle
                                 cx={at.x}
                                 cy={at.y}
-                                r={own ? 6 : 4.5}
+                                r={current ? 7 : own ? 6 : 4.5}
                                 className={cn(
                                     "transition-[fill] duration-500",
                                     reached
@@ -133,7 +146,7 @@ export function VenusPathScene({ events }: { events: readonly SkyEvent[] }) {
                                         : "fill-astral-ink",
                                 )}
                             />
-                            {own && reached && (
+                            {(own || current) && reached && (
                                 <motion.circle
                                     cx={at.x}
                                     cy={at.y}

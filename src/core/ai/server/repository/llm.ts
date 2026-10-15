@@ -1,6 +1,13 @@
 import "server-only";
 import { getLogger } from "@logtape/logtape";
-import { generateText, type ModelMessage, streamText } from "ai";
+import {
+    generateText,
+    type ModelMessage,
+    Output,
+    smoothStream,
+    streamText,
+} from "ai";
+import type { z } from "zod";
 import { ServerConfig } from "@/config/server-config";
 import type {
     AiReasoning,
@@ -70,6 +77,34 @@ export async function generate(params: {
 }
 
 /**
+ * Like `generate`, for a typed object: the model fills `schema` (validated
+ * by the SDK). Same fallback, usage record and cut check.
+ */
+export async function generateObject<T>(params: {
+    model: string;
+    system: string;
+    prompt: string;
+    schema: z.ZodType<T>;
+    maxOutputTokens: number;
+    reasoning: AiReasoning;
+    usage: AiUsageContext;
+}): Promise<T> {
+    const result = await generateText({
+        model: params.model,
+        system: params.system,
+        prompt: params.prompt,
+        output: Output.object({ schema: params.schema }),
+        maxOutputTokens: params.maxOutputTokens,
+        reasoning: params.reasoning,
+        providerOptions: withFallback(params.model),
+    });
+    await recordUsage(params.usage, toAiUsage(params.model, result));
+    if (isCut(params.usage, result.finishReason))
+        throw new Error(`${params.usage.purpose} was cut by maxOutputTokens`);
+    return result.output as T;
+}
+
+/**
  * Streams a chat turn; `onText` receives the full reply once it ends. Never
  * called when the model fails, so a failed turn leaves nothing behind.
  */
@@ -89,6 +124,12 @@ export function stream(params: {
         maxOutputTokens: params.maxOutputTokens,
         reasoning: params.reasoning,
         providerOptions: withFallback(params.model),
+        // Models send text in bursts; word by word at an even pace reads
+        // like someone speaking, not a page loading.
+        experimental_transform: smoothStream({
+            chunking: "word",
+            delayInMs: 22,
+        }),
         onError: ({ error }) => {
             logger.error("{purpose} stream failed: {error}", {
                 purpose: params.usage.purpose,
