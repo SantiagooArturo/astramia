@@ -285,10 +285,11 @@ export function venusOutlook(
             .filter(([, natalSign]) => natalSign === sign)
             .map(([body]) => body);
     const event = (
-        date: Date,
+        day: number,
         kind: SkyEvent["kind"],
         sign: string,
     ): SkyEvent => {
+        const date = new Date(noon + day * DAY_MS);
         const tags = mine(sign);
         const verb = {
             entra: "entra en",
@@ -305,6 +306,8 @@ export function venusOutlook(
             sign,
             month: date.getUTCMonth(),
             mine: tags,
+            day,
+            date: date.toISOString().slice(0, 10),
         };
     };
 
@@ -314,15 +317,12 @@ export function venusOutlook(
     const startRetrograde = retrograde;
     for (let i = 1; i <= days; i++) {
         const current = at(i);
-        const date = new Date(noon + i * DAY_MS);
         const backwards = motion(previous, current) < 0;
         const sign = longitudeToSign(current).sign.name;
         if (backwards !== retrograde)
-            events.push(
-                event(date, backwards ? "retrograda" : "directa", sign),
-            );
+            events.push(event(i, backwards ? "retrograda" : "directa", sign));
         if (longitudeToSign(previous).sign.name !== sign)
-            events.push(event(date, "entra", sign));
+            events.push(event(i, "entra", sign));
         retrograde = backwards;
         previous = current;
     }

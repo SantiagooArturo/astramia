@@ -134,6 +134,9 @@ export const skyEventSchema = z.object({
     sign: z.string(),
     /** 0–11, for drawing the months ahead. */
     month: z.number(),
+    /** Days after the reading's day, and that day (YYYY-MM-DD, UTC): to draw Venus there. */
+    day: z.number().int(),
+    date: z.string(),
     /** The person's placements in that sign. */
     mine: z.array(z.enum(["Sol", "Venus", "Luna"])),
 });

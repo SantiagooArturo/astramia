@@ -88,6 +88,8 @@ describe("venusOutlook", () => {
                 sign: "Libra",
                 month: 9,
                 mine: ["Sol"],
+                day: 11,
+                date: "2026-10-25",
             },
             {
                 when: "mediados de noviembre",
@@ -96,6 +98,8 @@ describe("venusOutlook", () => {
                 sign: "Libra",
                 month: 10,
                 mine: ["Sol"],
+                day: 32,
+                date: "2026-11-15",
             },
             {
                 when: "principios de diciembre",
@@ -104,6 +108,8 @@ describe("venusOutlook", () => {
                 sign: "Escorpio",
                 month: 11,
                 mine: [],
+                day: 52,
+                date: "2026-12-05",
             },
         ]);
     });

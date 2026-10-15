@@ -1,6 +1,11 @@
-import { ZODIAC_SIGNS } from "@/core/landing/domain/zodiac";
+import {
+    julianDay,
+    orbitPositions,
+    venusLongitude,
+} from "@/core/landing/domain/ephemeris";
+import { longitudeToSign, ZODIAC_SIGNS } from "@/core/landing/domain/zodiac";
 import type { StoryBody } from "./story";
-import type { NatalChart } from "./types";
+import type { NatalChart, SkyEvent } from "./types";
 
 /**
  * The solar system on the day they were born, laid out to be drawn. Nothing
@@ -74,6 +79,21 @@ export interface SolarSystemView {
     sight(body: StoryBody): { from: Point; to: Point; label: Point };
 }
 
+const MIDDLE = (BAND.inner + BAND.outer) / 2;
+
+/** The twelve signs on the band, as seen from the Earth at `earth`. */
+function bandSigns(earth: Point): BandSign[] {
+    return ZODIAC_SIGNS.map((sign, i) => ({
+        name: sign.name,
+        glyph: sign.glyph,
+        inner: fixed(sightOn(earth, i * 30, BAND.inner)),
+        outer: fixed(sightOn(earth, i * 30, BAND.outer)),
+        middle: fixed(sightOn(earth, i * 30 + 15, MIDDLE)),
+    }));
+}
+
+const radius = (p: Point) => fixed({ x: Math.hypot(p.x, p.y), y: 0 }).x;
+
 export function solarSystemView(chart: NatalChart): SolarSystemView {
     const longitude = (body: StoryBody) =>
         chart.placements.find((p) => p.body === body)?.longitude ?? 0;
@@ -89,27 +109,75 @@ export function solarSystemView(chart: NatalChart): SolarSystemView {
             y: earth.y + MOON_GAP * moonAt.y,
         }),
     };
-    const radius = (p: Point) => Math.hypot(p.x, p.y);
-    const middle = (BAND.inner + BAND.outer) / 2;
-
     return {
         bodies,
         orbits: {
-            Venus: fixed({ x: radius(bodies.Venus), y: 0 }).x,
-            Tierra: fixed({ x: radius(earth), y: 0 }).x,
-            Marte: fixed({ x: radius(bodies.Marte), y: 0 }).x,
+            Venus: radius(bodies.Venus),
+            Tierra: radius(earth),
+            Marte: radius(bodies.Marte),
         },
-        signs: ZODIAC_SIGNS.map((sign, i) => ({
-            name: sign.name,
-            glyph: sign.glyph,
-            inner: fixed(sightOn(earth, i * 30, BAND.inner)),
-            outer: fixed(sightOn(earth, i * 30, BAND.outer)),
-            middle: fixed(sightOn(earth, i * 30 + 15, middle)),
-        })),
+        signs: bandSigns(earth),
         sight: (body) => ({
             from: earth,
             to: fixed(sightOn(earth, longitude(body), BAND.inner)),
             label: fixed(sightOn(earth, longitude(body), BAND.inner - 0.09)),
         }),
+    };
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** Days drawn past the last moment: Venus doesn't stop at the edge. */
+const ROUTE_TAIL = 12;
+
+/**
+ * Venus over the months after the reading, one day at a time from the
+ * reading's day: where it and the Earth are on their orbits, and the sign
+ * Venus is seen in from here (the same sky <cielo> told the model).
+ */
+export interface VenusRoute {
+    venus: Point[];
+    earth: Point[];
+    sign: string[];
+    /** The reading's day, whole: the first look before the camera closes in. */
+    today: {
+        mars: Point;
+        orbits: SolarSystemView["orbits"];
+        signs: BandSign[];
+    };
+    /** Each event's day: where Venus stops for it. */
+    stops: number[];
+}
+
+export function venusRoute(events: readonly SkyEvent[]): VenusRoute | null {
+    if (!events.length) return null;
+    const start =
+        Date.parse(`${events[0].date}T12:00:00Z`) - events[0].day * DAY_MS;
+    const days = Math.max(...events.map((e) => e.day)) + ROUTE_TAIL;
+    const venus: Point[] = [];
+    const earth: Point[] = [];
+    const sign: string[] = [];
+    let mars: Point = { x: 0, y: 0 };
+    for (let day = 0; day <= days; day++) {
+        const jd = julianDay(new Date(start + day * DAY_MS));
+        const at = orbitPositions(jd);
+        venus.push(inView(at.venus));
+        earth.push(inView(at.earth));
+        sign.push(longitudeToSign(venusLongitude(jd)).sign.name);
+        if (day === 0) mars = inView(at.mars);
+    }
+    return {
+        venus,
+        earth,
+        sign,
+        today: {
+            mars,
+            orbits: {
+                Venus: radius(venus[0]),
+                Tierra: radius(earth[0]),
+                Marte: radius(mars),
+            },
+            signs: bandSigns(earth[0]),
+        },
+        stops: events.map((e) => e.day),
     };
 }

@@ -11,7 +11,6 @@ import {
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { MoonPhaseName } from "@/core/landing/domain/ephemeris";
 import {
-    BAND,
     type Point,
     type SystemBody,
     solarSystemView,
@@ -21,6 +20,20 @@ import type { NatalChart } from "@/core/reading/domain/types";
 import { sphereShare } from "../globe";
 import { MoonPhaseScene } from "./moon-phase-scene";
 import { PlanetScene } from "./planet-scene";
+import {
+    Band,
+    cameraAt,
+    FRAME,
+    FRONT,
+    facingTheSun,
+    HALF,
+    Label,
+    LOOK,
+    NightShade,
+    type Side,
+    Sprite,
+    SunGlow,
+} from "./system-parts";
 
 /**
  * The body the camera flies to and what it shows there: the sign it was in
@@ -30,69 +43,14 @@ export type SystemFocus =
     | { body: StoryBody; sign: string; signs?: readonly [string, string] }
     | { body: "Luna"; phase: MoonPhaseName };
 
-/** Half the view: the band's outer edge plus a little air. */
-const HALF = 1.04;
-
-/**
- * Each body from afar: its radius, and a small rendered sphere of it
- * (scripts/planet-sprites.py): unlit, north up, as the 3D globe starts.
- */
-const LOOK: Record<SystemBody, { r: number; sprite: string }> = {
-    Sol: { r: 0.055, sprite: "sol" },
-    Venus: { r: 0.02, sprite: "venus" },
-    Tierra: { r: 0.022, sprite: "tierra" },
-    Marte: { r: 0.017, sprite: "marte" },
-    Luna: { r: 0.009, sprite: "luna" },
-};
-/** The sphere's share of its sprite: the rest is atmosphere or flames. */
-const SPRITE_SPHERE = 0.86;
-
-/** The angle (SVG degrees, clockwise) from a body toward the Sun. */
-function towardTheSun(p: Point): number {
-    return (Math.atan2(-p.y, -p.x) * 180) / Math.PI;
-}
-
-/** The light comes from the Sun's side and a little toward us. */
-const FRONT = 0.42;
-
 /** Where the Sun is, for the globe's shader (x right, y up, z toward us). */
 function sunLight(p: Point): readonly [number, number, number] {
     const length = Math.hypot(p.x, p.y) || 1;
     return [-p.x / length, p.y / length, FRONT];
 }
 
-const smoothstep = (a: number, b: number, x: number) => {
-    const t = Math.min(Math.max((x - a) / (b - a), 0), 1);
-    return t * t * (3 - 2 * t);
-};
-
-/**
- * The night side laid over a sprite, from its dark edge (0) to the edge
- * facing the Sun (1): the globe's own shading along that line, so the dot
- * and the globe that takes over are lit alike.
- */
-const NIGHT = Array.from({ length: 25 }, (_, i) => {
-    const offset = i / 24;
-    const u = (offset - 0.5) / (SPRITE_SPHERE / 2);
-    if (u <= -1) return { offset, opacity: 0.95 };
-    if (u >= 1) return { offset, opacity: 0 };
-    const z = Math.sqrt(1 - u * u);
-    const d = (u + FRONT * z) / Math.hypot(1, FRONT);
-    const lit = smoothstep(-0.06, 0.22, d) * (0.3 + 0.7 * Math.max(d, 0));
-    const shade = 0.05 + 0.95 * lit;
-    // The sprites' own limb darkening, already in the picture.
-    const drawn = 0.75 + 0.25 * Math.sqrt(z);
-    return { offset, opacity: Math.min(Math.max(1 - shade / drawn, 0), 0.95) };
-});
-
 /** Bodies with a night side drawn over them (the Sun has none). */
 const NIGHT_BODIES = ["Venus", "Tierra", "Marte", "Luna"] as const;
-
-/**
- * The system's share of the stage's short side: air between the band and
- * the screen's edges (and, on a phone, the text under it).
- */
-const FRAME = 0.84;
 
 /**
  * How close the camera gets: the dot grows to the globe that replaces it,
@@ -123,64 +81,6 @@ const IN = { duration: 1.5, ease: [0.45, 0, 0.15, 1] } as const;
 /** While the camera's last stretch shows it, the globe covers its dot. */
 const HANDOFF = [0.72, 0.9];
 const OUT = { duration: 1, ease: [0.4, 0, 0.2, 1] } as const;
-
-/**
- * The camera between the whole system (t = 0) and one body (t = 1). The
- * scale grows geometrically, which reads as an even zoom, and the body
- * slides steadily to the middle instead of swinging out first.
- */
-function cameraAt(t: number, to: Point, zoom: number) {
-    const scale = zoom ** t;
-    const half = HALF / scale;
-    const x = to.x - ((1 - t) * to.x) / scale;
-    const y = to.y - ((1 - t) * to.y) / scale;
-    return `${x - half} ${y - half} ${2 * half} ${2 * half}`;
-}
-
-/** The ring between two signs' starts, on the band. */
-function sectorPath(
-    from: { inner: Point; outer: Point },
-    to: { inner: Point; outer: Point },
-) {
-    const p = (q: Point) => `${q.x} ${q.y}`;
-    // Signs run counterclockwise: sweep 0 forward on the inside, 1 back.
-    return `M ${p(from.inner)} A ${BAND.inner} ${BAND.inner} 0 0 0 ${p(to.inner)} L ${p(to.outer)} A ${BAND.outer} ${BAND.outer} 0 0 1 ${p(from.outer)} Z`;
-}
-
-/** Which way a label runs from its point. */
-type Side = "center" | "left" | "right";
-
-const SIDE: Record<Side, string> = {
-    center: "-translate-x-1/2",
-    // Ends at the point: the text sits to its left.
-    left: "-translate-x-full",
-    right: "",
-};
-
-/** A label over the drawing, in page type (it doesn't grow with the zoom). */
-function Label({
-    at,
-    side = "center",
-    children,
-    className,
-}: {
-    at: Point;
-    side?: Side;
-    children: React.ReactNode;
-    className?: string;
-}) {
-    return (
-        <span
-            className={`absolute -translate-y-1/2 whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.18em] lg:text-[11px] ${SIDE[side]} ${className ?? ""}`}
-            style={{
-                left: `${((at.x + HALF) / (2 * HALF)) * 100}%`,
-                top: `${((at.y + HALF) / (2 * HALF)) * 100}%`,
-            }}
-        >
-            {children}
-        </span>
-    );
-}
 
 /**
  * Where a body's name goes: beside its dot, never over it. Venus's and the
@@ -375,31 +275,12 @@ export function SolarSystemScene({
                 >
                     <defs>
                         {NIGHT_BODIES.map((body) => (
-                            <linearGradient
+                            <NightShade
                                 key={body}
                                 id={`${glowId}-${body}`}
-                                gradientTransform={`rotate(${towardTheSun(view.bodies[body])} 0.5 0.5)`}
-                            >
-                                {NIGHT.map(({ offset, opacity }) => (
-                                    <stop
-                                        key={offset}
-                                        offset={offset}
-                                        stopColor="#03030a"
-                                        stopOpacity={opacity}
-                                    />
-                                ))}
-                            </linearGradient>
+                                turn={facingTheSun(view.bodies[body])}
+                            />
                         ))}
-                        <radialGradient id={glowId}>
-                            <stop
-                                offset="0%"
-                                stopColor="oklch(0.85 0.15 75 / 55%)"
-                            />
-                            <stop
-                                offset="100%"
-                                stopColor="oklch(0.85 0.15 75 / 0%)"
-                            />
-                        </radialGradient>
                     </defs>
 
                     {/* The zodiac band, cut where the Earth sees each sign begin. */}
@@ -408,60 +289,7 @@ export function SolarSystemScene({
                         animate={{ opacity: 1 }}
                         transition={{ duration: 1.2 }}
                     >
-                        {view.signs.map((sign, i) =>
-                            lit.has(sign.name) ? (
-                                <path
-                                    key={`lit-${sign.name}`}
-                                    d={sectorPath(
-                                        sign,
-                                        view.signs[(i + 1) % 12],
-                                    )}
-                                    fill="oklch(0.84 0.12 85 / 22%)"
-                                    stroke="var(--astral-gold)"
-                                    strokeWidth={1}
-                                    vectorEffect="non-scaling-stroke"
-                                />
-                            ) : null,
-                        )}
-                        {[BAND.inner, BAND.outer].map((r) => (
-                            <circle
-                                key={r}
-                                r={r}
-                                fill="none"
-                                stroke="var(--astral-ink)"
-                                strokeWidth={1}
-                                vectorEffect="non-scaling-stroke"
-                            />
-                        ))}
-                        {view.signs.map((sign) => (
-                            <line
-                                key={sign.name}
-                                x1={sign.inner.x}
-                                y1={sign.inner.y}
-                                x2={sign.outer.x}
-                                y2={sign.outer.y}
-                                stroke="var(--astral-ink)"
-                                strokeWidth={1}
-                                vectorEffect="non-scaling-stroke"
-                            />
-                        ))}
-                        {view.signs.map((sign) => (
-                            <text
-                                key={sign.name}
-                                x={sign.middle.x}
-                                y={sign.middle.y}
-                                textAnchor="middle"
-                                dominantBaseline="central"
-                                fontSize={0.06}
-                                fill={
-                                    lit.has(sign.name)
-                                        ? "var(--astral-gold)"
-                                        : "var(--muted-foreground)"
-                                }
-                            >
-                                {sign.glyph}
-                            </text>
-                        ))}
+                        <Band signs={view.signs} lit={lit} />
                     </motion.g>
 
                     {/* Orbits through where each planet was. */}
@@ -495,31 +323,18 @@ export function SolarSystemScene({
                         />
                     )}
 
-                    <circle r={LOOK.Sol.r * 3.2} fill={`url(#${glowId})`} />
-                    {(Object.keys(LOOK) as SystemBody[]).map((body) => {
-                        const at = view.bodies[body];
-                        const half = LOOK[body].r / SPRITE_SPHERE;
-                        return (
-                            <g key={`sprite-${body}`}>
-                                <image
-                                    href={`/planets/sprites/${LOOK[body].sprite}.webp`}
-                                    x={at.x - half}
-                                    y={at.y - half}
-                                    width={half * 2}
-                                    height={half * 2}
-                                />
-                                {/* Its night side, away from the Sun. */}
-                                {body !== "Sol" && (
-                                    <circle
-                                        cx={at.x}
-                                        cy={at.y}
-                                        r={half}
-                                        fill={`url(#${glowId}-${body})`}
-                                    />
-                                )}
-                            </g>
-                        );
-                    })}
+                    <SunGlow id={glowId} />
+                    {(Object.keys(LOOK) as SystemBody[]).map((body) => (
+                        <Sprite
+                            key={`sprite-${body}`}
+                            body={body}
+                            at={view.bodies[body]}
+                            // Its night side, away from the Sun.
+                            shade={
+                                body === "Sol" ? undefined : `${glowId}-${body}`
+                            }
+                        />
+                    ))}
                 </motion.svg>
 
                 <motion.div

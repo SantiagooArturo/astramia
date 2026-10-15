@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { longitudeToSign } from "@/core/landing/domain/zodiac";
-import { natalChart } from "../chart";
+import { natalChart, venusOutlook } from "../chart";
 import { SAMPLE_READING } from "../sample-reading";
-import { BAND, type Point, sightOn, solarSystemView } from "../solar-system";
+import {
+    BAND,
+    type Point,
+    sightOn,
+    solarSystemView,
+    venusRoute,
+} from "../solar-system";
 import type { StoryBody } from "../story";
 
 const chart = natalChart(
@@ -52,5 +58,38 @@ describe("the solar system of their birthday", () => {
             expect(angle(earth, sign.inner)).toBeCloseTo(i * 30, 2);
             expect(angle(earth, sign.outer)).toBeCloseTo(i * 30, 2);
         });
+    });
+});
+
+describe("venusRoute", () => {
+    const { events } = venusOutlook(
+        new Date("2026-10-14T15:00:00Z"),
+        { sun: "Libra", moon: "Tauro", venus: "Virgo" },
+        60,
+    );
+    const route = venusRoute(events);
+
+    it("follows Venus day by day, a little past the last moment", () => {
+        expect(route?.venus).toHaveLength(52 + 12 + 1);
+        expect(route?.stops).toEqual([11, 32, 52]);
+    });
+
+    it("sees Venus in the sign each moment names, that day", () => {
+        for (const event of events)
+            expect(route?.sign[event.day]).toBe(event.sign);
+        // The day before it enters, it's still in the one it leaves.
+        expect(route?.sign[10]).toBe("Escorpio");
+    });
+
+    it("keeps Venus and the Earth on their orbits", () => {
+        const r = (p: { x: number; y: number }) => Math.hypot(p.x, p.y);
+        for (const p of route?.venus ?? [])
+            expect(r(p)).toBeCloseTo(route?.today.orbits.Venus ?? 0, 2);
+        for (const p of route?.earth ?? [])
+            expect(r(p)).toBeCloseTo(route?.today.orbits.Tierra ?? 0, 1);
+    });
+
+    it("has none without moments", () => {
+        expect(venusRoute([])).toBeNull();
     });
 });
