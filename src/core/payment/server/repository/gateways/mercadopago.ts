@@ -176,7 +176,12 @@ export const mercadoPagoGateway: PaymentGateway = {
     },
 
     parseReturn(query) {
-        return query.payment_id ?? query.collection_id ?? null;
+        // Back to the site without paying, Mercado Pago sends them as the
+        // text "null": no payment to look for.
+        const id = [query.payment_id, query.collection_id].find(
+            (value) => value && value !== "null",
+        );
+        return id ?? null;
     },
 
     async fetchPayment(providerPaymentId) {

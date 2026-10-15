@@ -72,6 +72,18 @@ describe("mercadoPagoGateway.parseReturn", () => {
         );
         expect(mercadoPagoGateway.parseReturn({})).toBeNull();
     });
+
+    it("finds none when the buyer came back without paying", () => {
+        expect(
+            mercadoPagoGateway.parseReturn({
+                checkout: "mercadopago",
+                collection_id: "null",
+                collection_status: "null",
+                payment_id: "null",
+                status: "null",
+            }),
+        ).toBeNull();
+    });
 });
 
 describe("toMercadoPagoPreference", () => {

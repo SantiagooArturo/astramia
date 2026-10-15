@@ -44,9 +44,8 @@ export default async function ReadingPage({
     // Before the session check: a buyer who comes back from the gateway in
     // another browser (no cookie) still gets the payment applied.
     let payment: PaymentState = "none";
-    const returned = await syncCheckoutReturnService(
-        flatten(await searchParams),
-    );
+    const query = flatten(await searchParams);
+    const returned = await syncCheckoutReturnService(query);
     if (!returned.ok) {
         // Never offer to pay again for a payment we couldn't apply: a mismatch
         // needs a person, anything else (gateway down) retries on refresh.
@@ -57,6 +56,10 @@ export default async function ReadingPage({
         // Back on the story, right where the free part stopped.
         if (status === "paid") redirect(`/lectura/r/${id}#${CONTINUE_ANCHOR}`);
         payment = status === "failed" ? "failed" : "confirming";
+    } else if (query.checkout) {
+        // Back from the gateway with no payment (they left without paying):
+        // the button again, on a clean URL.
+        redirect(`/lectura/r/${id}`);
     }
 
     const session = await authenticate();
