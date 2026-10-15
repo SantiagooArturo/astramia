@@ -75,6 +75,14 @@ the one they paid with): signing up *or in* from an anonymous session runs the
 `ai_usage` to the account (`server/auth/claim-anonymous-data.ts`) before Better
 Auth deletes the anonymous user. `/lecturas` lists them from any device.
 
+Ways in, each shown once configured (`AUTH_METHODS` in `server-config.ts`):
+"Continuar con Google" (`GOOGLE_CLIENT_ID/SECRET`) first, since everybody
+knows it, but hidden inside Instagram/TikTok/Facebook browsers, where Google
+refuses OAuth; then a 6-digit code by e-mail (`RESEND_API_KEY`; Better Auth
+`emailOTP`, hashed, 10 min), typed in the same browser so the anonymous
+session (and its reading) comes along. No passwords to forget. Until Resend is
+set up, production falls back to e-mail + password; development logs codes.
+
 Birth times are read in the browser's IANA zone (`readings.birth_time_zone`,
 `America/Lima` when missing), so historical summer times count. Better Auth's
 rate limits live in the `rate_limit` table, shared by every serverless

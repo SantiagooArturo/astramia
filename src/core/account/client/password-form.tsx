@@ -9,33 +9,18 @@ import { Button } from "@/frontend/components/ui/button";
 import { Input } from "@/frontend/components/ui/input";
 import { Label } from "@/frontend/components/ui/label";
 import { Spinner } from "@/frontend/components/ui/spinner";
+import { authErrorMessage } from "./auth-errors";
 
 type Mode = "signUp" | "signIn";
 
 const MIN_PASSWORD = 8;
 
-/** Better Auth error → what the buyer can do about it. */
-function messageFor(error: { code?: string; status?: number }): string {
-    if (error.status === 429)
-        return "Demasiados intentos. Espera un minuto y vuelve a probar.";
-    switch (error.code) {
-        case "INVALID_EMAIL_OR_PASSWORD":
-            return "El e-mail o la contraseña no coinciden.";
-        case "INVALID_EMAIL":
-            return "Revisa tu e-mail.";
-        case "PASSWORD_TOO_SHORT":
-            return `Usa al menos ${MIN_PASSWORD} caracteres.`;
-        default:
-            return "No pudimos completar esto ahora. Inténtalo otra vez.";
-    }
-}
-
 /**
- * Sign up or sign in with e-mail. From an anonymous session, either one moves
- * the visitor's readings into the account (`claimAnonymousData`), then the
- * page re-renders with the new session.
+ * E-mail + password, until an e-mail sender (Resend) is configured and codes
+ * take over. From an anonymous session, signing up or in moves the visitor's
+ * readings into the account (`claimAnonymousData`).
  */
-export function AccountForm({
+export function PasswordForm({
     initialMode = "signUp",
     defaultEmail = "",
     submitLabel,
@@ -79,10 +64,10 @@ export function AccountForm({
             setPending(false);
             if (error.code?.startsWith("USER_ALREADY_EXISTS")) {
                 setMode("signIn");
-                setError("Ese e-mail ya tiene cuenta. Escribe tu contraseña.");
+                setError("Ese correo ya tiene cuenta. Escribe tu contraseña.");
                 return;
             }
-            setError(messageFor(error));
+            setError(authErrorMessage(error));
             return;
         }
         if (reload) window.location.reload();
@@ -93,7 +78,7 @@ export function AccountForm({
         <form onSubmit={submit} className="flex flex-col gap-4">
             <div className="grid gap-3 sm:grid-cols-2">
                 <div className="flex flex-col gap-2">
-                    <Label htmlFor={`${id}-email`}>E-mail</Label>
+                    <Label htmlFor={`${id}-email`}>Tu correo</Label>
                     <Input
                         id={`${id}-email`}
                         type="email"

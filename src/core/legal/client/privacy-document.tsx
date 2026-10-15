@@ -60,6 +60,13 @@ const SECTIONS: LegalSection[] = [
                                 nombre, si decides indicarlo).
                             </>,
                             <>
+                                <strong>Cuenta (opcional):</strong> si guardas
+                                tus lecturas en una cuenta, tu correo; si entras
+                                con Google, Google nos comparte tu nombre, tu
+                                correo y tu foto de perfil. No accedemos a nada
+                                más de tu cuenta de Google.
+                            </>,
+                            <>
                                 <strong>
                                     Datos de nacimiento (opcionales):
                                 </strong>{" "}

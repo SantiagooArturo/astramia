@@ -15,6 +15,13 @@ export const env = createEnv({
         MERCADOPAGO_WEBHOOK_SECRET: z.string().optional(),
         /** Vercel AI Gateway. On Vercel deployments OIDC replaces it. */
         AI_GATEWAY_API_KEY: z.string().optional(),
+        /** "Continuar con Google" shows up once both are set (Google Cloud → OAuth client). */
+        GOOGLE_CLIENT_ID: z.string().optional(),
+        GOOGLE_CLIENT_SECRET: z.string().optional(),
+        /** Resend: sign-in codes by e-mail. Without it, accounts use a password. */
+        RESEND_API_KEY: z.string().optional(),
+        /** Sender on a domain verified in Resend. */
+        EMAIL_FROM: z.string().default("Astramia AI <hola@astramia.app>"),
         AI_MODEL_TEASER: z.string().default(DEFAULT_AI_MODELS.teaser),
         AI_MODEL_READING: z.string().default(DEFAULT_AI_MODELS.reading),
         AI_MODEL_CHAT: z.string().default(DEFAULT_AI_MODELS.chat),
@@ -31,6 +38,10 @@ export const env = createEnv({
         MERCADOPAGO_ACCESS_TOKEN: process.env.MERCADOPAGO_ACCESS_TOKEN,
         MERCADOPAGO_WEBHOOK_SECRET: process.env.MERCADOPAGO_WEBHOOK_SECRET,
         AI_GATEWAY_API_KEY: process.env.AI_GATEWAY_API_KEY,
+        GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+        GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+        RESEND_API_KEY: process.env.RESEND_API_KEY,
+        EMAIL_FROM: process.env.EMAIL_FROM,
         AI_MODEL_TEASER: process.env.AI_MODEL_TEASER,
         AI_MODEL_READING: process.env.AI_MODEL_READING,
         AI_MODEL_CHAT: process.env.AI_MODEL_CHAT,

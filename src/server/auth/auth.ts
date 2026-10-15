@@ -1,12 +1,17 @@
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { getLogger } from "@logtape/logtape";
 import { APIError, betterAuth } from "better-auth";
-import { anonymous, openAPI } from "better-auth/plugins";
+import { anonymous, emailOTP, openAPI } from "better-auth/plugins";
 import { headers } from "next/headers";
 import { cache } from "react";
 import { ServerConfig } from "@/config/server-config";
 import { db } from "@/server/drizzle/db";
 import * as authSchema from "@/server/drizzle/schemas/auth-schema";
+import { sendEmail } from "@/server/email/send-email";
+import {
+    SIGN_IN_CODE_MINUTES,
+    signInCodeEmail,
+} from "@/server/email/sign-in-code-email";
 import { claimAnonymousData } from "./claim-anonymous-data";
 
 const logger = getLogger(["server", "auth"]);
@@ -28,6 +33,11 @@ export const auth = betterAuth({
             "/sign-in/anonymous": { window: 60 * 60, max: 60 },
         },
     },
+    // Only once GOOGLE_CLIENT_ID/SECRET are set. Its callback signs in from an
+    // anonymous session like any other method, so the reading follows along.
+    socialProviders: ServerConfig.google
+        ? { google: { ...ServerConfig.google, prompt: "select_account" } }
+        : {},
     emailAndPassword: {
         enabled: true,
         // Starter keeps verification off so sign-up works with no email provider.
@@ -39,6 +49,18 @@ export const auth = betterAuth({
         anonymous({
             onLinkAccount: ({ anonymousUser, newUser }) =>
                 claimAnonymousData(anonymousUser.user.id, newUser.user.id),
+        }),
+        // Sign in (or up) with a 6-digit code by e-mail: no password to invent
+        // or forget, and it works inside Instagram/TikTok's browsers, where
+        // Google refuses to sign anyone in.
+        emailOTP({
+            otpLength: 6,
+            expiresIn: SIGN_IN_CODE_MINUTES * 60,
+            storeOTP: "hashed",
+            // Per IP; carriers put many buyers behind one (CGNAT).
+            rateLimit: { window: 60, max: 10 },
+            sendVerificationOTP: ({ email, otp }) =>
+                sendEmail(signInCodeEmail(email, otp)),
         }),
         openAPI({ disableDefaultReference: !ServerConfig.isDevelopment }),
     ],

@@ -78,7 +78,7 @@ export function MyReadingsScreen({
                     <p className="text-muted-foreground">
                         {account && !account.anonymous
                             ? "Todavía no tienes lecturas en tu cuenta."
-                            : "En este navegador no hay lecturas todavía."}
+                            : "Todavía no tienes lecturas aquí."}
                     </p>
                     <StartReading />
                 </div>
@@ -86,24 +86,23 @@ export function MyReadingsScreen({
 
             {account && !account.anonymous ? (
                 <p className="flex flex-wrap items-center gap-x-2 text-muted-foreground text-sm">
-                    Sesión iniciada como{" "}
+                    Entraste como{" "}
                     <span className="text-foreground">{account.email}</span> ·
                     <SignOutLink />
                 </p>
             ) : hasReadings ? (
-                <SaveAccountCard title="Guarda tus lecturas en una cuenta" />
+                <SaveAccountCard title="Guarda tus lecturas" />
             ) : (
-                <section className="flex flex-col gap-4 rounded-2xl border border-astral-ink bg-card/40 p-6">
+                <section className="flex flex-col gap-4 rounded-2xl border border-astral-ink bg-card/40 p-5">
                     <div>
-                        <h2 className="font-display text-2xl">
-                            ¿Guardaste tu lectura en una cuenta?
+                        <h2 className="font-display text-xl">
+                            ¿Ya guardaste tu lectura?
                         </h2>
-                        <p className="mt-2 text-muted-foreground text-sm">
-                            Inicia sesión y la ves aquí, en cualquier
-                            dispositivo.
+                        <p className="mt-1 text-muted-foreground text-sm">
+                            Entra y la verás aquí.
                         </p>
                     </div>
-                    <AccountForm initialMode="signIn" signInOnly />
+                    <AccountForm signInOnly />
                 </section>
             )}
         </ReadingShell>

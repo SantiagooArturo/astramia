@@ -13,6 +13,17 @@ export const ServerConfig = {
     /** Origins the browser may call from; the first is the configured one. */
     appOrigins: withWwwTwin(env.NEXT_PUBLIC_APP_URL),
     betterAuthSecret: env.BETTER_AUTH_SECRET,
+    google:
+        env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
+            ? {
+                  clientId: env.GOOGLE_CLIENT_ID,
+                  clientSecret: env.GOOGLE_CLIENT_SECRET,
+              }
+            : null,
+    email: {
+        resendApiKey: env.RESEND_API_KEY,
+        from: env.EMAIL_FROM,
+    },
     payments: {
         provider: env.PAYMENT_PROVIDER,
         mercadopago: {
@@ -49,3 +60,13 @@ export function requestOrigin(request: Request): string {
         ? origin
         : ServerConfig.appOrigins[0];
 }
+
+/**
+ * Which ways to sign in the UI offers. E-mail codes need a sender, except in
+ * development, where codes are written to the server log.
+ */
+export const AUTH_METHODS = {
+    google: ServerConfig.google !== null,
+    emailCode:
+        Boolean(ServerConfig.email.resendApiKey) || ServerConfig.isDevelopment,
+} as const;
