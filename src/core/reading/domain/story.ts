@@ -62,6 +62,8 @@ export type StoryStep = { visual: StoryVisual; chapter: number | null } & (
     | TitleStep
     | NoteStep
     | { kind: "paragraph"; text: string; heading?: string }
+    /** The reading's last line: the story ends here, before the chat. */
+    | { kind: "closing"; text: string }
 );
 
 export interface StoryChapter {
@@ -365,7 +367,13 @@ function sceneStory(input: StoryInput, scenes: ReadingScenes): Story {
         },
     ]);
 
-    // The closing line isn't a step: the Sun says it (`closingLine`).
+    steps.push({
+        kind: "closing",
+        text: scenes.closing,
+        // The gesture's star stays: the story ends where it last pointed.
+        visual: { kind: "star" },
+        chapter: null,
+    });
     return { chapters, steps };
 }
 
@@ -503,8 +511,7 @@ function markdownStory(input: StoryInput): Story {
 
     // The bold line closes the whole text, wherever it landed.
     const tail = sections.at(-1) ?? { heading: "", paragraphs: opening };
-    // The Sun says it in the chat (`closingLine`); the story leaves it out.
-    const { paragraphs } = splitClosing(tail.paragraphs);
+    const { paragraphs, closing } = splitClosing(tail.paragraphs);
     tail.paragraphs.splice(0, tail.paragraphs.length, ...paragraphs);
 
     const plan = sections.length === 5 ? chapterPlan(input) : null;
@@ -552,19 +559,15 @@ function markdownStory(input: StoryInput): Story {
         });
     });
 
-    return { chapters, steps };
-}
+    if (closing)
+        steps.push({
+            kind: "closing",
+            text: closing,
+            visual: steps.at(-1)?.visual ?? SKY,
+            chapter: null,
+        });
 
-/**
- * The reading's last line: the first thing their Sun says as it rises over
- * the chat. Old readings ended on it in bold.
- */
-export function closingLine(content: string): string | null {
-    const scenes = parseScenes(content);
-    if (scenes) return scenes.closing;
-    const last = toReadingBlocks(content).at(-1);
-    if (last?.kind !== "paragraph") return null;
-    return splitClosing([last.text]).closing;
+    return { chapters, steps };
 }
 
 export function buildStory(input: StoryInput): Story {

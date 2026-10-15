@@ -8,7 +8,7 @@ import {
     SAMPLE_READING,
     SAMPLE_SCENES,
 } from "@/core/reading/domain/sample-reading";
-import { closingLine, storyQuestion } from "@/core/reading/domain/story";
+import { storyQuestion } from "@/core/reading/domain/story";
 import type { ChatMessage, Reading } from "@/core/reading/domain/types";
 
 export const metadata: Metadata = {
@@ -74,7 +74,6 @@ export default function SampleReadingPage() {
                     expiresAt={null}
                     sunSign={reading.sunSign}
                     demo
-                    closing={closingLine(reading.content ?? "")}
                 />
             }
         />

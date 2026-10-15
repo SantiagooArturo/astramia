@@ -3,7 +3,6 @@ import { natalChart, readingOutlook } from "../chart";
 import { SAMPLE_READING, SAMPLE_SCENES } from "../sample-reading";
 import {
     buildStory,
-    closingLine,
     type StoryInput,
     storyQuestion,
     visualKey,
@@ -122,10 +121,11 @@ describe("buildStory", () => {
         ]);
     });
 
-    it("hands the bold line to the Sun, out of the last chapter", () => {
-        expect(closingLine(SAMPLE_READING.content)).toBe(
-            "Lo que es para ti no necesita que corras: necesita que lo veas venir.",
-        );
+    it("ends on the bold line, taken out of the last chapter", () => {
+        expect(story.steps.at(-1)).toMatchObject({
+            kind: "closing",
+            text: "Lo que es para ti no necesita que corras: necesita que lo veas venir.",
+        });
         expect(
             story.steps.some(
                 (s) => s.kind === "paragraph" && s.text.includes("**"),
@@ -139,8 +139,8 @@ describe("buildStory", () => {
             "bonito. **",
         );
         const glue = buildStory(input({ content: glued }));
-        expect(closingLine(glued)).toBe(closingLine(SAMPLE_READING.content));
-        expect(glue.steps.at(-1)).toMatchObject({
+        expect(glue.steps.at(-1)).toEqual(story.steps.at(-1));
+        expect(glue.steps.at(-2)).toMatchObject({
             kind: "paragraph",
             text: expect.stringMatching(/mensaje bonito\.$/),
         });
@@ -190,6 +190,7 @@ describe("buildStory", () => {
             "paragraph",
             "chapter",
             "paragraph",
+            "closing",
         ]);
         expect(story.steps.some((s) => s.kind === "title")).toBe(false);
     });
@@ -296,14 +297,14 @@ describe("buildStory, a reading written per scene", () => {
         ).toBe(false);
     });
 
-    it("ends on the gesture and hands the closing line to the Sun", () => {
-        expect(scenes.steps.at(-1)).toMatchObject({
-            kind: "scene",
-            text: SAMPLE_SCENES.gesture,
-            visual: { kind: "star" },
-        });
-        expect(closingLine(JSON.stringify(SAMPLE_SCENES))).toBe(
-            SAMPLE_SCENES.closing,
-        );
+    it("ends on the closing line, under the gesture's star", () => {
+        expect(scenes.steps.slice(-2)).toMatchObject([
+            { kind: "scene", text: SAMPLE_SCENES.gesture },
+            {
+                kind: "closing",
+                text: SAMPLE_SCENES.closing,
+                visual: { kind: "star" },
+            },
+        ]);
     });
 });

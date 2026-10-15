@@ -4,7 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { ArrowUp } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CHAT_LIMITS } from "@/core/reading/domain/schemas";
 import type { ChatMessage } from "@/core/reading/domain/types";
 import { Button } from "@/frontend/components/ui/button";
@@ -168,7 +168,7 @@ function Sun({
 function SpeakingSun({ speaking }: { speaking: boolean }) {
     const reducedMotion = useReducedMotion();
     return (
-        <div aria-hidden className="relative size-60 sm:size-72">
+        <div aria-hidden className="relative size-40 sm:size-52">
             <motion.div
                 className="absolute inset-[22%] rounded-full blur-2xl"
                 style={{
@@ -209,7 +209,6 @@ export function ReadingChat({
     initialMessages,
     expiresAt,
     sunSign,
-    closing = null,
     demo = false,
 }: {
     readingId: string;
@@ -217,8 +216,6 @@ export function ReadingChat({
     /** `null` until the first question: that's when the hours start. */
     expiresAt: string | null;
     sunSign: string;
-    /** The reading's last line: the first thing the Sun says as it rises. */
-    closing?: string | null;
     /** The /lectura/ejemplo preview: shows the chat, never sends. */
     demo?: boolean;
 }) {
@@ -252,6 +249,24 @@ export function ReadingChat({
     const busy = status === "submitted" || status === "streaming";
     const closed = expired || exhausted;
 
+    // Once they ask, the page follows the answer as it's written, until
+    // they scroll back up to reread something.
+    const endRef = useRef<HTMLDivElement>(null);
+    const following = useRef(false);
+    useEffect(() => {
+        let lastY = window.scrollY;
+        const onScroll = () => {
+            if (window.scrollY < lastY - 4) following.current = false;
+            lastY = window.scrollY;
+        };
+        window.addEventListener("scroll", onScroll, { passive: true });
+        return () => window.removeEventListener("scroll", onScroll);
+    }, []);
+    // biome-ignore lint/correctness/useExhaustiveDependencies: runs on every new word and status, which is the point.
+    useEffect(() => {
+        if (following.current) endRef.current?.scrollIntoView({ block: "end" });
+    }, [messages, status]);
+
     function ask(question: string) {
         const text = question.trim();
         if (!text || busy || closed) return;
@@ -266,6 +281,7 @@ export function ReadingChat({
                     Date.now() + CHAT_LIMITS.hours * HOUR_MS,
                 ).toISOString(),
             );
+        following.current = true;
         sendMessage({ text });
         setInput("");
     }
@@ -273,47 +289,41 @@ export function ReadingChat({
     const closesAt = useLocalTime(openUntil);
 
     return (
-        <div className="relative overflow-hidden px-5 pt-16 pb-24 sm:px-8">
-            <div
-                aria-hidden
-                className="absolute inset-x-0 top-0 h-[60svh]"
-                style={{
-                    background:
-                        "radial-gradient(ellipse 70% 60% at 50% 25%, oklch(0.78 0.14 60 / 22%), transparent 70%)",
-                    // No edge where it meets the story above.
-                    maskImage:
-                        "linear-gradient(to bottom, transparent, black 35%)",
-                }}
-            />
-            <div className="relative mx-auto flex max-w-2xl flex-col gap-10">
-                <header className="flex flex-col items-center gap-6 text-center">
-                    {/* The night ends: their Sun rises, once, and stays. */}
+        // `clip`, not `hidden`: the Sun and the box stay sticky inside it.
+        <div className="relative min-h-svh overflow-x-clip px-5 pb-10 sm:px-8">
+            {/*
+             * Their Sun stays in sight the whole conversation: the
+             * messages pass under it, fading into its sky.
+             */}
+            <div className="sticky top-0 z-10 -mx-5 sm:-mx-8">
+                {/* Soft edges, outside the band: off screen once it sticks. */}
+                <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-x-0 bottom-full h-16 bg-gradient-to-t from-background to-transparent"
+                />
+                <div className="flex justify-center bg-background pt-10">
                     <motion.div
-                        initial={reducedMotion ? false : { opacity: 0, y: 120 }}
+                        initial={reducedMotion ? false : { opacity: 0, y: 80 }}
                         whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true, amount: 0.3 }}
-                        transition={{ duration: 2.4, ease: [0.2, 0.7, 0.2, 1] }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 2, ease: [0.2, 0.7, 0.2, 1] }}
+                        className="-mb-4"
                     >
                         <SpeakingSun speaking={busy} />
                     </motion.div>
-                    {closing && (
-                        <motion.figure
-                            initial={reducedMotion ? false : { opacity: 0 }}
-                            whileInView={{ opacity: 1 }}
-                            viewport={{ once: true }}
-                            transition={{ duration: 1.6, delay: 1.2 }}
-                            className="flex flex-col gap-3"
-                        >
-                            <blockquote className="text-balance font-display text-4xl text-astral-gold-soft leading-tight sm:text-5xl">
-                                {closing}
-                            </blockquote>
-                            <figcaption className="font-mono text-[11px] text-astral-gold uppercase tracking-[0.24em]">
-                                Tu Sol en {sunSign}
-                            </figcaption>
-                        </motion.figure>
-                    )}
-                    <div className="flex flex-col gap-3 pt-6">
-                        <h2 className="text-balance font-display text-3xl leading-[1.05] sm:text-4xl">
+                </div>
+                <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-x-0 top-full h-16 bg-gradient-to-b from-background to-transparent"
+                />
+            </div>
+            <div className="relative mx-auto flex max-w-2xl flex-col gap-10">
+                <header className="flex flex-col items-center gap-6 text-center">
+                    <div className="flex flex-col gap-3">
+                        <p className="font-mono text-[11px] text-astral-gold uppercase tracking-[0.24em]">
+                            Ahora, tú preguntas
+                        </p>
+                        <h2 className="text-balance font-display text-5xl leading-[1.02] sm:text-6xl">
                             Tu Sol en {sunSign} te escucha
                         </h2>
                         <p className="mx-auto max-w-md text-pretty text-lg text-muted-foreground">
@@ -373,6 +383,8 @@ export function ReadingChat({
                         )}
                     </ol>
                 )}
+                {/* Where the page follows to: just above the box. */}
+                <div ref={endRef} aria-hidden className="-mt-10 scroll-mb-36" />
 
                 {error && (
                     <p role="alert" className="text-destructive text-sm">
@@ -387,7 +399,8 @@ export function ReadingChat({
                             : "Llegaste al límite de preguntas de esta lectura."}
                     </p>
                 ) : (
-                    <div className="flex flex-col gap-4">
+                    // Always at hand, like any chat (sticky in the tall column).
+                    <div className="sticky bottom-4 z-10 flex flex-col gap-4">
                         {asked === 0 && (
                             <ul
                                 aria-label="Preguntas para empezar"
@@ -412,7 +425,7 @@ export function ReadingChat({
                                 e.preventDefault();
                                 ask(input);
                             }}
-                            className="flex items-end gap-2 rounded-3xl border border-astral-gold/30 bg-background/60 p-2 backdrop-blur-md focus-within:border-astral-gold"
+                            className="flex items-end gap-2 rounded-3xl border border-astral-gold/30 bg-background/85 p-2 shadow-[0_8px_40px_24px_var(--background)] backdrop-blur-md focus-within:border-astral-gold"
                         >
                             <Textarea
                                 value={input}

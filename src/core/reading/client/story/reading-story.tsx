@@ -154,6 +154,22 @@ function StepContent({ step }: { step: StoryStep }) {
                     </p>
                 </motion.div>
             );
+        case "closing":
+            // Said and done: the story closes here, the chat is another room.
+            return (
+                <motion.figure
+                    {...ENTER}
+                    transition={{ ...ENTER.transition, duration: 1.6 }}
+                    className="flex flex-col gap-5 max-lg:text-center"
+                >
+                    <blockquote className="text-balance font-display text-4xl text-astral-gold-soft leading-tight [text-shadow:0_2px_24px_rgb(0_0_0/70%)] sm:text-5xl lg:text-6xl">
+                        {step.text}
+                    </blockquote>
+                    <figcaption className="font-mono text-[11px] text-muted-foreground uppercase tracking-[0.24em]">
+                        Fin de tu lectura
+                    </figcaption>
+                </motion.figure>
+            );
     }
 }
 
@@ -184,8 +200,8 @@ function stepHeight(step: StoryStep): string {
 /**
  * The paid reading, told on scroll. A stage holds one scene at a time (their
  * sky, the Moon settling on their phase, Venus over its sign…) while the
- * text slides over it on a phone or beside it on a wide screen. Then their
- * Sun rises, says the reading's last line, and takes their questions.
+ * text slides over it on a phone or beside it on a wide screen. It ends on
+ * the reading's last line; then, apart, their Sun takes their questions.
  */
 export function ReadingStory({
     reading,

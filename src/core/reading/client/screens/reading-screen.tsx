@@ -2,7 +2,6 @@ import { Suspense } from "react";
 import { OFFER } from "@/core/landing/domain/content";
 import { BUSINESS } from "@/core/legal/domain/business";
 import { LEGAL_ROUTES } from "@/core/legal/domain/policies";
-import { closingLine } from "@/core/reading/domain/story";
 import type { ChatMessage, Reading } from "@/core/reading/domain/types";
 import { ChartReveal } from "../components/chart-reveal";
 import { ReadingChat } from "../components/reading-chat";
@@ -201,7 +200,6 @@ export function ReadingBody({
                     initialMessages={messages}
                     expiresAt={reading.chatExpiresAt}
                     sunSign={reading.sunSign}
-                    closing={closingLine(reading.content)}
                 />
             }
         />
