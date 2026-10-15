@@ -48,8 +48,19 @@ const ENTER = {
 } as const;
 
 /** Over the scene on a phone; beside it on a wide screen. */
+/**
+ * The door's card on a phone, where it sits over the scene. Other text
+ * keeps to the bottom half (see `FADE`) and needs none.
+ */
 const CARD =
     "max-lg:rounded-2xl max-lg:border max-lg:border-astral-ink max-lg:bg-background/75 max-lg:p-5 max-lg:backdrop-blur-md";
+
+/**
+ * On a phone, where text dissolves going up (fractions of the screen's
+ * height): gone above the first, whole below the second. The scene has
+ * the half above it, as the Sun has the chat's.
+ */
+const FADE = [0.44, 0.54] as const;
 
 function StepContent({
     step,
@@ -62,10 +73,7 @@ function StepContent({
     switch (step.kind) {
         case "prologue":
             return (
-                <motion.div
-                    {...ENTER}
-                    className={cn("flex flex-col gap-3", CARD)}
-                >
+                <motion.div {...ENTER} className="flex flex-col gap-3">
                     <p className="font-mono text-[11px] text-astral-gold uppercase tracking-[0.2em]">
                         Así empezó tu lectura
                     </p>
@@ -116,10 +124,7 @@ function StepContent({
             return (
                 <motion.div
                     {...ENTER}
-                    className={cn(
-                        "flex flex-col gap-2 border-astral-gold/60 lg:border-l lg:pl-6",
-                        CARD,
-                    )}
+                    className="flex flex-col gap-2 border-astral-gold/60 lg:border-l lg:pl-6"
                 >
                     <p className="font-mono text-[11px] text-astral-gold uppercase tracking-[0.2em]">
                         {step.label}
@@ -151,7 +156,7 @@ function StepContent({
                     <motion.div
                         {...ENTER}
                         transition={{ ...ENTER.transition, delay: 0.35 }}
-                        className={cn("flex flex-col gap-3", CARD)}
+                        className="flex flex-col gap-3"
                     >
                         {step.note && (
                             <p className="text-pretty text-muted-foreground italic leading-relaxed">
@@ -166,10 +171,7 @@ function StepContent({
             );
         case "paragraph":
             return (
-                <motion.div
-                    {...ENTER}
-                    className={cn("flex flex-col gap-3", CARD)}
-                >
+                <motion.div {...ENTER} className="flex flex-col gap-3">
                     {step.heading && (
                         <h3 className="text-balance font-display text-2xl text-astral-gold sm:text-3xl">
                             {step.heading}
@@ -185,22 +187,26 @@ function StepContent({
             // (never on the page: that's filler), and the page's box.
             return (
                 <div className="flex flex-col gap-4">
-                    {step.eyebrow && (
-                        <motion.p
-                            {...ENTER}
-                            className="font-mono text-[11px] text-astral-gold uppercase tracking-[0.24em]"
-                        >
-                            {step.eyebrow}
-                        </motion.p>
-                    )}
-                    {step.title && (
-                        <motion.h3
-                            {...ENTER}
-                            className="text-balance font-display text-4xl leading-[1.02] sm:text-5xl lg:text-6xl"
-                        >
-                            {step.title}
-                        </motion.h3>
-                    )}
+                    {/* Its heading dissolves going up, like any text; the
+                        cut and the box stay whole. */}
+                    <div data-fades className="flex flex-col gap-4">
+                        {step.eyebrow && (
+                            <motion.p
+                                {...ENTER}
+                                className="font-mono text-[11px] text-astral-gold uppercase tracking-[0.24em]"
+                            >
+                                {step.eyebrow}
+                            </motion.p>
+                        )}
+                        {step.title && (
+                            <motion.h3
+                                {...ENTER}
+                                className="text-balance font-display text-4xl leading-[1.02] sm:text-5xl lg:text-6xl"
+                            >
+                                {step.title}
+                            </motion.h3>
+                        )}
+                    </div>
                     <motion.div
                         {...ENTER}
                         transition={{ ...ENTER.transition, delay: 0.35 }}
@@ -386,6 +392,66 @@ export function ReadingStory({
         return () => observer.disconnect();
     }, [story]);
 
+    // On a phone the scene has the top half and the text the bottom one:
+    // text pushed up dissolves line by line before it reaches the drawing,
+    // like the chat's history under its Sun. Read once per frame, then
+    // written; the door keeps its cut and its box whole, by the button.
+    useEffect(() => {
+        const phone = window.matchMedia("(max-width: 1023px)");
+        const texts = [
+            coverRef.current,
+            ...stepRefs.current.slice(0, story.steps.length),
+        ]
+            .filter((el) => el !== null)
+            .flatMap((el) =>
+                el.dataset.whole
+                    ? [...el.querySelectorAll<HTMLElement>("[data-fades]")]
+                    : [el],
+            );
+        const mask = (el: HTMLElement, value: string) => {
+            if (el.style.maskImage === value) return;
+            el.style.maskImage = value;
+            el.style.setProperty("-webkit-mask-image", value);
+        };
+        let frame = 0;
+        const paint = () => {
+            frame = 0;
+            if (!phone.matches) {
+                for (const el of texts) mask(el, "");
+                return;
+            }
+            const height = window.innerHeight;
+            const boxes = texts.map((el) => el.getBoundingClientRect());
+            texts.forEach((el, i) => {
+                const box = boxes[i];
+                const gone = FADE[0] * height - box.top;
+                const whole = FADE[1] * height - box.top;
+                if (box.bottom < 0 || box.top > height || whole <= 0)
+                    mask(el, "");
+                else if (gone >= box.height)
+                    mask(el, "linear-gradient(transparent, transparent)");
+                else
+                    mask(
+                        el,
+                        `linear-gradient(to bottom, transparent ${gone}px, black ${whole}px)`,
+                    );
+            });
+        };
+        const later = () => {
+            if (!frame) frame = requestAnimationFrame(paint);
+        };
+        paint();
+        window.addEventListener("scroll", later, { passive: true });
+        window.addEventListener("resize", later);
+        phone.addEventListener("change", later);
+        return () => {
+            cancelAnimationFrame(frame);
+            window.removeEventListener("scroll", later);
+            window.removeEventListener("resize", later);
+            phone.removeEventListener("change", later);
+        };
+    }, [story]);
+
     const step = story.steps[active] ?? COVER;
     const chapter = step.chapter === null ? null : story.chapters[step.chapter];
 
@@ -505,6 +571,9 @@ export function ReadingStory({
                                     stepRefs.current[i] = el;
                                 }}
                                 data-step={i}
+                                data-whole={
+                                    s.kind === "door" ? true : undefined
+                                }
                                 className={cn(
                                     "flex flex-col justify-end pb-[10svh] lg:justify-center lg:pb-0",
                                     stepHeight(s),
@@ -512,7 +581,7 @@ export function ReadingStory({
                                     // the image (both in sight), the box a
                                     // scroll below.
                                     s.kind === "door" &&
-                                        "max-lg:justify-start max-lg:pt-[48svh]",
+                                        "max-lg:justify-start max-lg:pt-[56svh]",
                                 )}
                             >
                                 <StepContent step={s} door={door} />
