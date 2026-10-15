@@ -80,7 +80,6 @@ export default async function ReadingPage({
     return (
         <UnlockedReadingScreen
             reading={reading.data}
-            notice={notice}
             content={
                 <FullReading
                     userId={userId}

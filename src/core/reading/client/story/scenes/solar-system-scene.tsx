@@ -242,8 +242,8 @@ export function SolarSystemScene({
     /** What's waiting at the destination, mounted ahead (see `fly`). */
     const [arrived, setArrived] = useState<{
         focus: SystemFocus;
-        /** Seconds until the globe shows: it starts turning then. */
-        turnDelay: number;
+        /** Came without a flight: the camera was already there. */
+        inPlace?: boolean;
     } | null>(null);
     /** The camera is there: the constellation may draw itself. */
     const [landed, setLanded] = useState(false);
@@ -272,8 +272,24 @@ export function SolarSystemScene({
                 progress.set(focus ? 1 : 0);
                 setAim(focus?.body ?? null);
                 setSight(line);
-                setArrived(focus && { focus, turnDelay: 0 });
+                setArrived(focus && { focus });
                 setLanded(Boolean(focus));
+                return;
+            }
+            // Already there, or on the way: the camera stays and only what
+            // it shows there changes (the Moon's phase, then its sign).
+            if (focus && progress.get() > 0 && target.current === focus.body) {
+                setSight(null);
+                setAim(null);
+                const left = 1 - progress.get();
+                if (left > 0)
+                    await animate(progress, 1, {
+                        duration: IN.duration * left,
+                        ease: "easeOut",
+                    });
+                if (!live) return;
+                setArrived({ focus, inPlace: true });
+                setLanded(true);
                 return;
             }
             setLanded(false);
@@ -292,14 +308,10 @@ export function SolarSystemScene({
             // Coming from another scene, let the whole system be seen first.
             const pause = first ? 700 : 150;
             const look = line ? 1100 : 700;
-            // The globe mounts now, unseen: loaded, and facing its dot's
-            // way, by the time the camera gets there. A phase is another
-            // picture: it just fades in at the end.
-            if (!phase)
-                setArrived({
-                    focus,
-                    turnDelay: (pause + look) / 1000 + IN.duration * 0.8,
-                });
+            // The globe mounts now, unseen and still: loaded by the time the
+            // camera gets there. A phase is another picture: it just fades
+            // in at the end.
+            if (!phase) setArrived({ focus });
             await wait(pause);
             if (!live) return;
             setAim(focus.body);
@@ -310,7 +322,7 @@ export function SolarSystemScene({
             if (phase) {
                 await wait(IN.duration * 620);
                 if (!live) return;
-                setArrived({ focus, turnDelay: 0 });
+                setArrived({ focus });
             }
             await flight;
             if (live) setLanded(true);
@@ -565,33 +577,45 @@ export function SolarSystemScene({
                     </motion.div>
                 )}
             </AnimatePresence>
-            {arrived && "sign" in arrived.focus && (
-                <motion.div
-                    key={arrived.focus.body}
-                    className="absolute inset-0"
-                    style={ride}
-                >
-                    <PlanetScene
-                        body={arrived.focus.body}
-                        sign={arrived.focus.sign}
-                        signs={arrived.focus.signs}
-                        moonPhase={chart.moonPhase}
-                        born={born}
-                        ride={{
-                            size: globeSize(arrived.focus.body),
-                            light:
-                                arrived.focus.body === "Sol"
-                                    ? undefined
-                                    : sunLight(view.bodies[arrived.focus.body]),
-                            turnDelay: arrived.turnDelay,
-                            // Still until the camera lands: it would barely turn
-                            // meanwhile, and the flight stays light.
-                            paused: !landed,
-                        }}
-                        landed={landed}
-                    />
-                </motion.div>
-            )}
+            <AnimatePresence>
+                {arrived && "sign" in arrived.focus && (
+                    <motion.div
+                        key={arrived.focus.body}
+                        className="absolute inset-0"
+                        // Without a flight it fades in where the last picture
+                        // was, and out the same way.
+                        initial={arrived.inPlace ? { opacity: 0 } : false}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.6 }}
+                    >
+                        <motion.div className="absolute inset-0" style={ride}>
+                            <PlanetScene
+                                body={arrived.focus.body}
+                                sign={arrived.focus.sign}
+                                signs={arrived.focus.signs}
+                                moonPhase={chart.moonPhase}
+                                born={born}
+                                ride={{
+                                    size: globeSize(arrived.focus.body),
+                                    light:
+                                        arrived.focus.body === "Sol"
+                                            ? undefined
+                                            : sunLight(
+                                                  view.bodies[
+                                                      arrived.focus.body
+                                                  ],
+                                              ),
+                                    // Still until the camera lands: it would barely turn
+                                    // meanwhile, and the flight stays light.
+                                    paused: !landed,
+                                }}
+                                landed={landed}
+                            />
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             <motion.p
                 aria-hidden

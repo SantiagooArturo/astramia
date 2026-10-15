@@ -157,6 +157,25 @@
     animation: word-in 0.55s ease-out both;
 }
 
+@keyframes arrive {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Shown only if it's still there: whatever replaces it fast never flashes. */
+.animate-arrive {
+    animation: arrive 0.9s ease-out 0.4s both;
+}
+
+/* Comes in softly where another screen stood. */
+.animate-fade-in {
+    animation: arrive 0.8s ease-out both;
+}
+
 @media (prefers-reduced-motion: reduce) {
     .animate-word-in {
         animation: none;

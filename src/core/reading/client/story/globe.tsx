@@ -263,7 +263,6 @@ export function Globe({
     body,
     phase,
     light,
-    turnDelay = 0,
     paused = false,
     className,
     style,
@@ -278,11 +277,6 @@ export function Globe({
      * where the Sun really was.
      */
     light?: readonly [number, number, number];
-    /**
-     * Seconds before it starts turning: one mounted ahead, to take over a
-     * still picture, is still facing the same way when it does.
-     */
-    turnDelay?: number;
     /**
      * Drawn once and shown as a still picture: one mounted ahead to take
      * over a moving dot costs nothing to load, scale or move until then.
@@ -397,7 +391,19 @@ export function Globe({
 
         let disposed = false;
         let frame = 0;
-        const start = performance.now();
+        let running = false;
+        // Its own clock, running only while it's live: the still picture
+        // shown before and the first frame after are the same moment (the
+        // Sun's flames, a turning planet), so taking over shows no cut.
+        let clock = 0;
+        let liveSince = 0;
+        const elapsed = () =>
+            running ? clock + (performance.now() - liveSince) / 1000 : clock;
+        const stop = () => {
+            clock = elapsed();
+            running = false;
+            cancelAnimationFrame(frame);
+        };
 
         /** Sized by its host: the canvas has no size while a still shows. */
         const resize = () => {
@@ -420,11 +426,10 @@ export function Globe({
         const draw = () => {
             // Not laid out yet: the last frame stays.
             if (disposed || !resize()) return;
-            const t = reducedMotion ? 0 : (performance.now() - start) / 1000;
-            const turning = Math.max(0, t - turnDelay);
+            const t = reducedMotion ? 0 : elapsed();
             // The Moon shows one face; it only sways a little (libration).
             const spin = look.turn
-                ? (turning * 2 * Math.PI) / look.turn
+                ? (t * 2 * Math.PI) / look.turn
                 : body === "Luna"
                   ? 0.07 * Math.sin(t * 0.25)
                   : 0;
@@ -449,10 +454,9 @@ export function Globe({
         drawRef.current = draw;
 
         let tick = 0;
-        let running = false;
         const loop = () => {
             if (pausedRef.current) {
-                running = false;
+                stop();
                 return;
             }
             // A big Sun (the sunrise) skips frames; a small one moves at 60.
@@ -465,10 +469,12 @@ export function Globe({
             showLive(true);
             if (running || disposed || reducedMotion) return;
             running = true;
+            liveSince = performance.now();
             frame = requestAnimationFrame(loop);
         };
         runRef.current = run;
         stillRef.current = () => {
+            stop();
             draw();
             showLive(false);
         };
@@ -535,7 +541,7 @@ export function Globe({
             canvas.remove();
             picture.remove();
         };
-    }, [body, reducedMotion, turnDelay]);
+    }, [body, reducedMotion]);
 
     if (failed && fallback) return <>{fallback}</>;
     return <div ref={hostRef} className={className} style={style} />;

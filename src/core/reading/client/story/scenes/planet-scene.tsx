@@ -74,8 +74,6 @@ export interface Ride {
     size: string;
     /** Lit from where the Sun was, like the dot. */
     light?: readonly [number, number, number];
-    /** Seconds until it shows: it starts turning then. */
-    turnDelay: number;
     /** Not on screen yet: drawn once, kept still. */
     paused: boolean;
 }
@@ -94,7 +92,6 @@ function Orb({
             body={body}
             phase={body === "Luna" ? phaseFraction(moonPhase) : undefined}
             light={ride?.light}
-            turnDelay={ride?.turnDelay}
             paused={ride?.paused}
             className={ride ? undefined : GLOBE_SIZE[body]}
             style={ride ? { width: ride.size, height: ride.size } : undefined}

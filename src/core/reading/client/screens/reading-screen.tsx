@@ -1,8 +1,11 @@
 import { Suspense } from "react";
+import { Starfield } from "@/core/landing/client/effects";
 import { OFFER } from "@/core/landing/domain/content";
 import { BUSINESS } from "@/core/legal/domain/business";
 import { LEGAL_ROUTES } from "@/core/legal/domain/policies";
+import { paidSkies } from "@/core/reading/domain/story";
 import type { ChatMessage, Reading } from "@/core/reading/domain/types";
+import { FormingSky } from "../components/forming-sky";
 import { ReadingChat } from "../components/reading-chat";
 import { RefreshWhile } from "../components/refresh-while";
 import { UnlockButton } from "../components/unlock-button";
@@ -98,55 +101,57 @@ export function LockedReadingScreen({
     );
 }
 
-/** Paid, still being written (usually done during checkout). */
+/**
+ * Paid, still being written (usually done during checkout): a screen of
+ * its own, not a box in the story, while the constellations of what's
+ * coming form. The story takes over, right where it stopped, once it's
+ * written. It only shows if it lasts: a reading already written arrives
+ * before it fades in.
+ */
 export function WritingScreen({
     reading,
-    notice,
     refresh = false,
 }: {
     reading: Reading;
-    notice?: React.ReactNode;
     /** The text is being written elsewhere: poll until it lands. */
     refresh?: boolean;
 }) {
     return (
-        <ReadingStory
-            reading={reading}
-            notice={notice}
-            door={
-                <div className={BOX} aria-busy>
-                    {refresh && <RefreshWhile />}
-                    <p className="flex items-center gap-3 font-display text-2xl">
-                        <span
-                            aria-hidden
-                            className="size-2.5 shrink-0 animate-pulse rounded-full bg-astral-gold"
-                        />
-                        Tu Sol está escribiendo tu lectura
+        <div className="theme-astral relative flex min-h-svh flex-col items-center justify-center overflow-hidden bg-background px-6 text-center text-foreground">
+            {refresh && <RefreshWhile />}
+            <Starfield />
+            <div
+                role="status"
+                className="animate-arrive relative z-10 flex max-w-md flex-col items-center gap-8"
+            >
+                <FormingSky skies={paidSkies(reading)} />
+                <div className="flex flex-col items-center gap-3">
+                    <p className="font-mono text-[11px] text-astral-gold uppercase tracking-[0.24em]">
+                        Lectura desbloqueada
                     </p>
-                    <p className="text-muted-foreground text-sm">
-                        Tarda unos segundos. Aparece aquí en cuanto esté lista.
+                    <h1 className="text-balance font-display text-4xl leading-[1.05] sm:text-5xl">
+                        Uniendo las estrellas que faltan
+                    </h1>
+                    <p className="text-pretty text-muted-foreground">
+                        Tu Sol está escribiendo el resto de tu historia. Solo
+                        tarda unos segundos.
                     </p>
                 </div>
-            }
-        />
+            </div>
+        </div>
     );
 }
 
 export function UnlockedReadingScreen({
     reading,
     content,
-    notice,
 }: {
     reading: Reading;
     /** Streams in: the full text may still be being written. */
     content: React.ReactNode;
-    /** Above the reading (e.g. "it only lives in this browser"). */
-    notice?: React.ReactNode;
 }) {
     return (
-        <Suspense
-            fallback={<WritingScreen reading={reading} notice={notice} />}
-        >
+        <Suspense fallback={<WritingScreen reading={reading} />}>
             {content}
         </Suspense>
     );
@@ -165,8 +170,7 @@ export function ReadingBody({
     /** On the cover (e.g. "it only lives in this browser"). */
     notice?: React.ReactNode;
 }) {
-    if (!reading.content)
-        return <WritingScreen reading={reading} notice={notice} refresh />;
+    if (!reading.content) return <WritingScreen reading={reading} refresh />;
     return (
         <ReadingStory
             reading={reading}

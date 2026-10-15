@@ -394,7 +394,13 @@ export function ReadingStory({
             <div className="theme-astral relative bg-background text-foreground">
                 <Starfield />
 
-                <header className="fixed inset-x-0 top-0 z-30">
+                {/* The paid story comes in softly: a screen stood here while it was written. */}
+                <header
+                    className={cn(
+                        "fixed inset-x-0 top-0 z-30",
+                        content && "animate-fade-in",
+                    )}
+                >
                     <motion.div
                         aria-hidden
                         className="h-0.5 origin-left bg-astral-gold"
@@ -436,7 +442,10 @@ export function ReadingStory({
                 <section
                     ref={storyRef}
                     aria-label="Tu lectura"
-                    className="relative z-10 lg:grid lg:grid-cols-2"
+                    className={cn(
+                        "relative z-10 lg:grid lg:grid-cols-2",
+                        content && "animate-fade-in",
+                    )}
                 >
                     <div className="sticky top-0 h-svh overflow-hidden lg:self-start">
                         {/* On a phone the bottom half is the text's. */}

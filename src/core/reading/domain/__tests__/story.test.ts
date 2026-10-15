@@ -5,6 +5,7 @@ import { hookOf, keptFree, lockTeaser, takeCut } from "../reading-content";
 import { SAMPLE_FREE, SAMPLE_READING, SAMPLE_SCENES } from "../sample-reading";
 import {
     buildStory,
+    paidSkies,
     previewStory,
     type StoryInput,
     storyQuestion,
@@ -393,6 +394,17 @@ describe("the preview, before paying", () => {
             skyAhead: [],
         });
         expect(old.steps.map((s) => s.kind)).toEqual(["prologue", "door"]);
+    });
+});
+
+describe("while the paid part is written", () => {
+    it("shows the bodies it turns to, in their signs", () => {
+        expect(
+            paidSkies({ topic: "amor", chart, question: null, skyAhead: [] }),
+        ).toEqual([
+            { body: "Luna", sign: "Capricornio" },
+            { body: "Sol", sign: "Piscis" },
+        ]);
     });
 });
 

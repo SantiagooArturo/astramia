@@ -464,6 +464,25 @@ function markdownStory(input: StoryInput): Story {
 }
 
 /**
+ * The bodies the paid part turns to, each in its sign, in order: what the
+ * screen shows while that part is being written. Their Sun, if none.
+ */
+export function paidSkies(
+    input: Pick<StoryInput, "topic" | "chart" | "question" | "skyAhead">,
+): { body: StoryBody; sign: string }[] {
+    const c = context(input);
+    const skies = planFor(input.topic).paid.flatMap((scene) => {
+        const visual = scene.visual(c);
+        return visual.kind === "planet"
+            ? [{ body: visual.body, sign: visual.sign }]
+            : [];
+    });
+    return skies.length
+        ? skies
+        : [{ body: "Sol", sign: input.chart.placements[0].sign }];
+}
+
+/**
  * Before paying: the same story's free scenes, then the hook at its most
  * intriguing (its first sentences; the page blurs the rest and puts its
  * box there). Readings from before the free scenes open with their
