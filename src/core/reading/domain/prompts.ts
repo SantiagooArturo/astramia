@@ -1,8 +1,8 @@
 import type { AiPurpose, AiReasoning } from "@/core/ai/domain/types";
 import { longDate, natalChart, readingOutlook } from "./chart";
 import {
+    CUT_MARK,
     freeSchema,
-    HOOK_SENTENCES,
     LOVE_PLAN,
     type PlanScene,
     paidSchema,
@@ -216,12 +216,20 @@ ${SCENE_RULES}
 
 En este orden:
 ${scenes.map((scene, i) => sceneLine(scene, i + 1)).join("\n")}
-La última, ${plan.hook.key}, es donde se corta lo gratis: sus ${HOOK_SENTENCES} primeras frases se leen antes de pagar. Que cuenten qué pasa y se corten en el punto más intrigante, sin dar la respuesta. Las frases que siguen la dan, concreta y honesta: eso se lee al pagar.
 Entre ${min} y ${max} palabras en total.
 </escenas>
 
+<corte>
+La última, ${plan.hook.key}, es donde se corta lo gratis. Escríbela completa y pon ${CUT_MARK} en el punto exacto del corte: lo de antes se lee gratis; lo de después aparece borroso y se lee al pagar. Ese punto decide si quiere seguir leyendo:
+- Antes del corte, lo que le pasa, contado para que se reconozca: al menos una frase completa.
+- El corte va a mitad de una frase: justo después de las palabras que abren la pregunta, justo antes de lo que la responde. Que quiera saber cómo termina esa frase, como en "y al principio es emocionante. Pero un día ${CUT_MARK} miras atrás y…" (la forma, no las palabras: no las copies).
+- Nunca al final de una frase: ahí no queda nada por saber. Tampoco en una palabra cualquiera: lo que falta tiene que ser lo que más le importa.
+- Lo que queda oculto es algo que no sabe ni espera: el porqué, lo que de verdad pasa. Si es algo que ya te contó en <respuestas> (lo que hace, lo que siente), no deja misterio: el corte va más adelante, antes de lo nuevo.
+- Después del corte, la respuesta: concreta y honesta.
+</corte>
+
 <proceso>
-Antes de escribir, en tu razonamiento: elige qué respuesta explica mejor cada escena; elige una escena reconocible para cada una; decide dónde se corta ${plan.hook.key} y qué pregunta deja en el aire; revisa <prohibido>, el tuteo, el <trato>, que no le diste género a la otra persona, que ninguna frase pasa de 20 palabras y que lo entendería a la primera alguien que nunca leyó de astrología.
+Antes de escribir, en tu razonamiento: elige qué respuesta explica mejor cada escena; elige una escena reconocible para cada una; decide qué pregunta deja en el aire ${plan.hook.key} y tras qué palabras exactas va ${CUT_MARK}; revisa <prohibido>, el tuteo, el <trato>, que no le diste género a la otra persona, que ninguna frase pasa de 20 palabras y que lo entendería a la primera alguien que nunca leyó de astrología.
 </proceso>
 
 <ejemplo>

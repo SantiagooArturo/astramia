@@ -29,9 +29,15 @@ export const CHAT_ANCHOR = "chat";
 const COVER_STEP = -1;
 const COVER = { visual: { kind: "system" }, chapter: null } as const;
 
-/** Under the blur where the hook goes on: never the real text. */
-const LOCKED_FILLER =
-    "Lo que sigue tiene una razón en tu carta, y también una salida. No es casualidad: se repite, se puede ver venir y se puede cambiar. Aquí está lo que pasa, por qué pasa y lo que puedes hacer distinto desde esta semana.";
+/**
+ * Under the blur where the hook goes on, from the word it was cut at:
+ * never the real text. A wider screen holds more of it per line, so it
+ * gets more, to fill the same few lines.
+ */
+const LOCKED_FILLER = [
+    "lo que pasa tiene una razón en tu carta, y también una salida. No es casualidad: se repite y se puede ver venir.",
+    " Aquí está por qué pasa y lo que puedes hacer distinto desde esta semana.",
+] as const;
 
 /** Text arrives softly as its step reaches the middle of the screen. */
 const ENTER = {
@@ -198,22 +204,27 @@ function StepContent({
                     <motion.div
                         {...ENTER}
                         transition={{ ...ENTER.transition, delay: 0.35 }}
-                        className={cn("flex flex-col gap-1", CARD)}
+                        className={CARD}
                     >
-                        {step.text && (
-                            <p className="text-pretty text-lg leading-relaxed sm:text-xl sm:leading-relaxed">
-                                {renderInline(step.text)}
-                            </p>
-                        )}
+                        {/* The blur starts mid-sentence, right where it was cut,
+                            and fades out over its last lines. */}
                         <p
-                            aria-hidden
-                            className="line-clamp-3 select-none text-pretty text-lg leading-relaxed blur-[6px] sm:text-xl sm:leading-relaxed"
+                            className="text-pretty text-lg leading-relaxed sm:text-xl sm:leading-relaxed"
                             style={{
                                 maskImage:
-                                    "linear-gradient(to bottom, black 30%, transparent)",
+                                    "linear-gradient(to bottom, black calc(100% - 4.5em), transparent)",
                             }}
                         >
-                            {LOCKED_FILLER}
+                            {step.text && <>{renderInline(step.text)} </>}
+                            <span
+                                aria-hidden
+                                className="select-none text-transparent [text-shadow:0_0_7px_var(--foreground)]"
+                            >
+                                {LOCKED_FILLER[0]}
+                                <span className="max-lg:hidden">
+                                    {LOCKED_FILLER[1]}
+                                </span>
+                            </span>
                         </p>
                     </motion.div>
                     {door && (

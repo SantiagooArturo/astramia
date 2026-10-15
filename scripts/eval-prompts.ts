@@ -25,6 +25,8 @@ import * as currentPrompts from "@/core/reading/domain/prompts";
 import { describeAnswer, tratoOf } from "@/core/reading/domain/quiz";
 import {
     freeAsText,
+    hookShown,
+    keptFree,
     parseTexts,
     readingAsText,
 } from "@/core/reading/domain/reading-content";
@@ -224,6 +226,9 @@ const verdictSchema = z.object({
         gancho: score.describe(
             "5: produce '¿cómo sabe esto?' y deja una pregunta abierta irresistible",
         ),
+        corte: score.describe(
+            "5: [CORTE] cae a mitad de una frase, justo antes de lo que más quiere saber, y es imposible no querer leer cómo sigue; 1: cae al final de una frase o donde no queda nada por saber",
+        ),
         claridad: score.describe(
             "5: alguien de 20 años que llegó desde TikTok y nunca leyó de astrología lo entiende todo a la primera; 1: hay que saber astrología para entenderlo",
         ),
@@ -340,7 +345,7 @@ async function judge(
         maxOutputTokens: 6000,
         output: Output.object({ schema: verdictSchema }),
         system: `Eres editora de un producto de astrología de pago en español latinoamericano, exigente con la calidad literaria y con la precisión. Evalúas sin piedad: un 5 es excepcional y raro; un texto correcto pero genérico es un 2. El público es masivo (llega desde TikTok e Instagram) y no sabe astrología: un texto que solo entiende quien sabe astrología falla, por bien escrito que esté. Juzgas solo contra los datos dados: cualquier dato astrológico que no esté en ellos es un invento.
-Así se lee: una historia en el celular, una escena por pantalla junto a su imagen. La pantalla ya pone cada título ("Venus estaba en Aries", la fase de la Luna con su nombre y qué es, su pregunta), así que el texto no tiene por qué repetirlo. El gancho gratuito son las primeras escenas: su última se corta tras sus dos primeras frases, borrosa, y quien paga la termina de leer y sigue con la lectura pagada, que continúa desde ahí sin repetirlas.`,
+Así se lee: una historia en el celular, una escena por pantalla junto a su imagen. La pantalla ya pone cada título ("Venus estaba en Aries", la fase de la Luna con su nombre y qué es, su pregunta), así que el texto no tiene por qué repetirlo. El gancho gratuito son las primeras escenas: su última se corta donde dice [CORTE] (lo de después aparece borroso), y quien paga la termina de leer y sigue con la lectura pagada, que continúa desde ahí sin repetirlas.`,
         prompt: `<datos>\n${groundTruth(profile)}\n</datos>\n\n<gancho_gratuito>\n${teaser}\n</gancho_gratuito>\n\n<lectura_pagada>\n${reading}\n</lectura_pagada>\n\n<chat>\nPregunta: ${profile.chatQuestion}\nRespuesta: ${chat}\n</chat>`,
     });
     return {
@@ -412,32 +417,41 @@ async function runProfile(prompts: PromptModule, profile: Profile) {
                 ? prompts.TEASER_PROMPT.schema
                 : undefined,
     });
-    // The free scenes (or, for older prompts, a paragraph) as read.
-    const teaserText = freeAsText(teaser.text, LOVE_PLAN);
+    // The free scenes as the server keeps them (older prompts: a paragraph).
+    const written = parseTexts(teaser.text);
+    const keptTexts = written && keptFree(written, LOVE_PLAN);
+    const kept = keptTexts ? JSON.stringify(keptTexts) : teaser.text;
+    const cutByModel = keptTexts ? "cut" in keptTexts : false;
+    const teaserText = freeAsText(kept, LOVE_PLAN);
+    // For the judge: where the hook is cut, as it's read before paying.
+    const shown = keptTexts && hookShown(keptTexts, LOVE_PLAN);
+    const hook = keptTexts && sceneText(keptTexts, LOVE_PLAN.hook.key);
+    const teaserCut =
+        shown && hook
+            ? teaserText.replace(
+                  hook,
+                  `${shown} [CORTE] ${hook.slice(shown.length).trim()}`,
+              )
+            : teaserText;
     const reading = await call("reading", prompts, {
         system: prompts.READING_PROMPT.system,
-        prompt: prompts.READING_PROMPT.prompt(profile, teaser.text, TODAY),
+        prompt: prompts.READING_PROMPT.prompt(profile, kept, TODAY),
         schema:
             "schema" in prompts.READING_PROMPT
                 ? prompts.READING_PROMPT.schema
                 : undefined,
     });
     // Free and paid scenes together: everything the person reads.
-    const readingText = readingAsText(reading.text, teaser.text, LOVE_PLAN);
+    const readingText = readingAsText(reading.text, kept, LOVE_PLAN);
     // What paying adds: the judge reads it apart from the free scenes.
     const paidText = readingAsText(reading.text, "", LOVE_PLAN);
     const chat = await call("chat", prompts, {
-        system: prompts.chatSystemPrompt(
-            profile,
-            reading.text,
-            teaser.text,
-            TODAY,
-        ),
+        system: prompts.chatSystemPrompt(profile, reading.text, kept, TODAY),
         prompt: profile.chatQuestion,
     });
     const { verdict, costUsd } = await judge(
         profile,
-        teaserText,
+        teaserCut,
         paidText,
         chat.text,
     );
@@ -454,7 +468,9 @@ async function runProfile(prompts: PromptModule, profile: Profile) {
             readingWords: words(readingText),
             ...readability(readingText),
             teaserWordsPerSentence: readability(teaserText).wordsPerSentence,
-            crossTalk: crossTalk(teaser.text, reading.text),
+            crossTalk: crossTalk(kept, reading.text),
+            cutByModel,
+            hookShown: shown ?? "",
             chatWords: words(chat.text),
             cut: [teaser, reading, chat].some(
                 (c) => c.finishReason === "length",
@@ -500,6 +516,8 @@ const summary = {
     "teaser.especificidad": rubric((v) => v.teaser.especificidad),
     "teaser.gancho": rubric((v) => v.teaser.gancho),
     "teaser.claridad": rubric((v) => v.teaser.claridad),
+    "teaser.corte": rubric((v) => v.teaser.corte),
+    corteDeLaIA: mean(results.map((r) => (r.checks.cutByModel ? 1 : 0))),
     "lectura.claridad": rubric((v) => v.lectura.claridad),
     jergaSinExplicar: results.reduce(
         (n, r) => n + r.verdict.jerga_sin_explicar.length,

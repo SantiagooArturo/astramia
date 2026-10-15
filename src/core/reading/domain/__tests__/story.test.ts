@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { natalChart, readingOutlook } from "../chart";
 import { LOVE_PLAN, sceneMoments } from "../plan";
-import { hookOf, lockTeaser, sentencesOf } from "../reading-content";
+import { hookOf, keptFree, lockTeaser, takeCut } from "../reading-content";
 import { SAMPLE_FREE, SAMPLE_READING, SAMPLE_SCENES } from "../sample-reading";
 import {
     buildStory,
@@ -372,14 +372,16 @@ describe("the preview, before paying", () => {
         ]);
     });
 
-    it("stops at the peak: the hook's first sentences, never the rest", () => {
+    it("stops mid-sentence, where the model cut it", () => {
         const door = preview.steps[2];
-        expect(door).toMatchObject({ kind: "door", title: "Venus y Marte" });
-        const full = String(SAMPLE_FREE.venusMars);
-        const shown = door.kind === "door" ? (door.text ?? "") : "";
-        expect(shown).toBe(sentencesOf(full).slice(0, 2).join(" "));
-        // What's locked never reaches the page.
-        expect(locked).not.toContain(sentencesOf(full)[2]);
+        expect(door).toMatchObject({
+            kind: "door",
+            title: "Venus y Marte",
+            text: "Juntos, tu Venus y tu Marte hacen que llegues primero a todo. Propones, escribes, organizas, y al principio es emocionante. Pero un día",
+        });
+        // What's locked never reaches the page, nor where it was cut.
+        expect(locked).not.toContain("miras atrás");
+        expect(JSON.parse(locked)).not.toHaveProperty("cut");
     });
 
     it("opens with the old paragraph for readings made before", () => {
@@ -394,8 +396,52 @@ describe("the preview, before paying", () => {
     });
 });
 
-describe("the hook's free part", () => {
-    it("keeps the first two sentences, and hides one when it can", () => {
+describe("the hook's cut", () => {
+    const hook =
+        "Empiezas con todo. Y justo cuando alguien se acerca, algo en ti [corte] frena sin aviso. No es miedo a querer a nadie de verdad. Es que pides aire.";
+
+    it("is where the model marked it, the mark taken out", () => {
+        const { text, cut } = takeCut(hook);
+        expect(text).toBe(hook.replace("[corte] ", ""));
+        expect(text.slice(0, cut)).toBe(
+            "Empiezas con todo. Y justo cuando alguien se acerca, algo en ti",
+        );
+    });
+
+    it("is kept with the free scenes, which lose any stray mark", () => {
+        const kept = keptFree(
+            { venus: "Uno [corte] dos.", venusMars: hook },
+            LOVE_PLAN,
+        );
+        expect(kept.venus).toBe("Uno dos.");
+        expect(kept.cut).toBe(takeCut(hook).cut);
+    });
+
+    it("is ignored at a sentence's end, or with too little on a side", () => {
+        expect(
+            takeCut(
+                "Empiezas con todo y te quedas. [corte] Y justo después pasa algo que nadie vio.",
+            ).cut,
+        ).toBeUndefined();
+        expect(
+            takeCut(
+                "Empiezas [corte] con todo y te quedas cuando nadie más se queda.",
+            ).cut,
+        ).toBeUndefined();
+        expect(takeCut("Sin marca ninguna.").cut).toBeUndefined();
+    });
+
+    it("falls back to whole sentences and the first words of the next", () => {
+        const plain = takeCut(hook).text;
+        expect(hookOf(plain)).toBe(
+            "Empiezas con todo. Y justo cuando alguien se acerca, algo en ti frena sin aviso. No es miedo",
+        );
+        const locked = lockTeaser(
+            JSON.stringify({ venusMars: plain }),
+            LOVE_PLAN,
+        );
+        expect(JSON.parse(locked).venusMars).toBe(hookOf(plain));
+        // A short next sentence stays hidden whole.
         expect(hookOf("Uno. Dos. Tres. Cuatro.")).toBe("Uno. Dos.");
         expect(hookOf("Uno. Dos.")).toBe("Uno.");
         expect(hookOf("Solo una")).toBe("Solo una");

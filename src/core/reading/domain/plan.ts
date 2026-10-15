@@ -69,8 +69,11 @@ export interface ReadingPlan {
     closing: { words: readonly [number, number]; brief: string };
 }
 
-/** Of the hook's text, what's shown before paying. */
-export const HOOK_SENTENCES = 2;
+/**
+ * Where the model marks, inside the hook it writes, the end of what's
+ * free: it picks the words that leave the most wanting to read on.
+ */
+export const CUT_MARK = "[corte]";
 
 const born = () => "El día que naciste";
 
@@ -81,7 +84,7 @@ export const LOVE_PLAN: ReadingPlan = {
     example: `Para alguien con Venus en Acuario y Marte en Tauro (le gusta alguien, se aleja cuando se pone serio, necesita libertad):
 venus: Venus habla de cómo te enamoras. La tuya está en Acuario: quieres querer con la puerta abierta. Por eso respondes rápido, con chistes y audios largos. Hasta el día en que te preguntan qué son. Ahí tardas horas en contestar.
 mars: Marte es cómo deseas. El tuyo está en Tauro: vas lento, pero cuando quieres, no sueltas. Te enciende lo que se toca, como un abrazo largo. Te apaga la prisa.
-venusMars: Juntos, tu Venus y tu Marte hacen algo curioso. Empiezas con todo, y justo cuando la otra persona se acerca, algo en ti frena. No es miedo a querer. Es que tu Venus pide aire y tu Marte pide quedarse, y esa noche gana el que llegó primero.`,
+venusMars: Juntos, tu Venus y tu Marte hacen algo curioso. Empiezas con todo, y justo cuando la otra persona se acerca, algo en ti frena. Y frena por algo que casi nadie ve: tu Venus [corte] pide aire y tu Marte pide quedarse, y esa noche gana el que llegó primero.`,
     free: [
         {
             key: "venus",
@@ -268,19 +271,19 @@ const momentsField = z
     .min(1)
     .max(4);
 
-function field(scene: PlanScene) {
-    return scene.kind === "moments"
-        ? momentsField
-        : z.string().describe(scene.hint);
+function field(scene: PlanScene, hint = scene.hint) {
+    return scene.kind === "moments" ? momentsField : z.string().describe(hint);
 }
 
 /** What the model fills before paying: the free scenes and the hook. */
 export function freeSchema(plan: ReadingPlan) {
-    return z.object(
-        Object.fromEntries(
-            [...plan.free, plan.hook].map((s) => [s.key, field(s)]),
+    return z.object({
+        ...Object.fromEntries(plan.free.map((s) => [s.key, field(s)])),
+        [plan.hook.key]: field(
+            plan.hook,
+            `${plan.hook.hint}, con ${CUT_MARK} donde se corta lo gratis`,
         ),
-    );
+    });
 }
 
 /** What the model fills once paid: the rest, and the last line. */

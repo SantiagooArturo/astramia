@@ -4,6 +4,7 @@ import { generateObject } from "@/core/ai/server/repository/llm";
 import { sunSignOf } from "@/core/reading/domain/chart";
 import { planFor } from "@/core/reading/domain/plan";
 import { AI_TASKS, freePrompt } from "@/core/reading/domain/prompts";
+import { keptFree } from "@/core/reading/domain/reading-content";
 import { DAILY_READING_LIMIT } from "@/core/reading/domain/schemas";
 import type { CreateReading } from "@/core/reading/domain/types";
 import {
@@ -37,7 +38,8 @@ export async function createReadingService(
             answers: input.answers,
         };
         const id = crypto.randomUUID();
-        const prompt = freePrompt(planFor(input.topic));
+        const plan = planFor(input.topic);
+        const prompt = freePrompt(plan);
         const free = await generateObject({
             model: ServerConfig.ai.models.teaser,
             system: prompt.system,
@@ -53,14 +55,7 @@ export async function createReadingService(
             topic: input.topic,
             ...profile,
             sunSign: sunSignOf(input.birthDate),
-            teaser: JSON.stringify(
-                Object.fromEntries(
-                    Object.entries(free).map(([key, text]) => [
-                        key,
-                        typeof text === "string" ? text.trim() : text,
-                    ]),
-                ),
-            ),
+            teaser: JSON.stringify(keptFree(free, plan)),
         });
         return ok({ id: row.id });
     } catch (cause) {

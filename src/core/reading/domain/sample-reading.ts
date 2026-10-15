@@ -1,4 +1,5 @@
-import type { SceneTexts } from "./plan";
+import { LOVE_PLAN, type SceneTexts } from "./plan";
+import { keptFree } from "./reading-content";
 import type { QuizAnswer } from "./types";
 
 /**
@@ -97,12 +98,16 @@ export const SAMPLE_SCENES: SceneTexts = {
 
 /**
  * The free scenes for the same chart, as the free prompt writes them now
- * (the hook's text included: the server cuts it while the reading is
- * locked): what /lectura/ejemplo opens with, before and after paying.
+ * and the server keeps them (the hook whole, and where it's cut while the
+ * reading is locked): what /lectura/ejemplo opens with, before and after
+ * paying.
  */
-export const SAMPLE_FREE: SceneTexts = {
-    venus: "Venus habla de cómo te enamoras. La tuya está en Aries: te enamoras rápido y de frente. Si alguien te gusta, escribes tú primero. Propones el plan y no sabes fingir que no te importa.",
-    mars: "Marte es cómo deseas. El tuyo está en Sagitario: te enciende reír, moverte y descubrir algo nuevo. Te apaga la rutina sin chispa.",
-    venusMars:
-        "Juntos, tu Venus y tu Marte hacen que llegues primero a todo. Propones, escribes, organizas, y al principio es emocionante. Pero un día miras atrás y ves que siempre fuiste tú. No es mala suerte. Tu Venus corre tan rápido que nunca le das a la otra persona el espacio de buscarte.",
-};
+export const SAMPLE_FREE: SceneTexts = keptFree(
+    {
+        venus: "Venus habla de cómo te enamoras. La tuya está en Aries: te enamoras rápido y de frente. Si alguien te gusta, escribes tú primero. Propones el plan y no sabes fingir que no te importa.",
+        mars: "Marte es cómo deseas. El tuyo está en Sagitario: te enciende reír, moverte y descubrir algo nuevo. Te apaga la rutina sin chispa.",
+        venusMars:
+            "Juntos, tu Venus y tu Marte hacen que llegues primero a todo. Propones, escribes, organizas, y al principio es emocionante. Pero un día [corte] miras atrás y ves que siempre fuiste tú. No es mala suerte. Tu Venus corre tan rápido que nunca le das a la otra persona el espacio de buscarte.",
+    },
+    LOVE_PLAN,
+);
