@@ -1,14 +1,26 @@
-.root {
-    display: inline;
-}
-
-.glyphs {
-    display: inline;
-    transition: color 0.3s ease;
-}
-
 /* While decoding, glyphs read as gold ink so the swap is visible */
 .running {
     color: var(--astral-gold);
     font-variant-ligatures: none;
+}
+
+.word {
+    white-space: nowrap;
+}
+
+/* The letter keeps its exact box; its glyph is painted on top, out of flow */
+.cell {
+    position: relative;
+    color: transparent;
+}
+
+/* Glyphs run wider than letters: shrunk and centred so neighbours don't overlap */
+.glyph {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.6em;
+    line-height: 1;
+    color: var(--astral-gold);
 }

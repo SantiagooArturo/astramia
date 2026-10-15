@@ -1,13 +1,13 @@
 "use client";
 
 import { useInView, useReducedMotion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { cn } from "@/frontend/lib/utils";
 import styles from "./scramble-text.module.css";
 
 // Each glyph carries U+FE0E so platforms never swap in an emoji.
 const GLYPHS = Array.from("♈♉♊♋♌♍♎♏♐♑♒♓☉☾☿♀♂♃♄·").map(
-    (g) => `${g}\uFE0E`,
+    (g) => `${g}︎`,
 );
 
 interface ScrambleTextProps {
@@ -22,6 +22,11 @@ interface ScrambleTextProps {
 /**
  * Decodes a headline out of zodiac and planet glyphs once it scrolls into
  * view. Screen readers get the plain text; the animated copy is aria-hidden.
+ *
+ * Layout never moves: every letter is laid out as itself (invisible while
+ * unresolved) and its glyph is painted over it, out of flow. Glyphs are wider
+ * and come from a fallback font, so typing them inline re-wrapped the line and
+ * pushed everything below up and down until the text settled.
  */
 export function ScrambleText({
     text,
@@ -32,8 +37,8 @@ export function ScrambleText({
     const ref = useRef<HTMLSpanElement>(null);
     const inView = useInView(ref, { once: true, margin: "-10% 0px" });
     const reducedMotion = useReducedMotion();
-    const [display, setDisplay] = useState(text);
-    const [running, setRunning] = useState(false);
+    /** Per character: the glyph covering it, or null once it reads as itself. */
+    const [cover, setCover] = useState<(string | null)[] | null>(null);
 
     useEffect(() => {
         if (!inView || reducedMotion) return;
@@ -48,26 +53,24 @@ export function ScrambleText({
             if (!start) start = now + delay * 1000;
             const elapsed = (now - start) / 1000;
             if (elapsed < 0) {
-                setDisplay(chars.map((c) => (c === " " ? " " : "·")).join(""));
+                setCover(chars.map((c) => (c === " " ? null : "·")));
                 frame = requestAnimationFrame(tick);
                 return;
             }
-            setRunning(true);
             const progress = Math.min(elapsed / duration, 1);
-            const next = chars
-                .map((char, i) => {
-                    if (char === " ") return " ";
-                    // Characters resolve left to right, with a little jitter.
-                    const threshold = (i / total) * 0.85;
-                    return progress >= threshold ? char : randomGlyph();
-                })
-                .join("");
-            setDisplay(next);
-            if (progress < 1) {
-                frame = requestAnimationFrame(tick);
-            } else {
-                setRunning(false);
+            if (progress >= 1) {
+                setCover(null);
+                return;
             }
+            setCover(
+                chars.map((char, i) =>
+                    // Characters resolve left to right.
+                    char === " " || progress >= (i / total) * 0.85
+                        ? null
+                        : randomGlyph(),
+                ),
+            );
+            frame = requestAnimationFrame(tick);
         };
 
         frame = requestAnimationFrame(tick);
@@ -75,14 +78,36 @@ export function ScrambleText({
     }, [inView, reducedMotion, text, delay, duration]);
 
     return (
-        <span ref={ref} className={cn(styles.root, className)}>
+        <span ref={ref} className={className}>
             <span className="sr-only">{text}</span>
-            <span
-                aria-hidden
-                className={cn(styles.glyphs, running && styles.running)}
-            >
-                {display}
+            <span aria-hidden className={cn(cover && styles.running)}>
+                {cover ? <Covered text={text} cover={cover} /> : text}
             </span>
         </span>
     );
+}
+
+/** Words stay unbreakable so lines wrap exactly where the final text does. */
+function Covered({ text, cover }: { text: string; cover: (string | null)[] }) {
+    let index = 0;
+    return text.split(" ").map((word, w) => {
+        const letters = Array.from(word).map((char) => {
+            const glyph = cover[index++];
+            return glyph ? (
+                <span key={index} className={styles.cell}>
+                    {char}
+                    <span className={styles.glyph}>{glyph}</span>
+                </span>
+            ) : (
+                <Fragment key={index}>{char}</Fragment>
+            );
+        });
+        index++; // the space
+        return (
+            <Fragment key={`${w}-${word}`}>
+                {w > 0 && " "}
+                <span className={styles.word}>{letters}</span>
+            </Fragment>
+        );
+    });
 }
