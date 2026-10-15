@@ -2,6 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ServerConfig } from "@/config/server-config";
 import { ReadingChat } from "@/core/reading/client/components/reading-chat";
+import {
+    LockedReadingScreen,
+    WritingScreen,
+} from "@/core/reading/client/screens/reading-screen";
 import { ReadingStory } from "@/core/reading/client/story/reading-story";
 import { natalChart, readingOutlook } from "@/core/reading/domain/chart";
 import {
@@ -37,8 +41,14 @@ const SAMPLE_CHAT: ChatMessage[] = [
  * The paid reading with a sample text and chart, to see (and check) the
  * experience without paying. Never on the live site.
  */
-export default function SampleReadingPage() {
+export default async function SampleReadingPage({
+    searchParams,
+}: {
+    /** `?vista=bloqueada` or `escribiendo`: the preview before paying, or while it's written. */
+    searchParams: Promise<{ vista?: string }>;
+}) {
     if (ServerConfig.isLiveSite) notFound();
+    const { vista } = await searchParams;
     const chart = natalChart(
         SAMPLE_READING.birthDate,
         SAMPLE_READING.birthTime,
@@ -63,6 +73,15 @@ export default function SampleReadingPage() {
         chatExpiresAt: null,
         createdAt: SAMPLE_READING.writtenAt,
     };
+    if (vista === "bloqueada")
+        return (
+            <LockedReadingScreen
+                reading={{ ...reading, locked: true, content: null }}
+                payment="none"
+            />
+        );
+    if (vista === "escribiendo")
+        return <WritingScreen reading={{ ...reading, content: null }} />;
     return (
         <ReadingStory
             reading={reading}

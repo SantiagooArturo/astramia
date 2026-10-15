@@ -11,6 +11,7 @@ import {
     ReadingBody,
     UnlockedReadingScreen,
 } from "@/core/reading/client/screens/reading-screen";
+import { CONTINUE_ANCHOR } from "@/core/reading/domain/story";
 import { listChatMessagesService } from "@/core/reading/server/services/chat-services";
 import { ensureReadingContentService } from "@/core/reading/server/services/ensure-reading-content-service";
 import { getReadingService } from "@/core/reading/server/services/get-reading-service";
@@ -53,7 +54,8 @@ export default async function ReadingPage({
     } else if (returned.data) {
         const status = returned.data.order?.status;
         // Paid: drop the gateway's query string so a reload is a clean view.
-        if (status === "paid") redirect(`/lectura/r/${id}`);
+        // Back on the story, right where the free part stopped.
+        if (status === "paid") redirect(`/lectura/r/${id}#${CONTINUE_ANCHOR}`);
         payment = status === "failed" ? "failed" : "confirming";
     }
 

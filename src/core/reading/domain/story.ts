@@ -16,6 +16,9 @@ import type { NatalChart, QuizAnswer, ReadingScenes, SkyEvent } from "./types";
 
 export type StoryBody = "Sol" | "Luna" | "Venus" | "Marte";
 
+/** Right after the free paragraph: where a buyer lands to keep reading. */
+export const CONTINUE_ANCHOR = "sigue";
+
 export type StoryVisual =
     /** The solar system the day they were born, seen from afar. */
     | { kind: "system" }
@@ -27,6 +30,11 @@ export type StoryVisual =
           sign: string;
           /** Unknown birth time and the Moon changed sign that day. */
           signs?: readonly [string, string];
+          /**
+           * The camera only heads for it: the line of sight, no landing.
+           * Where the preview stops, before the reading is bought.
+           */
+          approach?: boolean;
       }
     /** Two bodies side by side: what they do together. */
     | { kind: "pair"; bodies: readonly [StoryBody, StoryBody] }
@@ -62,6 +70,11 @@ export type StoryStep = { visual: StoryVisual; chapter: number | null } & (
     | TitleStep
     | NoteStep
     | { kind: "paragraph"; text: string; heading?: string }
+    /**
+     * Where the preview stops: the first body, what the reading holds, and
+     * under it the page's own box (unlock it, or "it's being written").
+     */
+    | { kind: "door"; eyebrow: string; title: string; inside: string[] }
     /** The reading's last line: the story ends here, before the chat. */
     | { kind: "closing"; text: string }
 );
@@ -569,6 +582,55 @@ function markdownStory(input: StoryInput): Story {
         });
 
     return { chapters, steps };
+}
+
+/**
+ * The free part, as the start of the same story: their sky, the paragraph
+ * they got, and Venus in its sign (a fact, free) with the line of sight
+ * drawn. The camera stops there; the reading continues after the box.
+ */
+export function previewStory(
+    input: Pick<StoryInput, "teaser" | "chart" | "question">,
+): Story {
+    const facts = skyFacts(input.chart);
+    const venus = facts.venus.visual;
+    const toward: StoryVisual =
+        venus.kind === "planet" ? { ...venus, approach: true } : venus;
+    return {
+        chapters: [],
+        steps: [
+            {
+                kind: "prologue",
+                text: input.teaser,
+                visual: SKY,
+                chapter: null,
+            },
+            {
+                kind: "scene",
+                eyebrow: "El día que naciste",
+                title: facts.venus.title,
+                text: "Venus habla de cómo te enamoras. La tuya tiene algo que contarte.",
+                visual: toward,
+                chapter: null,
+            },
+            {
+                kind: "door",
+                eyebrow: "Lo que sigue",
+                title: "Lo que te cuenta tu cielo",
+                inside: [
+                    "Cómo amas: tu Venus y tu Marte",
+                    "Lo que necesitas: tu Luna y tu Sol",
+                    input.question
+                        ? `Tu pregunta: ${input.question}`
+                        : "Lo que más quieres saber",
+                    "Lo que viene en los próximos meses",
+                    "Un gesto para esta semana",
+                ],
+                visual: toward,
+                chapter: null,
+            },
+        ],
+    };
 }
 
 export function buildStory(input: StoryInput): Story {

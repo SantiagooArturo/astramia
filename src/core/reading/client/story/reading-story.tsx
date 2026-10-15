@@ -12,7 +12,12 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Starfield } from "@/core/landing/client/effects";
 import { AstramiaLogo } from "@/core/landing/client/sections/astramia-logo";
 import { longDate, shortDate } from "@/core/reading/domain/chart";
-import { buildStory, type StoryStep } from "@/core/reading/domain/story";
+import {
+    buildStory,
+    CONTINUE_ANCHOR,
+    previewStory,
+    type StoryStep,
+} from "@/core/reading/domain/story";
 import type { Reading } from "@/core/reading/domain/types";
 import { cn } from "@/frontend/lib/utils";
 import { renderInline } from "../components/reading-text";
@@ -32,7 +37,14 @@ const ENTER = {
 const CARD =
     "max-lg:rounded-2xl max-lg:border max-lg:border-astral-ink max-lg:bg-background/75 max-lg:p-5 max-lg:backdrop-blur-md";
 
-function StepContent({ step }: { step: StoryStep }) {
+function StepContent({
+    step,
+    door,
+}: {
+    step: StoryStep;
+    /** Under the preview's last step: the page's own box. */
+    door?: ReactNode;
+}) {
     switch (step.kind) {
         case "prologue":
             return (
@@ -154,6 +166,51 @@ function StepContent({ step }: { step: StoryStep }) {
                     </p>
                 </motion.div>
             );
+        case "door":
+            return (
+                <div className="flex flex-col gap-4">
+                    <motion.p
+                        {...ENTER}
+                        className="font-mono text-[11px] text-astral-gold uppercase tracking-[0.24em]"
+                    >
+                        {step.eyebrow}
+                    </motion.p>
+                    <motion.h3
+                        {...ENTER}
+                        className="text-balance font-display text-4xl leading-[1.02] sm:text-5xl"
+                    >
+                        {step.title}
+                    </motion.h3>
+                    <motion.div
+                        {...ENTER}
+                        transition={{ ...ENTER.transition, delay: 0.35 }}
+                        className={CARD}
+                    >
+                        <ul className="flex flex-col gap-2">
+                            {step.inside.map((item) => (
+                                <li
+                                    key={item}
+                                    className="flex gap-3 text-muted-foreground"
+                                >
+                                    <span
+                                        aria-hidden
+                                        className="mt-2.5 size-1 shrink-0 rounded-full bg-astral-gold"
+                                    />
+                                    {item}
+                                </li>
+                            ))}
+                        </ul>
+                    </motion.div>
+                    {door && (
+                        <motion.div
+                            {...ENTER}
+                            transition={{ ...ENTER.transition, delay: 0.6 }}
+                        >
+                            {door}
+                        </motion.div>
+                    )}
+                </div>
+            );
         case "closing":
             // Said and done: the story closes here, the chat is another room.
             return (
@@ -209,24 +266,34 @@ export function ReadingStory({
     notice,
     account,
     chat,
+    door,
 }: {
     reading: Reading;
-    content: string;
+    /** The full reading; without it, the free preview up to `door`. */
+    content?: string;
     /** On the cover, e.g. "save it": it only lives in this browser. */
     notice?: ReactNode;
     /** Below the chat: "save it in an account". */
     account?: ReactNode;
-    chat: ReactNode;
+    chat?: ReactNode;
+    /** The preview's last box: unlock the reading, or it's being written. */
+    door?: ReactNode;
 }) {
     const story = useMemo(
         () =>
-            buildStory({
-                teaser: reading.teaser,
-                content,
-                chart: reading.chart,
-                question: reading.question,
-                skyAhead: reading.skyAhead,
-            }),
+            content
+                ? buildStory({
+                      teaser: reading.teaser,
+                      content,
+                      chart: reading.chart,
+                      question: reading.question,
+                      skyAhead: reading.skyAhead,
+                  })
+                : previewStory({
+                      teaser: reading.teaser,
+                      chart: reading.chart,
+                      question: reading.question,
+                  }),
         [reading, content],
     );
     const [active, setActive] = useState(0);
@@ -240,6 +307,13 @@ export function ReadingStory({
         stiffness: 120,
         damping: 30,
     });
+
+    // Just bought: the story may land after the "being written" screen,
+    // when the browser already gave up on the #sigue it came with.
+    useEffect(() => {
+        if (content && window.location.hash === `#${CONTINUE_ANCHOR}`)
+            document.getElementById(CONTINUE_ANCHOR)?.scrollIntoView();
+    }, [content]);
 
     // Once the chat is on screen, "Ir al chat" has nothing left to do.
     const [inChat, setInChat] = useState(false);
@@ -304,7 +378,7 @@ export function ReadingStory({
                             )}
                         </AnimatePresence>
                         <AnimatePresence initial={false}>
-                            {!inChat && (
+                            {chat && !inChat && (
                                 <motion.a
                                     href={`#${CHAT_ANCHOR}`}
                                     initial={{ opacity: 0 }}
@@ -375,6 +449,11 @@ export function ReadingStory({
                             <article
                                 // Steps are fixed for a given text: order is their identity.
                                 key={i}
+                                id={
+                                    content && i === 1
+                                        ? CONTINUE_ANCHOR
+                                        : undefined
+                                }
                                 ref={(el) => {
                                     stepRefs.current[i] = el;
                                 }}
@@ -384,19 +463,21 @@ export function ReadingStory({
                                     stepHeight(s),
                                 )}
                             >
-                                <StepContent step={s} />
+                                <StepContent step={s} door={door} />
                             </article>
                         ))}
                     </div>
                 </section>
 
-                <section
-                    id={CHAT_ANCHOR}
-                    aria-label="Chat sobre tu lectura"
-                    className="relative z-10"
-                >
-                    {chat}
-                </section>
+                {chat && (
+                    <section
+                        id={CHAT_ANCHOR}
+                        aria-label="Chat sobre tu lectura"
+                        className="relative z-10"
+                    >
+                        {chat}
+                    </section>
+                )}
 
                 {/* After the chat: the story and the Sun come first. */}
                 {account && (

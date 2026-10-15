@@ -3,6 +3,7 @@ import { natalChart, readingOutlook } from "../chart";
 import { SAMPLE_READING, SAMPLE_SCENES } from "../sample-reading";
 import {
     buildStory,
+    previewStory,
     type StoryInput,
     storyQuestion,
     visualKey,
@@ -308,5 +309,41 @@ describe("buildStory, a reading written per scene", () => {
                 visual: { kind: "star" },
             },
         ]);
+    });
+});
+
+describe("the preview, before paying", () => {
+    const preview = previewStory({
+        teaser: SAMPLE_READING.teaser,
+        chart,
+        question: "¿Cuándo llega alguien para mí?",
+    });
+
+    it("starts the same story and stops at Venus, without landing", () => {
+        expect(preview.steps.map((s) => s.kind)).toEqual([
+            "prologue",
+            "scene",
+            "door",
+        ]);
+        expect(preview.steps[0].visual).toEqual({ kind: "system" });
+        expect(preview.steps[1]).toMatchObject({
+            title: "Venus estaba en Aries",
+            visual: {
+                kind: "planet",
+                body: "Venus",
+                sign: "Aries",
+                approach: true,
+            },
+        });
+        // The camera stays on the same stage as the paid story.
+        expect(visualKey(preview.steps[1].visual)).toBe("system");
+        expect(preview.steps[2].visual).toEqual(preview.steps[1].visual);
+    });
+
+    it("says what the reading holds, their own question included", () => {
+        const door = preview.steps[2];
+        expect(door.kind === "door" && door.inside).toContain(
+            "Tu pregunta: ¿Cuándo llega alguien para mí?",
+        );
     });
 });

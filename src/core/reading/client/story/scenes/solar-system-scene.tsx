@@ -26,7 +26,13 @@ import { PlanetScene } from "./planet-scene";
  * (with the line of sight that puts it there), or the Moon's phase.
  */
 export type SystemFocus =
-    | { body: StoryBody; sign: string; signs?: readonly [string, string] }
+    | {
+          body: StoryBody;
+          sign: string;
+          signs?: readonly [string, string];
+          /** Draw the line of sight and stay out: the preview's last view. */
+          approach?: boolean;
+      }
     | { body: "Luna"; phase: MoonPhaseName };
 
 /** Half the view: the band's outer edge plus a little air. */
@@ -179,6 +185,7 @@ export function SolarSystemScene({
     // equal `focus` arrives with the next step.
     const sign = focus && "sign" in focus ? focus.sign : null;
     const phase = focus && "phase" in focus ? focus.phase : null;
+    const approach = Boolean(focus && "approach" in focus && focus.approach);
     // biome-ignore lint/correctness/useExhaustiveDependencies: `focus` is read through these keys.
     useEffect(() => {
         let live = true;
@@ -196,10 +203,10 @@ export function SolarSystemScene({
             const line = focus && !phase ? focus.body : null;
             if (reducedMotion) {
                 if (focus) target.current = focus.body;
-                progress.set(focus ? 1 : 0);
+                progress.set(focus && !approach ? 1 : 0);
                 setAim(focus?.body ?? null);
                 setSight(line);
-                setArrived(focus);
+                if (!approach) setArrived(focus);
                 return;
             }
             if (progress.get() > 0) {
@@ -215,7 +222,7 @@ export function SolarSystemScene({
             setAim(focus.body);
             setSight(line);
             await wait(line ? 1100 : 700);
-            if (!live) return;
+            if (!live || approach) return;
             const flight = animate(progress, 1, IN);
             // The globe takes over while the camera is still arriving.
             await wait(IN.duration * 620);
@@ -229,7 +236,7 @@ export function SolarSystemScene({
             for (const timer of timers) window.clearTimeout(timer);
             progress.stop();
         };
-    }, [focus?.body, sign, phase, reducedMotion, progress]);
+    }, [focus?.body, sign, phase, approach, reducedMotion, progress]);
 
     const line = sight ? view.sight(sight) : null;
     const lit = new Set(
@@ -363,7 +370,7 @@ export function SolarSystemScene({
                         const half = LOOK[body].r / SPRITE_SPHERE;
                         return (
                             <image
-                                key={body}
+                                key={`sprite-${body}`}
                                 href={`/planets/sprites/${LOOK[body].sprite}.webp`}
                                 x={at.x - half}
                                 y={at.y - half}
@@ -377,6 +384,24 @@ export function SolarSystemScene({
                             />
                         );
                     })}
+                    {/* Where the story goes next, while it waits. */}
+                    {approach && aim && !reducedMotion && (
+                        <motion.circle
+                            cx={view.bodies[aim].x}
+                            cy={view.bodies[aim].y}
+                            fill="none"
+                            stroke="var(--astral-gold)"
+                            strokeWidth={1.25}
+                            vectorEffect="non-scaling-stroke"
+                            initial={{ r: LOOK[aim].r * 1.4, opacity: 0.9 }}
+                            animate={{ r: LOOK[aim].r * 4, opacity: 0 }}
+                            transition={{
+                                duration: 2.2,
+                                repeat: Number.POSITIVE_INFINITY,
+                                ease: "easeOut",
+                            }}
+                        />
+                    )}
                 </motion.svg>
 
                 <motion.div

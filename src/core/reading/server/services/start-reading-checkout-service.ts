@@ -3,6 +3,7 @@ import { getLogger } from "@logtape/logtape";
 import { after } from "next/server";
 import type { CheckoutResponse } from "@/core/payment/domain/types";
 import { createCheckoutService } from "@/core/payment/server/services/create-checkout-service";
+import { CONTINUE_ANCHOR } from "@/core/reading/domain/story";
 import { isOwner } from "@/server/auth/owner";
 import {
     AppErrors,
@@ -40,7 +41,10 @@ export async function startReadingCheckoutService(
                 id: row.id,
             });
             return ok({
-                checkoutUrl: new URL(`/lectura/r/${row.id}`, origin).toString(),
+                checkoutUrl: new URL(
+                    `/lectura/r/${row.id}#${CONTINUE_ANCHOR}`,
+                    origin,
+                ).toString(),
             });
         }
 
