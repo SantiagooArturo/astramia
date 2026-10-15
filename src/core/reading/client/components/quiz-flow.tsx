@@ -236,8 +236,8 @@ export function QuizFlow({
                         </h2>
                         <p className="mt-2 text-muted-foreground text-sm">
                             {knownBirthDay
-                                ? "El día y el mes ya nos los diste. Con el año ubicamos tu Venus y tu Marte; la hora y la ciudad afinan tu Luna, si las sabes."
-                                : "Con la fecha basta. La hora y el lugar afinan tu Luna, si los sabes."}
+                                ? "El día y el mes ya nos los diste. Con el año ubicamos tu Venus y tu Marte; con la hora, si la sabes, tu Luna queda exacta."
+                                : "Con la fecha basta. Si sabes la hora, tu Luna queda exacta."}
                         </p>
                     </div>
                     <fieldset className="grid grid-cols-[4.5rem_1fr_5.5rem] gap-3">

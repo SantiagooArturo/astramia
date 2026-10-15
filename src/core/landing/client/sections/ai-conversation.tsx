@@ -6,7 +6,7 @@ import { SectionIntro } from "./section-intro";
 const MEMORY = [
     { label: "Sol", value: DEMO_CONTEXT.sun },
     { label: "Venus", value: DEMO_CONTEXT.venus },
-    { label: "Respuesta 3", value: DEMO_CONTEXT.answer },
+    { label: "Respuesta 2", value: DEMO_CONTEXT.answer },
 ] as const;
 
 export function AiConversation() {

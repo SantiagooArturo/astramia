@@ -74,7 +74,7 @@ export const EXPERIENCES: Experience[] = [
         title: "Amor y relaciones",
         description:
             "Qué buscas cuando dices que no buscas nada. El patrón que repites desde la segunda relación. Y hacia dónde se mueve Venus en los próximos meses para ti.",
-        anchor: "Venus · casa VII · Luna",
+        anchor: "Venus · Marte · Luna",
         available: true,
     },
     {
@@ -126,7 +126,7 @@ export const STEPS: Step[] = [
         numeral: "02",
         title: `Responde ${OFFER.questions} preguntas`,
         description:
-            "Qué está pasando, qué te preocupa y, si la sabes, tu hora y lugar de nacimiento para calcular tu Ascendente.",
+            "Qué está pasando, qué te preocupa y tu fecha de nacimiento. Si sabes la hora, tu Luna queda exacta.",
         note: "3 min",
     },
     {
@@ -139,7 +139,7 @@ export const STEPS: Step[] = [
         numeral: "04",
         title: "Recibe tu lectura",
         description:
-            "Escrita con tus respuestas y tu carta: Venus, la Luna, la casa VII. No un horóscopo de signo.",
+            "Escrita con tus respuestas y tu carta: Venus, Marte, la Luna y lo que Venus trae en los próximos meses. No un horóscopo de signo.",
         note: "minutos",
     },
     {
@@ -160,7 +160,7 @@ export interface ChatMessage {
 export const DEMO_CONTEXT = {
     sun: "Sol en Escorpio",
     venus: "Venus 14°32′ ♏",
-    answer: "«terminó hace dos meses y no sé si cerré»",
+    answer: "«saliendo de una ruptura»",
 } as const;
 
 export const DEMO_CHAT: ChatMessage[] = [
@@ -170,7 +170,7 @@ export const DEMO_CHAT: ChatMessage[] = [
     },
     {
         from: "astramia",
-        text: "En parte. Venus en Escorpio no ama a medias: cuando se abre, lo hace entero, y por eso cerrar le cuesta el doble. En el cuestionario me contaste que terminó hace dos meses y que no sabes si cerraste. ¿Quieres que veamos qué dice tu casa VIII sobre los finales?",
+        text: "En parte. Venus en Escorpio no ama a medias: cuando se abre, lo hace entero, y por eso cerrar le cuesta el doble. Me contaste que estás saliendo de una ruptura, y tu Luna en Tauro quiere quedarse donde ya se sintió en casa. ¿Quieres que veamos qué te pide Marte para soltar?",
     },
     {
         from: "user",
@@ -178,13 +178,13 @@ export const DEMO_CHAT: ChatMessage[] = [
     },
     {
         from: "astramia",
-        text: "Vamos por partes. Este mes Venus transita tu casa IV: menos ganas de salir, más de ordenar lo de adentro. No es un mes para forzar un cierre, es para entender qué parte de ti sigue esperando una llamada.",
+        text: "Vamos por partes. Cuando Venus pase por Capricornio, en buen aspecto con tu Luna, vas a tener menos ganas de salir y más de ordenar lo de adentro. No son semanas para forzar un cierre, sino para entender qué parte de ti sigue esperando una llamada.",
     },
 ];
 
 export const PRICING_INCLUDES = [
     { item: "Lectura de amor y relaciones", detail: "escrita para ti" },
-    { item: "Tu carta natal interpretada", detail: "Sol, Luna, Venus, ASC" },
+    { item: "Tu carta natal interpretada", detail: "Sol, Luna, Venus, Marte" },
     {
         item: `${OFFER.chatHours} horas de chat con tu asistente`,
         detail: "sabe lo que respondiste",
@@ -238,7 +238,7 @@ export const FAQS: Faq[] = [
     },
     {
         question: "¿Necesito saber mi hora exacta de nacimiento?",
-        answer: "No. Con fecha, hora y lugar podemos calcular tu Ascendente y las casas, y la lectura gana precisión. Sin la hora, trabajamos con tu Sol, tu Luna aproximada y Venus, que es lo que más pesa en una lectura de amor.",
+        answer: "No. Con la fecha calculamos tu Sol, Venus y Marte, que es lo que más pesa en una lectura de amor. La Luna cambia de signo cada dos días y medio: con la hora queda exacta, y sin ella te decimos con honestidad si quedó entre dos signos.",
     },
     {
         question: `¿Qué pasa cuando terminan las ${OFFER.chatHours} horas?`,
