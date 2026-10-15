@@ -9,6 +9,7 @@ import {
     useTransform,
 } from "motion/react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
+import type { MoonPhaseName } from "@/core/landing/domain/ephemeris";
 import {
     BAND,
     type Point,
@@ -17,29 +18,38 @@ import {
 } from "@/core/reading/domain/solar-system";
 import type { StoryBody } from "@/core/reading/domain/story";
 import type { NatalChart } from "@/core/reading/domain/types";
+import { MoonPhaseScene } from "./moon-phase-scene";
 import { PlanetScene } from "./planet-scene";
 
-/** The body the camera flies to, and the sign it was in. */
-export interface SystemFocus {
-    body: StoryBody;
-    sign: string;
-    signs?: readonly [string, string];
-}
+/**
+ * The body the camera flies to and what it shows there: the sign it was in
+ * (with the line of sight that puts it there), or the Moon's phase.
+ */
+export type SystemFocus =
+    | { body: StoryBody; sign: string; signs?: readonly [string, string] }
+    | { body: "Luna"; phase: MoonPhaseName };
 
 /** Half the view: the band's outer edge plus a little air. */
 const HALF = 1.04;
 
-/** Each body from afar: a small lit sphere, big enough to find. */
-const LOOK: Record<
-    SystemBody,
-    { r: number; light: string; mid: string; dark: string }
-> = {
-    Sol: { r: 0.055, light: "#fffbe8", mid: "#ffc94d", dark: "#e07b1a" },
-    Venus: { r: 0.02, light: "#fffdf6", mid: "#e9cf9f", dark: "#8c6a45" },
-    Tierra: { r: 0.022, light: "#d9f0ff", mid: "#4f93d6", dark: "#173a6b" },
-    Marte: { r: 0.017, light: "#ffd2b4", mid: "#d0643e", dark: "#5a1d12" },
-    Luna: { r: 0.009, light: "#ffffff", mid: "#cfd0d6", dark: "#6b6d78" },
+/**
+ * Each body from afar: its radius, and a small rendered sphere of it
+ * (scripts/planet-sprites.py), lit from its right.
+ */
+const LOOK: Record<SystemBody, { r: number; sprite: string }> = {
+    Sol: { r: 0.055, sprite: "sol" },
+    Venus: { r: 0.02, sprite: "venus" },
+    Tierra: { r: 0.022, sprite: "tierra" },
+    Marte: { r: 0.017, sprite: "marte" },
+    Luna: { r: 0.009, sprite: "luna" },
 };
+/** The sphere's share of its sprite: the rest is atmosphere or flames. */
+const SPRITE_SPHERE = 0.86;
+
+/** Turns a sprite (lit from its right) so its day side faces the Sun. */
+function towardTheSun(p: Point): number {
+    return (Math.atan2(-p.y, -p.x) * 180) / Math.PI;
+}
 
 /** How close the camera gets: the dot grows to about the globe that replaces it. */
 const ZOOM: Record<StoryBody, number> = {
@@ -111,15 +121,16 @@ function Label({
 }
 
 /**
- * Where a body's name goes: beside its dot, never over it. Venus's toward
- * the Sun, the others' away from it, so neighbors on nearby orbits never
+ * Where a body's name goes: beside its dot, never over it. Venus's and the
+ * Moon's toward the Sun, the others' away from it, so neighbors never
  * write over each other.
  */
 function nameAt(body: SystemBody, p: Point): { at: Point; side: Side } {
     if (body === "Sol")
         return { at: { x: 0, y: LOOK.Sol.r + 0.06 }, side: "center" };
     const right = p.x >= 0 ? 1 : -1;
-    const outward = body === "Venus" ? -right : right;
+    // The Moon's name goes on the Sun's side too, away from the Earth's.
+    const outward = body === "Venus" || body === "Luna" ? -right : right;
     const gap = LOOK[body].r + 0.025;
     return {
         at: { x: p.x + outward * gap, y: p.y },
@@ -145,7 +156,7 @@ export function SolarSystemScene({
 }) {
     const reducedMotion = useReducedMotion();
     const view = useMemo(() => solarSystemView(chart), [chart]);
-    const ids = useId().replace(/:/g, "");
+    const glowId = `${useId().replace(/:/g, "")}-glow`;
 
     // Where the camera flies to; it only changes while the camera is out.
     const target = useRef<StoryBody>(focus?.body ?? "Sol");
@@ -157,12 +168,17 @@ export function SolarSystemScene({
     const mapOpacity = useTransform(progress, [0, 0.7, 1], [1, 1, 0]);
     const labelsOpacity = useTransform(progress, [0, 0.12], [1, 0]);
 
+    /** The body the camera is going to (its name lights up). */
+    const [aim, setAim] = useState<StoryBody | null>(null);
+    /** The line of sight on screen, from the Earth through this body. */
     const [sight, setSight] = useState<StoryBody | null>(null);
     const [arrived, setArrived] = useState<SystemFocus | null>(null);
     const mounted = useRef(false);
 
-    // The flight restarts only when the body (or its sign) changes, not
-    // when an equal `focus` arrives with the next step.
+    // The flight restarts only when where it goes changes, not when an
+    // equal `focus` arrives with the next step.
+    const sign = focus && "sign" in focus ? focus.sign : null;
+    const phase = focus && "phase" in focus ? focus.phase : null;
     // biome-ignore lint/correctness/useExhaustiveDependencies: `focus` is read through these keys.
     useEffect(() => {
         let live = true;
@@ -176,15 +192,19 @@ export function SolarSystemScene({
 
         async function fly() {
             setArrived(null);
+            // A phase is not a sign: no line of sight, just the flight.
+            const line = focus && !phase ? focus.body : null;
             if (reducedMotion) {
                 if (focus) target.current = focus.body;
                 progress.set(focus ? 1 : 0);
-                setSight(focus?.body ?? null);
+                setAim(focus?.body ?? null);
+                setSight(line);
                 setArrived(focus);
                 return;
             }
             if (progress.get() > 0) {
                 setSight(null);
+                setAim(null);
                 await animate(progress, 0, OUT);
             }
             if (!live || !focus) return;
@@ -192,8 +212,9 @@ export function SolarSystemScene({
             // Coming from another scene, let the whole system be seen first.
             await wait(first ? 700 : 150);
             if (!live) return;
-            setSight(focus.body);
-            await wait(1100);
+            setAim(focus.body);
+            setSight(line);
+            await wait(line ? 1100 : 700);
             if (!live) return;
             const flight = animate(progress, 1, IN);
             // The globe takes over while the camera is still arriving.
@@ -208,17 +229,16 @@ export function SolarSystemScene({
             for (const timer of timers) window.clearTimeout(timer);
             progress.stop();
         };
-    }, [focus?.body, focus?.sign, reducedMotion, progress]);
+    }, [focus?.body, sign, phase, reducedMotion, progress]);
 
     const line = sight ? view.sight(sight) : null;
     const lit = new Set(
         sight
-            ? focus?.signs && focus.body === sight
+            ? focus && "signs" in focus && focus.signs && focus.body === sight
                 ? focus.signs
                 : [chart.placements.find((p) => p.body === sight)?.sign]
             : [],
     );
-    const gradient = (body: SystemBody) => `${ids}-${body}`;
 
     return (
         <div className="relative h-full w-full [container-type:size]">
@@ -232,26 +252,7 @@ export function SolarSystemScene({
                     className="absolute inset-0 size-full overflow-visible"
                 >
                     <defs>
-                        {(Object.keys(LOOK) as SystemBody[]).map((body) => (
-                            <radialGradient
-                                key={body}
-                                id={gradient(body)}
-                                cx="38%"
-                                cy="34%"
-                                r="70%"
-                            >
-                                <stop
-                                    offset="0%"
-                                    stopColor={LOOK[body].light}
-                                />
-                                <stop offset="45%" stopColor={LOOK[body].mid} />
-                                <stop
-                                    offset="100%"
-                                    stopColor={LOOK[body].dark}
-                                />
-                            </radialGradient>
-                        ))}
-                        <radialGradient id={`${ids}-glow`}>
+                        <radialGradient id={glowId}>
                             <stop
                                 offset="0%"
                                 stopColor="oklch(0.85 0.15 75 / 55%)"
@@ -356,16 +357,26 @@ export function SolarSystemScene({
                         />
                     )}
 
-                    <circle r={LOOK.Sol.r * 3.2} fill={`url(#${ids}-glow)`} />
-                    {(Object.keys(LOOK) as SystemBody[]).map((body) => (
-                        <circle
-                            key={body}
-                            cx={view.bodies[body].x}
-                            cy={view.bodies[body].y}
-                            r={LOOK[body].r}
-                            fill={`url(#${gradient(body)})`}
-                        />
-                    ))}
+                    <circle r={LOOK.Sol.r * 3.2} fill={`url(#${glowId})`} />
+                    {(Object.keys(LOOK) as SystemBody[]).map((body) => {
+                        const at = view.bodies[body];
+                        const half = LOOK[body].r / SPRITE_SPHERE;
+                        return (
+                            <image
+                                key={body}
+                                href={`/planets/sprites/${LOOK[body].sprite}.webp`}
+                                x={at.x - half}
+                                y={at.y - half}
+                                width={half * 2}
+                                height={half * 2}
+                                transform={
+                                    body === "Sol"
+                                        ? undefined
+                                        : `rotate(${towardTheSun(at)} ${at.x} ${at.y})`
+                                }
+                            />
+                        );
+                    })}
                 </motion.svg>
 
                 <motion.div
@@ -373,22 +384,28 @@ export function SolarSystemScene({
                     className="absolute inset-0"
                     style={{ opacity: labelsOpacity }}
                 >
-                    {(["Sol", "Venus", "Tierra", "Marte"] as const).map(
-                        (body) => (
-                            <Label
-                                key={body}
-                                {...nameAt(body, view.bodies[body])}
-                                className={
-                                    body === sight ||
-                                    (body === "Tierra" && sight)
-                                        ? "text-astral-gold"
-                                        : "text-muted-foreground"
-                                }
-                            >
-                                {body}
-                            </Label>
-                        ),
-                    )}
+                    {/* The Moon hugs the Earth: named only when it's the destination. */}
+                    {(
+                        [
+                            "Sol",
+                            "Venus",
+                            "Tierra",
+                            "Marte",
+                            ...(aim === "Luna" ? (["Luna"] as const) : []),
+                        ] as const
+                    ).map((body) => (
+                        <Label
+                            key={body}
+                            {...nameAt(body, view.bodies[body])}
+                            className={
+                                body === aim || (body === "Tierra" && sight)
+                                    ? "text-astral-gold"
+                                    : "text-muted-foreground"
+                            }
+                        >
+                            {body}
+                        </Label>
+                    ))}
                     <AnimatePresence>
                         {line && sight && (
                             <motion.span
@@ -421,14 +438,18 @@ export function SolarSystemScene({
                         exit={{ opacity: 0 }}
                         transition={{ duration: 0.6 }}
                     >
-                        <PlanetScene
-                            body={arrived.body}
-                            sign={arrived.sign}
-                            signs={arrived.signs}
-                            moonPhase={chart.moonPhase}
-                            born={born}
-                            fromZoom
-                        />
+                        {"phase" in arrived ? (
+                            <MoonPhaseScene phase={arrived.phase} born={born} />
+                        ) : (
+                            <PlanetScene
+                                body={arrived.body}
+                                sign={arrived.sign}
+                                signs={arrived.signs}
+                                moonPhase={chart.moonPhase}
+                                born={born}
+                                fromZoom
+                            />
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>

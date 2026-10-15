@@ -3,7 +3,6 @@
 import { AnimatePresence, motion } from "motion/react";
 import { type StoryVisual, visualKey } from "@/core/reading/domain/story";
 import type { NatalChart } from "@/core/reading/domain/types";
-import { MoonPhaseScene } from "./scenes/moon-phase-scene";
 import { PairScene } from "./scenes/pair-scene";
 import { SkyScene, StarScene } from "./scenes/sky-scenes";
 import { SolarSystemScene } from "./scenes/solar-system-scene";
@@ -34,7 +33,14 @@ function Scene({
                 />
             );
         case "moonPhase":
-            return <MoonPhaseScene phase={visual.phase} born={born} />;
+            // The camera flies to the Moon; its phase is what it finds there.
+            return (
+                <SolarSystemScene
+                    chart={chart}
+                    born={born}
+                    focus={{ body: "Luna", phase: visual.phase }}
+                />
+            );
         case "venusPath":
             return (
                 <VenusPathScene events={visual.events} focus={visual.focus} />

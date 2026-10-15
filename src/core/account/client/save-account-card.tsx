@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { AccountForm } from "./account-form";
 
 /** Anchor of "save it" links: the top link scrolls here. */
@@ -36,20 +35,6 @@ export function SaveAccountCard({
             </div>
             <AccountForm defaultEmail={defaultEmail} submitLabel="Guardar" />
         </section>
-    );
-}
-
-/** Shown instead of the card once the reading belongs to an account. */
-export function SavedInAccount({ email }: { email: string }) {
-    return (
-        <p className="text-muted-foreground text-sm">
-            Guardada en tu cuenta ({email}). Para verla en otro celular, entra
-            en{" "}
-            <Link href="/lecturas" className="underline underline-offset-4">
-                Mis lecturas
-            </Link>
-            .
-        </p>
     );
 }
 

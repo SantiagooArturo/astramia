@@ -2,7 +2,6 @@ import { notFound, redirect } from "next/navigation";
 import {
     SaveAccountCard,
     SaveAccountNotice,
-    SavedInAccount,
 } from "@/core/account/client/save-account-card";
 import { payerEmailService } from "@/core/payment/server/services/payer-email-service";
 import { syncCheckoutReturnService } from "@/core/payment/server/services/sync-checkout-return-service";
@@ -68,13 +67,12 @@ export default async function ReadingPage({
     if (reading.data.locked)
         return <LockedReadingScreen reading={reading.data} payment={payment} />;
 
-    // Bought without an account: offer one, pre-filled with the paying e-mail.
+    // Bought without an account: offer one, pre-filled with the paying
+    // e-mail. With one, it's already saved: nothing to say.
     const anonymous = Boolean(session.user.isAnonymous);
     const account = anonymous ? (
         <SaveAccountCard defaultEmail={await payerEmailService(userId, id)} />
-    ) : (
-        <SavedInAccount email={session.user.email} />
-    );
+    ) : undefined;
 
     const notice = anonymous ? <SaveAccountNotice /> : undefined;
     return (

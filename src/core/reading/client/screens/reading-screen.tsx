@@ -181,7 +181,7 @@ export function ReadingBody({
 }: {
     reading: Reading;
     messages: ChatMessage[];
-    /** Between the reading and the chat: save it in an account, or "saved". */
+    /** Below the chat, for a reading without an account: save it in one. */
     account?: React.ReactNode;
     /** On the cover (e.g. "it only lives in this browser"). */
     notice?: React.ReactNode;

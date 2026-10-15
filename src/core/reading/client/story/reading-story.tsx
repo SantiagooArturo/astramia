@@ -214,7 +214,7 @@ export function ReadingStory({
     content: string;
     /** On the cover, e.g. "save it": it only lives in this browser. */
     notice?: ReactNode;
-    /** Between the story and the chat. */
+    /** Below the chat: "save it in an account". */
     account?: ReactNode;
     chat: ReactNode;
 }) {
@@ -390,19 +390,20 @@ export function ReadingStory({
                     </div>
                 </section>
 
-                {account && (
-                    <div className="relative z-10 mx-auto max-w-2xl px-5 py-10 sm:px-8">
-                        {account}
-                    </div>
-                )}
-
                 <section
                     id={CHAT_ANCHOR}
                     aria-label="Chat sobre tu lectura"
-                    className="relative z-10 scroll-mt-4"
+                    className="relative z-10"
                 >
                     {chat}
                 </section>
+
+                {/* After the chat: the story and the Sun come first. */}
+                {account && (
+                    <div className="relative z-10 mx-auto max-w-2xl px-5 pt-6 pb-16 sm:px-8">
+                        {account}
+                    </div>
+                )}
             </div>
         </MotionConfig>
     );

@@ -249,22 +249,40 @@ export function ReadingChat({
     const busy = status === "submitted" || status === "streaming";
     const closed = expired || exhausted;
 
-    // Once they ask, the page follows the answer as it's written, until
+    // The chat is a room the size of the screen: the Sun stays at the top
+    // and the conversation scrolls under it, inside.
+    const roomRef = useRef<HTMLDivElement>(null);
+    const listRef = useRef<HTMLDivElement>(null);
+    // Until the room fills the screen, a swipe moves the page, not the list.
+    const [inRoom, setInRoom] = useState(false);
+    useEffect(() => {
+        const room = roomRef.current;
+        if (!room) return;
+        const observer = new IntersectionObserver(
+            ([entry]) => setInRoom(entry.intersectionRatio > 0.97),
+            { threshold: [0, 0.5, 0.97, 1] },
+        );
+        observer.observe(room);
+        return () => observer.disconnect();
+    }, []);
+    // Once they ask, the list follows the answer as it's written, until
     // they scroll back up to reread something.
-    const endRef = useRef<HTMLDivElement>(null);
     const following = useRef(false);
     useEffect(() => {
-        let lastY = window.scrollY;
+        const list = listRef.current;
+        if (!list) return;
+        let last = list.scrollTop;
         const onScroll = () => {
-            if (window.scrollY < lastY - 4) following.current = false;
-            lastY = window.scrollY;
+            if (list.scrollTop < last - 4) following.current = false;
+            last = list.scrollTop;
         };
-        window.addEventListener("scroll", onScroll, { passive: true });
-        return () => window.removeEventListener("scroll", onScroll);
+        list.addEventListener("scroll", onScroll, { passive: true });
+        return () => list.removeEventListener("scroll", onScroll);
     }, []);
     // biome-ignore lint/correctness/useExhaustiveDependencies: runs on every new word and status, which is the point.
     useEffect(() => {
-        if (following.current) endRef.current?.scrollIntoView({ block: "end" });
+        const list = listRef.current;
+        if (following.current && list) list.scrollTop = list.scrollHeight;
     }, [messages, status]);
 
     function ask(question: string) {
@@ -282,6 +300,7 @@ export function ReadingChat({
                 ).toISOString(),
             );
         following.current = true;
+        roomRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
         sendMessage({ text });
         setInput("");
     }
@@ -289,37 +308,33 @@ export function ReadingChat({
     const closesAt = useLocalTime(openUntil);
 
     return (
-        // `clip`, not `hidden`: the Sun and the box stay sticky inside it.
-        <div className="relative min-h-svh overflow-x-clip px-5 pb-10 sm:px-8">
-            {/*
-             * Their Sun stays in sight the whole conversation: the
-             * messages pass under it, fading into its sky.
-             */}
-            <div className="sticky top-0 z-10 -mx-5 sm:-mx-8">
-                {/* Soft edges, outside the band: off screen once it sticks. */}
-                <div
-                    aria-hidden
-                    className="pointer-events-none absolute inset-x-0 bottom-full h-16 bg-gradient-to-t from-background to-transparent"
-                />
-                <div className="flex justify-center bg-background pt-10">
-                    <motion.div
-                        initial={reducedMotion ? false : { opacity: 0, y: 80 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 2, ease: [0.2, 0.7, 0.2, 1] }}
-                        className="-mb-4"
-                    >
-                        <SpeakingSun speaking={busy} />
-                    </motion.div>
-                </div>
-                <div
-                    aria-hidden
-                    className="pointer-events-none absolute inset-x-0 top-full h-16 bg-gradient-to-b from-background to-transparent"
-                />
+        <div ref={roomRef} className="relative flex h-svh flex-col">
+            <div className="flex shrink-0 justify-center pt-12">
+                {/* The night is over: their Sun rises, and stays. */}
+                <motion.div
+                    initial={reducedMotion ? false : { opacity: 0, y: 80 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 2, ease: [0.2, 0.7, 0.2, 1] }}
+                    className="-mb-8"
+                >
+                    <SpeakingSun speaking={busy} />
+                </motion.div>
             </div>
-            <div className="relative mx-auto flex max-w-2xl flex-col gap-10">
-                <header className="flex flex-col items-center gap-6 text-center">
-                    <div className="flex flex-col gap-3">
+            <div
+                ref={listRef}
+                className={cn(
+                    "min-h-0 flex-1 px-5 [scrollbar-gutter:stable] [scrollbar-width:thin] sm:px-8",
+                    inRoom ? "overflow-y-auto" : "overflow-y-hidden",
+                )}
+                style={{
+                    // Words fade into the Sun's sky as they scroll up.
+                    maskImage:
+                        "linear-gradient(to bottom, transparent, black 88px, black calc(100% - 20px), transparent)",
+                }}
+            >
+                <div className="mx-auto flex max-w-2xl flex-col gap-10 pt-14 pb-8">
+                    <header className="flex flex-col items-center gap-3 text-center">
                         <p className="font-mono text-[11px] text-astral-gold uppercase tracking-[0.24em]">
                             Ahora, tú preguntas
                         </p>
@@ -339,93 +354,95 @@ export function ReadingChat({
                                     ? `Abierto hasta las ${closesAt}`
                                     : "Chat abierto"}
                         </p>
-                    </div>
-                </header>
+                    </header>
 
-                {messages.length > 0 && (
-                    <ol className="flex flex-col gap-6">
-                        {messages.map((message) =>
-                            message.role === "assistant" ? (
-                                <motion.li
-                                    key={message.id}
-                                    initial={{ opacity: 0, y: 8 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className="flex gap-3"
-                                >
-                                    <Sun
-                                        speaking={false}
-                                        className="mt-2 size-3 shrink-0"
-                                    />
-                                    <p className="whitespace-pre-wrap text-pretty text-lg leading-relaxed">
-                                        {initialIds.has(message.id) ? (
-                                            renderInline(textOf(message))
-                                        ) : (
-                                            <FlowingText
-                                                text={textOf(message)}
-                                            />
-                                        )}
-                                    </p>
-                                </motion.li>
-                            ) : (
-                                <li
-                                    key={message.id}
-                                    className="max-w-[85%] self-end whitespace-pre-wrap rounded-2xl rounded-br-sm bg-astral-gold/15 px-4 py-3 leading-relaxed"
-                                >
-                                    {textOf(message)}
-                                </li>
-                            ),
-                        )}
-                        {status === "submitted" && (
-                            <li className="flex items-center gap-3 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.18em]">
-                                <Sun speaking className="size-3" />
-                                <Thinking />
-                            </li>
-                        )}
-                    </ol>
-                )}
-                {/* Where the page follows to: just above the box. */}
-                <div ref={endRef} aria-hidden className="-mt-10 scroll-mb-36" />
-
-                {error && (
-                    <p role="alert" className="text-destructive text-sm">
-                        No pudimos responder ahora. Inténtalo otra vez.
-                    </p>
-                )}
-
-                {closed ? (
-                    <p className="text-center text-muted-foreground">
-                        {expired
-                            ? "Tus horas de chat terminaron. Tu lectura sigue aquí cuando quieras volver."
-                            : "Llegaste al límite de preguntas de esta lectura."}
-                    </p>
-                ) : (
-                    // Always at hand, like any chat (sticky in the tall column).
-                    <div className="sticky bottom-4 z-10 flex flex-col gap-4">
-                        {asked === 0 && (
-                            <ul
-                                aria-label="Preguntas para empezar"
-                                className="flex flex-wrap justify-center gap-2"
-                            >
-                                {SUGGESTIONS.map((question) => (
-                                    <li key={question}>
-                                        <button
-                                            type="button"
-                                            onClick={() => ask(question)}
-                                            disabled={busy}
-                                            className="rounded-full border border-astral-gold/30 bg-background/40 px-4 py-2 text-sm transition-colors hover:border-astral-gold hover:bg-astral-gold/10"
-                                        >
-                                            {question}
-                                        </button>
+                    {messages.length > 0 && (
+                        <ol className="flex flex-col gap-6">
+                            {messages.map((message) =>
+                                message.role === "assistant" ? (
+                                    <motion.li
+                                        key={message.id}
+                                        initial={{ opacity: 0, y: 8 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        className="flex gap-3"
+                                    >
+                                        <Sun
+                                            speaking={false}
+                                            className="mt-2 size-3 shrink-0"
+                                        />
+                                        <p className="whitespace-pre-wrap text-pretty text-lg leading-relaxed">
+                                            {initialIds.has(message.id) ? (
+                                                renderInline(textOf(message))
+                                            ) : (
+                                                <FlowingText
+                                                    text={textOf(message)}
+                                                />
+                                            )}
+                                        </p>
+                                    </motion.li>
+                                ) : (
+                                    <li
+                                        key={message.id}
+                                        className="max-w-[85%] self-end whitespace-pre-wrap rounded-2xl rounded-br-sm bg-astral-gold/15 px-4 py-3 leading-relaxed"
+                                    >
+                                        {textOf(message)}
                                     </li>
-                                ))}
-                            </ul>
-                        )}
+                                ),
+                            )}
+                            {status === "submitted" && (
+                                <li className="flex items-center gap-3 font-mono text-[11px] text-muted-foreground uppercase tracking-[0.18em]">
+                                    <Sun speaking className="size-3" />
+                                    <Thinking />
+                                </li>
+                            )}
+                        </ol>
+                    )}
+
+                    {error && (
+                        <p role="alert" className="text-destructive text-sm">
+                            No pudimos responder ahora. Inténtalo otra vez.
+                        </p>
+                    )}
+
+                    {closed && (
+                        <p className="text-center text-muted-foreground">
+                            {expired
+                                ? "Tus horas de chat terminaron. Tu lectura sigue aquí cuando quieras volver."
+                                : "Llegaste al límite de preguntas de esta lectura."}
+                        </p>
+                    )}
+
+                    {!closed && asked === 0 && (
+                        <ul
+                            aria-label="Preguntas para empezar"
+                            className="flex flex-wrap justify-center gap-2"
+                        >
+                            {SUGGESTIONS.map((question) => (
+                                <li key={question}>
+                                    <button
+                                        type="button"
+                                        onClick={() => ask(question)}
+                                        disabled={busy}
+                                        className="rounded-full border border-astral-gold/30 bg-background/40 px-4 py-2 text-sm transition-colors hover:border-astral-gold hover:bg-astral-gold/10"
+                                    >
+                                        {question}
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+            </div>
+
+            {!closed && (
+                <div className="shrink-0 px-5 pt-3 pb-[max(1.75rem,env(safe-area-inset-bottom))] sm:px-8">
+                    <div className="mx-auto flex max-w-2xl flex-col gap-3">
                         <form
                             onSubmit={(e) => {
                                 e.preventDefault();
                                 ask(input);
                             }}
-                            className="flex items-end gap-2 rounded-3xl border border-astral-gold/30 bg-background/85 p-2 shadow-[0_8px_40px_24px_var(--background)] backdrop-blur-md focus-within:border-astral-gold"
+                            className="flex items-end gap-2 rounded-3xl border border-astral-gold/30 bg-background/60 p-2 backdrop-blur-md focus-within:border-astral-gold"
                         >
                             <Textarea
                                 value={input}
@@ -461,8 +478,8 @@ export function ReadingChat({
                             </p>
                         )}
                     </div>
-                )}
-            </div>
+                </div>
+            )}
         </div>
     );
 }

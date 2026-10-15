@@ -90,13 +90,12 @@ const NUMERALS = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX"];
 export function visualKey(visual: StoryVisual): string {
     switch (visual.kind) {
         case "planet":
+        case "moonPhase":
             // The solar system stays on stage: the camera pulls back from
             // one body and flies to the next instead of cutting.
             return "system";
         case "pair":
             return `pair:${visual.bodies.join("+")}`;
-        case "moonPhase":
-            return `moon:${visual.phase}`;
         default:
             // venusPath keeps one key: Venus travels between its stops.
             return visual.kind;
