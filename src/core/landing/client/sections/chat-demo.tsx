@@ -130,9 +130,7 @@ export function ChatDemo() {
                         {"\u2609\uFE0E"}
                     </span>
                     <div className="min-w-0">
-                        <p className="truncate font-medium text-sm">
-                            Tu Sol
-                        </p>
+                        <p className="truncate font-medium text-sm">Tu Sol</p>
                         <p className="truncate font-mono text-[11px] text-muted-foreground">
                             {DEMO_CONTEXT.sun} · {DEMO_CONTEXT.venus}
                         </p>
