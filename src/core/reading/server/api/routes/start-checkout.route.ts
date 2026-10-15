@@ -1,4 +1,5 @@
 import { Elysia } from "elysia";
+import { requestOrigin } from "@/config/server-config";
 import { checkoutResponseSchema } from "@/core/payment/domain/schemas";
 import { readingIdParamsSchema } from "@/core/reading/domain/schemas";
 import { authed } from "@/server/auth/middleware/authed";
@@ -12,8 +13,12 @@ import { startReadingCheckoutService } from "../../services/start-reading-checko
 
 export const startCheckoutRoute = new Elysia().use(authed).post(
     "/:id/checkout",
-    async ({ user, params, status }) => {
-        const result = await startReadingCheckoutService(user, params.id);
+    async ({ user, params, request, status }) => {
+        const result = await startReadingCheckoutService(
+            user,
+            params.id,
+            requestOrigin(request),
+        );
         if (!result.ok)
             return status(
                 result.error.status as 404 | 409 | 500,

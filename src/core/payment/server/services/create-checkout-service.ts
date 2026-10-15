@@ -1,5 +1,4 @@
 import "server-only";
-import { ServerConfig } from "@/config/server-config";
 import { PRODUCTS } from "@/core/payment/domain/catalog";
 import type { CheckoutResponse, ProductId } from "@/core/payment/domain/types";
 import {
@@ -21,6 +20,8 @@ export async function createCheckoutService(input: {
     productId: ProductId;
     referenceId: string;
     returnPath: string;
+    /** Origin the buyer is on (`requestOrigin`): they come back to it. */
+    origin: string;
     payerEmail?: string;
 }): AsyncAppResult<CheckoutResponse> {
     const gateway = getActivePaymentGateway();
@@ -35,11 +36,11 @@ export async function createCheckoutService(input: {
             currency: product.price.currency,
         });
 
-        const returnUrl = new URL(input.returnPath, ServerConfig.baseUrl);
+        const returnUrl = new URL(input.returnPath, input.origin);
         returnUrl.searchParams.set("checkout", gateway.provider);
         const webhookUrl = new URL(
             `/api/v1/payments/webhooks/${gateway.provider}`,
-            ServerConfig.baseUrl,
+            input.origin,
         );
 
         const session = await gateway.createCheckout({

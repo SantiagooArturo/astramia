@@ -84,6 +84,7 @@ describe("createCheckoutService", () => {
             productId: "reading_unlock",
             referenceId: "r1",
             returnPath: "/lectura/r/r1",
+            origin: "http://localhost:3000",
         });
 
         expect(r).toEqual({

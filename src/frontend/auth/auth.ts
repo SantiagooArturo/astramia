@@ -3,7 +3,7 @@ import { createAuthClient } from "better-auth/react";
 import { ClientConfig } from "@/config/client-config";
 
 export const authClient = createAuthClient({
-    baseURL: ClientConfig.baseUrl,
+    baseURL: ClientConfig.apiOrigin,
     basePath: "/api/v1/auth",
     plugins: [anonymousClient()],
 });

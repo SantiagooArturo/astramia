@@ -10,6 +10,7 @@ import { prepareReadingContentService } from "./ensure-reading-content-service";
 export async function startReadingCheckoutService(
     user: { id: string; email: string; isAnonymous?: boolean | null },
     readingId: string,
+    origin: string,
 ): AsyncAppResult<CheckoutResponse> {
     try {
         const row = await findReading(user.id, readingId);
@@ -22,6 +23,7 @@ export async function startReadingCheckoutService(
             productId: "reading_unlock",
             referenceId: row.id,
             returnPath: `/lectura/r/${row.id}`,
+            origin,
             // Anonymous accounts carry a placeholder address; let the gateway ask.
             payerEmail: user.isAnonymous ? undefined : user.email,
         });

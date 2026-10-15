@@ -39,7 +39,7 @@ const app = new Elysia({ prefix: "/api/v1" })
     .use(betterAuthPlugin)
     .use(
         cors({
-            origin: [ServerConfig.baseUrl],
+            origin: [...ServerConfig.appOrigins],
             methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
             credentials: true,
             allowedHeaders: ["Content-Type", "Authorization"],

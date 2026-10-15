@@ -13,6 +13,8 @@ const logger = getLogger(["server", "auth"]);
 export const auth = betterAuth({
     baseURL: ServerConfig.baseUrl,
     basePath: "/api/v1/auth",
+    // The site answers on one of apex/www; requests come from whichever it is.
+    trustedOrigins: [...ServerConfig.appOrigins],
     secret: ServerConfig.betterAuthSecret,
     // Long-lived: anonymous buyers keep their reading through this cookie.
     session: { freshAge: 0, expiresIn: 60 * 60 * 24 * 90 },

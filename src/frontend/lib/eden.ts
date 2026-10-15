@@ -3,7 +3,7 @@ import { createEdenTanStackQuery } from "eden-tanstack-react-query";
 import { ClientConfig } from "@/config/client-config";
 import type { AppRouter } from "@/server/router";
 
-const BASE_URL = ClientConfig.baseUrl;
+const BASE_URL = ClientConfig.apiOrigin;
 
 const { EdenProvider, useEden } = createEdenTanStackQuery<AppRouter>();
 /** Typed options proxy rooted at /api/v1. Bind one domain, then hang calls off it. */
