@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { natalPlacements, sunSignOf } from "../chart";
 import { describeProfile, describeSky } from "../prompts";
-import { LOVE_QUIZ } from "../quiz";
-import { createReadingSchema } from "../schemas";
+import { describeAnswer, LOVE_QUIZ, optionLabel, tratoOf } from "../quiz";
+import { createReadingSchema, knownBirthDaySchema } from "../schemas";
 
 const answers = LOVE_QUIZ.map((q) => ({
     questionId: q.id,
@@ -71,9 +71,38 @@ describe("chart", () => {
         });
         expect(text).toContain("Lima");
         // The form of address is an instruction, not one of the answers.
-        expect(text).toContain("<trato>\nHáblale en femenino.");
-        expect(text).not.toContain(LOVE_QUIZ[0].options[0].label);
-        expect(text).toContain(LOVE_QUIZ[1].options[0].label);
+        expect(text).toContain("<trato>\nHáblale en femenino");
+        expect(text).not.toContain("En femenino");
+        // Answers reach the model in the reader's own trato.
+        expect(text).toContain("Sola, y sin nadie en mente");
+    });
+
+    it("speaks to a man in masculine, in the quiz and in the prompt", () => {
+        const asMan = answers.map((a) =>
+            a.questionId === "trato" ? { ...a, optionId: "masculino" } : a,
+        );
+        expect(tratoOf(asMan)).toBe("masculino");
+        const text = describeProfile({
+            birthDate: "1995-08-14",
+            birthTime: null,
+            birthPlace: null,
+            answers: asMan,
+        });
+        expect(text).toContain("<trato>\nHáblale en masculino");
+        expect(text).toContain("Solo, y sin nadie en mente");
+        expect(text).not.toMatch(/\bSola\b|segura|controlada/);
+        expect(describeAnswer("necesidad", "seguridad", "neutro")?.answer).toBe(
+            "Sentir seguridad",
+        );
+    });
+
+    it("never offers a mixed-gender option label", () => {
+        for (const trato of ["femenino", "masculino", "neutro"] as const)
+            for (const q of LOVE_QUIZ)
+                for (const o of q.options)
+                    expect(optionLabel(o.label, trato)).not.toMatch(
+                        /\b(\w+)a o \1o\b/,
+                    );
     });
 
     it("tells the model when the Moon sign is a guess", () => {
@@ -101,5 +130,24 @@ describe("chart", () => {
         expect(sky).toContain(
             "- finales de octubre: Venus entra en Libra (tu signo solar)",
         );
+    });
+});
+
+describe("knownBirthDaySchema", () => {
+    it("carries the landing's day and month into the quiz", () => {
+        expect(knownBirthDaySchema.parse({ dia: "29", mes: "2" })).toEqual({
+            day: 29,
+            month: 2,
+        });
+    });
+
+    it("ignores a missing or impossible day", () => {
+        expect(knownBirthDaySchema.safeParse({}).success).toBe(false);
+        expect(
+            knownBirthDaySchema.safeParse({ dia: "31", mes: "4" }).success,
+        ).toBe(false);
+        expect(
+            knownBirthDaySchema.safeParse({ dia: "x", mes: "4" }).success,
+        ).toBe(false);
     });
 });

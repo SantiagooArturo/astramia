@@ -34,6 +34,18 @@ export const birthDateSchema = z.iso.date().refine((value) => {
     );
 }, `Debes tener al menos ${PRIVACY_COMMITMENTS.minimumAge} años`);
 
+/** Day and month the visitor gave on the landing (`?dia=&mes=`). */
+export const knownBirthDaySchema = z
+    .object({
+        dia: z.coerce.number().int().min(1).max(31),
+        mes: z.coerce.number().int().min(1).max(12),
+    })
+    // 2000 is a leap year: 29 February is a valid birthday.
+    .refine(
+        ({ dia, mes }) => dia <= new Date(Date.UTC(2000, mes, 0)).getUTCDate(),
+    )
+    .transform(({ dia, mes }) => ({ day: dia, month: mes }));
+
 export const quizAnswerSchema = z.object({
     questionId: z.string(),
     optionId: z.string(),

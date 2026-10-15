@@ -6,6 +6,7 @@
  *   pnpm eval:prompts                       # current prompts, AI_TASKS and models
  *   pnpm eval:prompts --model=google/gemini-3.8-flash --reasoning=low
  *   pnpm eval:prompts --prompts=./other-prompts.ts --profiles=3 --rpm=5
+ *   pnpm eval:prompts --only=cancer-sin-hora,libra-joven --repeat=3
  *
  * Needs AI_GATEWAY_API_KEY. Writes JSON + Markdown to `.eval/`.
  */
@@ -20,7 +21,7 @@ import type { AiPurpose } from "@/core/ai/domain/types";
 import { toAiUsage } from "@/core/ai/domain/usage";
 import { natalChart, venusOutlook } from "@/core/reading/domain/chart";
 import * as currentPrompts from "@/core/reading/domain/prompts";
-import { describeAnswer } from "@/core/reading/domain/quiz";
+import { describeAnswer, tratoOf } from "@/core/reading/domain/quiz";
 import type { QuizAnswer, ReadingProfile } from "@/core/reading/domain/types";
 
 type Profile = ReadingProfile & { name: string; chatQuestion: string };
@@ -236,6 +237,16 @@ const verdictSchema = z.object({
         "5: respeta siempre el trato pedido (femenino, masculino o sin género); 1: lo rompe a menudo",
     ),
     tuteo_consistente: z.boolean().describe("siempre 'tú', sin voseo ni usted"),
+    trato_roto: z
+        .array(z.string())
+        .describe(
+            "palabras literales sobre la persona que rompen el trato pedido (p. ej. 'segura' cuando pidió masculino)",
+        ),
+    genero_ajeno: z
+        .array(z.string())
+        .describe(
+            "frases literales que le dan género a la otra persona (él, ella, novio, novia, enamorado de él…); la persona nunca lo dijo",
+        ),
     cliches: z
         .array(z.string())
         .describe("frases trilladas encontradas, literal"),
@@ -269,7 +280,11 @@ function groundTruth(profile: Profile): string {
         `Hoy 14 de octubre de 2026. Venus en ${venus.sign}${venus.retrograde ? " retrógrada" : ""}. ${venus.events.map((e) => `${e.when}: ${e.text}`).join("; ")}`,
         "Respuestas:",
         ...profile.answers.map((a) => {
-            const d = describeAnswer(a.questionId, a.optionId);
+            const d = describeAnswer(
+                a.questionId,
+                a.optionId,
+                tratoOf(profile.answers),
+            );
             return `- ${d?.question} → ${d?.answer}`;
         }),
     ]
@@ -302,6 +317,10 @@ async function judge(
 const BANNED =
     /energía vibrante|danza|aguas turbulentas|el universo|conectar contigo|es importante recordar|en conclusión|entiendo perfecto|excelente pregunta|qué buena pregunta|no te preocupes|viaje de autodescubrimiento|luz propia/gi;
 const VOSEO = /\b(tenés|sentís|querés|podés|sos|vos|sabés|hacés|necesitás)\b/gi;
+/** The other person's gender is never given; any of these assumes it. */
+// "desde chico/chica" is the reader, in their own trato.
+const OTHER_GENDER =
+    /(?<!\p{L})(?<!desde )(él|ella|novio|novia|chico|chica)(?!\p{L})/giu;
 const words = (text: string) => text.split(/\s+/).filter(Boolean).length;
 
 async function runProfile(prompts: PromptModule, profile: Profile) {
@@ -340,6 +359,7 @@ async function runProfile(prompts: PromptModule, profile: Profile) {
             ),
             banned: all.match(BANNED) ?? [],
             voseo: all.match(VOSEO) ?? [],
+            otherGender: all.match(OTHER_GENDER) ?? [],
             exclamations: (all.match(/!/g) ?? []).length,
         },
     };
@@ -351,7 +371,10 @@ const prompts = (
         ? await import(pathToFileURL(resolve(promptsPath)).href)
         : currentPrompts
 ) as PromptModule;
-const profiles = PROFILES.slice(0, Number(args.profiles ?? PROFILES.length));
+const only = args.only?.split(",");
+const profiles = PROFILES.slice(0, Number(args.profiles ?? PROFILES.length))
+    .filter((p) => !only || only.includes(p.name))
+    .flatMap((p) => Array.from({ length: Number(args.repeat ?? 1) }, () => p));
 const label = args.label ?? (promptsPath ? "custom" : "current");
 
 console.log(
@@ -380,6 +403,12 @@ const summary = {
     "chat.honestidad": rubric((v) => v.chat.honestidad),
     trato: rubric((v) => v.trato),
     tuteo: results.filter((r) => r.verdict.tuteo_consistente).length,
+    tratoRoto: results.reduce((n, r) => n + r.verdict.trato_roto.length, 0),
+    generoAjeno: results.reduce((n, r) => n + r.verdict.genero_ajeno.length, 0),
+    "él/ella/novio…": results.reduce(
+        (n, r) => n + r.checks.otherGender.length,
+        0,
+    ),
     inventos: results.reduce((n, r) => n + r.verdict.inventos.length, 0),
     cliches: results.reduce((n, r) => n + r.verdict.cliches.length, 0),
     cortes: results.filter((r) => r.checks.cut).length,

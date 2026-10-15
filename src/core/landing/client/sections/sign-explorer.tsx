@@ -28,7 +28,8 @@ const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
 /**
  * The hero's interactive moment. Renders two grid items (the birth-date
  * picker with the CTA, and the zodiac wheel) that share one piece of state:
- * the visitor's sun sign. Nothing leaves the browser.
+ * the visitor's sun sign. Nothing leaves the browser until they start the
+ * quiz, which picks up the day and month so they're never asked twice.
  */
 export function SignExplorer() {
     const id = useId();
@@ -174,7 +175,16 @@ export function SignExplorer() {
                             asChild
                             className="group h-12 w-full rounded-full px-7 text-base sm:w-auto"
                         >
-                            <Link href={startReadingHref(sign?.id)}>
+                            <Link
+                                href={startReadingHref(
+                                    sign && !dayInvalid
+                                        ? {
+                                              day: Number(day),
+                                              month: Number(month),
+                                          }
+                                        : undefined,
+                                )}
+                            >
                                 {sign
                                     ? HERO.ctaForSign(sign.name)
                                     : HERO.ctaDefault}

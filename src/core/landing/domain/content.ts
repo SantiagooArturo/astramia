@@ -27,10 +27,13 @@ export const OFFER = {
 /** Entry point of the purchase flow (cuestionario → pago → lectura). */
 export const START_READING_HREF = "/lectura/amor";
 
-/** Same entry point, pre-filled with the sun sign the visitor found. */
-export function startReadingHref(signId?: string): string {
-    return signId
-        ? `${START_READING_HREF}?signo=${encodeURIComponent(signId)}`
+/** Same entry point, carrying the day and month they already gave us. */
+export function startReadingHref(birth?: {
+    day: number;
+    month: number;
+}): string {
+    return birth
+        ? `${START_READING_HREF}?dia=${birth.day}&mes=${birth.month}`
         : START_READING_HREF;
 }
 
@@ -47,7 +50,8 @@ export const HERO = {
     headline: ["Tu carta astral,", "ahora conversa", "contigo."],
     lede: `Responde ${OFFER.questions} preguntas. En minutos tienes una lectura de amor escrita para ti, no para tu signo. Y ${OFFER.chatHours} horas para seguir preguntando a una IA que la leyó antes que tú.`,
     birthPrompt: "¿Cuándo naciste?",
-    birthHint: "Solo el día y el mes. No se guarda en ningún lado.",
+    birthHint:
+        "Con el día y el mes ves tu signo. Nada se guarda hasta que pides tu lectura.",
     ctaDefault: `Empezar mi lectura · ${OFFER.price}`,
     ctaForSign: (signName: string) =>
         `Ver mi lectura de ${signName} · ${OFFER.price}`,

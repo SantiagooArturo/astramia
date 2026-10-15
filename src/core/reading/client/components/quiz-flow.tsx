@@ -2,12 +2,17 @@
 
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { GoldButton } from "@/core/landing/client/effects";
+import { MONTHS_ES } from "@/core/landing/domain/zodiac";
 import { natalChart } from "@/core/reading/domain/chart";
-import type { LOVE_QUIZ } from "@/core/reading/domain/quiz";
+import {
+    type LOVE_QUIZ,
+    optionLabel,
+    tratoOf,
+} from "@/core/reading/domain/quiz";
 import {
     createdReadingSchema,
     createReadingSchema,
@@ -21,6 +26,13 @@ import { authClient } from "@/frontend/auth/auth";
 import { Button } from "@/frontend/components/ui/button";
 import { Input } from "@/frontend/components/ui/input";
 import { Label } from "@/frontend/components/ui/label";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/frontend/components/ui/select";
 import { Spinner } from "@/frontend/components/ui/spinner";
 import { useReadings } from "../hooks";
 import { ChartReveal } from "./chart-reveal";
@@ -33,18 +45,51 @@ async function ensureSession(): Promise<void> {
     if (error) throw new Error(error.message ?? "No pudimos iniciar tu sesión");
 }
 
+const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1));
+
+/** "YYYY-MM-DD" from the three fields, or what to fix. */
+function toBirthDate(birth: {
+    day: string;
+    month: string;
+    year: string;
+}): { date: string } | { error: string } {
+    const { day, month, year } = birth;
+    if (!day || !month || !/^\d{4}$/.test(year))
+        return { error: "Completa tu fecha de nacimiento: día, mes y año" };
+    const last = new Date(
+        Date.UTC(Number(year), Number(month), 0),
+    ).getUTCDate();
+    if (Number(day) > last)
+        return {
+            error: `En ${year}, ${MONTHS_ES[Number(month) - 1]} tuvo ${last} días`,
+        };
+    return {
+        date: `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`,
+    };
+}
+
 export function QuizFlow({
     topic,
     questions,
+    knownBirthDay,
 }: {
     topic: ReadingTopic;
     questions: typeof LOVE_QUIZ;
+    /** Day and month they gave on the landing: pre-filled, still editable. */
+    knownBirthDay?: { day: number; month: number };
 }) {
     const router = useRouter();
     const create = useReadings().useCreate();
     const [step, setStep] = useState(0);
     const [answers, setAnswers] = useState<QuizAnswer[]>([]);
-    const [birth, setBirth] = useState({ date: "", time: "", place: "" });
+    const [birth, setBirth] = useState({
+        day: knownBirthDay ? String(knownBirthDay.day) : "",
+        month: knownBirthDay ? String(knownBirthDay.month) : "",
+        year: "",
+        time: "",
+        place: "",
+    });
+    const yearRef = useRef<HTMLInputElement>(null);
     const [submitting, setSubmitting] = useState(false);
     /** Their chart, drawn while the hook is being written. */
     const [revealing, setRevealing] = useState<{
@@ -54,6 +99,13 @@ export function QuizFlow({
 
     const total = questions.length + 1;
     const question = questions[step];
+    const trato = tratoOf(answers);
+    const onBirthStep = !question;
+
+    // Only the year is missing: go straight to it.
+    useEffect(() => {
+        if (onBirthStep && knownBirthDay) yearRef.current?.focus();
+    }, [onBirthStep, knownBirthDay]);
 
     function choose(optionId: string) {
         const next = [
@@ -66,9 +118,14 @@ export function QuizFlow({
 
     async function submit(event: React.FormEvent) {
         event.preventDefault();
+        const birthDate = toBirthDate(birth);
+        if ("error" in birthDate) {
+            toast.error(birthDate.error);
+            return;
+        }
         const parsed = createReadingSchema.safeParse({
             topic,
-            birthDate: birth.date,
+            birthDate: birthDate.date,
             birthTime: birth.time || undefined,
             birthPlace: birth.place.trim() || undefined,
             answers,
@@ -163,7 +220,7 @@ export function QuizFlow({
                                     className="h-auto justify-start whitespace-normal border-astral-ink bg-card/40 px-5 py-4 text-left text-base aria-pressed:border-astral-gold"
                                     onClick={() => choose(option.id)}
                                 >
-                                    {option.label}
+                                    {optionLabel(option.label, trato)}
                                 </Button>
                             );
                         })}
@@ -173,25 +230,92 @@ export function QuizFlow({
                 <form onSubmit={submit} className="flex flex-col gap-6">
                     <div>
                         <h2 className="text-pretty font-display text-3xl sm:text-4xl">
-                            ¿Cuándo naciste?
+                            {knownBirthDay
+                                ? "Solo falta el año"
+                                : "¿Cuándo naciste?"}
                         </h2>
                         <p className="mt-2 text-muted-foreground text-sm">
-                            Con la fecha basta. La hora y el lugar afinan tu
-                            Luna, si los sabes.
+                            {knownBirthDay
+                                ? "El día y el mes ya nos los diste. Con el año ubicamos tu Venus y tu Marte; la hora y la ciudad afinan tu Luna, si las sabes."
+                                : "Con la fecha basta. La hora y el lugar afinan tu Luna, si los sabes."}
                         </p>
                     </div>
-                    <div className="flex flex-col gap-2">
-                        <Label htmlFor="birth-date">Fecha de nacimiento</Label>
-                        <Input
-                            id="birth-date"
-                            type="date"
-                            required
-                            value={birth.date}
-                            onChange={(e) =>
-                                setBirth({ ...birth, date: e.target.value })
-                            }
-                        />
-                    </div>
+                    <fieldset className="grid grid-cols-[4.5rem_1fr_5.5rem] gap-3">
+                        <legend className="sr-only">Fecha de nacimiento</legend>
+                        <div className="flex flex-col gap-2">
+                            <Label htmlFor="birth-day">Día</Label>
+                            <Select
+                                value={birth.day}
+                                onValueChange={(day) =>
+                                    setBirth({ ...birth, day })
+                                }
+                            >
+                                <SelectTrigger
+                                    id="birth-day"
+                                    className="w-full font-mono"
+                                >
+                                    <SelectValue placeholder="--" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {DAYS.map((d) => (
+                                        <SelectItem
+                                            key={d}
+                                            value={d}
+                                            className="font-mono"
+                                        >
+                                            {d.padStart(2, "0")}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <Label htmlFor="birth-month">Mes</Label>
+                            <Select
+                                value={birth.month}
+                                onValueChange={(month) =>
+                                    setBirth({ ...birth, month })
+                                }
+                            >
+                                <SelectTrigger
+                                    id="birth-month"
+                                    className="w-full"
+                                >
+                                    <SelectValue placeholder="Mes" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {MONTHS_ES.map((name, i) => (
+                                        <SelectItem
+                                            key={name}
+                                            value={String(i + 1)}
+                                        >
+                                            {name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                            <Label htmlFor="birth-year">Año</Label>
+                            <Input
+                                id="birth-year"
+                                ref={yearRef}
+                                inputMode="numeric"
+                                autoComplete="bday-year"
+                                placeholder="1995"
+                                maxLength={4}
+                                required
+                                className="font-mono"
+                                value={birth.year}
+                                onChange={(e) =>
+                                    setBirth({
+                                        ...birth,
+                                        year: e.target.value.replace(/\D/g, ""),
+                                    })
+                                }
+                            />
+                        </div>
+                    </fieldset>
                     <div className="grid gap-4 sm:grid-cols-2">
                         <div className="flex flex-col gap-2">
                             <Label htmlFor="birth-time">Hora (opcional)</Label>
