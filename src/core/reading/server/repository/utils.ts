@@ -18,7 +18,7 @@ export function toReading(row: ReadingRow): Reading {
         sunSign: row.sunSign,
         teaser: row.teaser,
         birthDate: row.birthDate,
-        chart: natalChart(row.birthDate, row.birthTime),
+        chart: natalChart(row.birthDate, row.birthTime, row.birthTimeZone),
         locked,
         content: locked ? null : row.content,
         chatExpiresAt: row.chatExpiresAt?.toISOString() ?? null,
@@ -30,6 +30,7 @@ export function toProfile(row: ReadingRow): ReadingProfile {
     return {
         birthDate: row.birthDate,
         birthTime: row.birthTime,
+        birthTimeZone: row.birthTimeZone,
         birthPlace: row.birthPlace,
         answers: row.answers,
     };

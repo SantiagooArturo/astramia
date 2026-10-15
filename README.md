@@ -65,7 +65,20 @@ the full reading in the background, so it's ready when the buyer returns) → th
 (`/payments/webhooks/:provider`) or the return URL syncs the payment → the
 paid order unlocks the reading (its text is only sent once unlocked; if it's
 still being written, the page draws the buyer's chart until it is) and
-opens the 2-hour chat (`POST /readings/:id/chat`, streamed with the AI SDK).
+the 2-hour chat (`POST /readings/:id/chat`, streamed with the AI SDK), whose
+hours start with the first question, not with the payment.
+
+Buying never needs an account, but an anonymous reading lives in one
+browser's cookie. The reading page offers to save it (e-mail pre-filled with
+the one they paid with): signing up *or in* from an anonymous session runs the
+`anonymous` plugin's `onLinkAccount`, which moves readings, orders and
+`ai_usage` to the account (`server/auth/claim-anonymous-data.ts`) before Better
+Auth deletes the anonymous user. `/lecturas` lists them from any device.
+
+Birth times are read in the browser's IANA zone (`readings.birth_time_zone`,
+`America/Lima` when missing), so historical summer times count. Better Auth's
+rate limits live in the `rate_limit` table, shared by every serverless
+instance.
 
 ### Switching payment gateway
 

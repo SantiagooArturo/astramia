@@ -27,16 +27,58 @@ import type {
  * interprets facts instead of inventing them. Pure; `now` is always passed in.
  */
 
-/** Lima is UTC−5 all year; the launch market. Unknown birth time → noon. */
-const DEFAULT_UTC_OFFSET_HOURS = -5;
+/**
+ * The launch market, for readings saved without a zone. Its IANA rules know
+ * Peru's summer times (1986–87, 1990, 1994), which a fixed UTC−5 got wrong.
+ * Unknown birth time → noon.
+ */
+export const DEFAULT_TIME_ZONE = "America/Lima";
 const DAY_MS = 24 * 60 * 60 * 1000;
+const MINUTE_MS = 60 * 1000;
 
-function localInstant(birthDate: string, time: string): Date {
+export function isTimeZone(value: string): boolean {
+    try {
+        new Intl.DateTimeFormat("en-US", { timeZone: value });
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+/** Minutes `timeZone` was ahead of UTC at `instant` (historical rules). */
+function utcOffsetMinutes(timeZone: string, instant: number): number {
+    const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone,
+        hourCycle: "h23",
+        year: "numeric",
+        month: "numeric",
+        day: "numeric",
+        hour: "numeric",
+        minute: "numeric",
+        second: "numeric",
+    }).formatToParts(new Date(instant));
+    const get = (type: Intl.DateTimeFormatPartTypes) =>
+        Number(parts.find((p) => p.type === type)?.value);
+    const wall = Date.UTC(
+        get("year"),
+        get("month") - 1,
+        get("day"),
+        get("hour"),
+        get("minute"),
+        get("second"),
+    );
+    return (wall - instant) / MINUTE_MS;
+}
+
+/** When a wall-clock date and time in `timeZone` happened. */
+function localInstant(birthDate: string, time: string, timeZone: string): Date {
     const [hours, minutes] = time.split(":").map(Number);
     const [y, m, d] = birthDate.split("-").map(Number);
-    return new Date(
-        Date.UTC(y, m - 1, d, hours - DEFAULT_UTC_OFFSET_HOURS, minutes),
-    );
+    const zone = isTimeZone(timeZone) ? timeZone : DEFAULT_TIME_ZONE;
+    const wall = Date.UTC(y, m - 1, d, hours, minutes);
+    // The second pass settles a time near a summer-time change.
+    const guess = wall - utcOffsetMinutes(zone, wall) * MINUTE_MS;
+    return new Date(wall - utcOffsetMinutes(zone, guess) * MINUTE_MS);
 }
 
 function placement(body: string, longitude: number): NatalPlacement {
@@ -54,8 +96,11 @@ function placement(body: string, longitude: number): NatalPlacement {
 export function natalPlacements(
     birthDate: string,
     birthTime?: string | null,
+    timeZone: string = DEFAULT_TIME_ZONE,
 ): NatalPlacement[] {
-    const jd = julianDay(localInstant(birthDate, birthTime ?? "12:00"));
+    const jd = julianDay(
+        localInstant(birthDate, birthTime ?? "12:00", timeZone),
+    );
     return [
         placement("Sol", sunLongitude(jd)),
         placement("Luna", moonLongitude(jd)),
@@ -116,15 +161,18 @@ export function dominantElement(placements: NatalPlacement[]): Element | null {
 export function natalChart(
     birthDate: string,
     birthTime: string | null,
+    /** IANA zone the birth time is read in; `null` → `DEFAULT_TIME_ZONE`. */
+    timeZone?: string | null,
 ): NatalChart {
-    const placements = natalPlacements(birthDate, birthTime);
+    const zone = timeZone ?? DEFAULT_TIME_ZONE;
+    const placements = natalPlacements(birthDate, birthTime, zone);
     let moonRange: NatalChart["moonRange"] = null;
     if (!birthTime) {
         const early = longitudeToSign(
-            moonLongitude(julianDay(localInstant(birthDate, "00:00"))),
+            moonLongitude(julianDay(localInstant(birthDate, "00:00", zone))),
         ).sign.name;
         const late = longitudeToSign(
-            moonLongitude(julianDay(localInstant(birthDate, "23:59"))),
+            moonLongitude(julianDay(localInstant(birthDate, "23:59", zone))),
         ).sign.name;
         if (early !== late) moonRange = { early, late };
     }
@@ -138,7 +186,7 @@ export function natalChart(
         ),
         dominantElement: dominantElement(placements),
         moonPhase: moonPhase(
-            julianDay(localInstant(birthDate, birthTime ?? "12:00")),
+            julianDay(localInstant(birthDate, birthTime ?? "12:00", zone)),
         ).name,
         moonRange,
     };

@@ -31,6 +31,7 @@ export async function createReadingService(
         const profile = {
             birthDate: input.birthDate,
             birthTime: input.birthTime ?? null,
+            birthTimeZone: input.birthTimeZone ?? null,
             birthPlace: input.birthPlace ?? null,
             answers: input.answers,
         };

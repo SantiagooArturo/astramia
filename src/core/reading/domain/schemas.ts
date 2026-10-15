@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Element } from "@/core/landing/domain/zodiac";
 import { PRIVACY_COMMITMENTS } from "@/core/legal/domain/policies";
+import { isTimeZone } from "./chart";
 import { describeAnswer, LOVE_QUIZ } from "./quiz";
 
 export const readingTopicSchema = z.enum(["amor"]);
@@ -55,6 +56,8 @@ export const createReadingSchema = z.object({
     topic: readingTopicSchema,
     birthDate: birthDateSchema,
     birthTime: z.iso.time({ precision: -1 }).optional(),
+    /** The browser's zone: most people answer from the country they were born in. */
+    birthTimeZone: z.string().max(64).refine(isTimeZone).optional(),
     birthPlace: z.string().trim().min(2).max(120).optional(),
     answers: z
         .array(quizAnswerSchema)
@@ -136,6 +139,14 @@ export const readingSchema = z.object({
     createdAt: z.string(),
 });
 
+/** A row of "Mis lecturas": no texts. */
+export const readingSummarySchema = z.object({
+    id: z.string(),
+    sunSign: z.string(),
+    unlocked: z.boolean(),
+    createdAt: z.string(),
+});
+
 export const readingIdParamsSchema = z.object({ id: z.string().min(1) });
 
 export const chatRoleSchema = z.enum(["user", "assistant"]);
@@ -157,6 +168,8 @@ export const createdReadingSchema = z.object({ id: z.string() });
 export const readingProfileSchema = z.object({
     birthDate: z.string(),
     birthTime: z.string().nullable(),
+    /** IANA zone of `birthTime`; `null` → the chart's default (Lima). */
+    birthTimeZone: z.string().nullable(),
     birthPlace: z.string().nullable(),
     answers: z.array(quizAnswerSchema),
 });

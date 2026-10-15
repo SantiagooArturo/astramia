@@ -1,12 +1,12 @@
 import "server-only";
-import type { Reading } from "@/core/reading/domain/types";
+import type { Reading, ReadingSummary } from "@/core/reading/domain/types";
 import {
     AppErrors,
     type AsyncAppResult,
     err,
     ok,
 } from "@/server/common/responses";
-import { findReading } from "../repository/readings";
+import { findReading, listReadings } from "../repository/readings";
 import { toReading } from "../repository/utils";
 
 export async function getReadingService(
@@ -17,6 +17,24 @@ export async function getReadingService(
         const row = await findReading(userId, id);
         if (!row) return err(AppErrors.notFound({ targets: ["reading"] }));
         return ok(toReading(row));
+    } catch (cause) {
+        return err(AppErrors.unexpected(cause));
+    }
+}
+
+export async function listReadingsService(
+    userId: string,
+): AsyncAppResult<ReadingSummary[]> {
+    try {
+        const rows = await listReadings(userId);
+        return ok(
+            rows.map((row) => ({
+                id: row.id,
+                sunSign: row.sunSign,
+                unlocked: row.unlockedAt !== null,
+                createdAt: row.createdAt.toISOString(),
+            })),
+        );
     } catch (cause) {
         return err(AppErrors.unexpected(cause));
     }

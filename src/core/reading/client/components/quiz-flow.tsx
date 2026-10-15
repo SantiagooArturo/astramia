@@ -127,6 +127,7 @@ export function QuizFlow({
             topic,
             birthDate: birthDate.date,
             birthTime: birth.time || undefined,
+            birthTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             birthPlace: birth.place.trim() || undefined,
             answers,
         });
@@ -142,6 +143,7 @@ export function QuizFlow({
             chart: natalChart(
                 parsed.data.birthDate,
                 parsed.data.birthTime ?? null,
+                parsed.data.birthTimeZone,
             ),
             birthDate: parsed.data.birthDate,
         });

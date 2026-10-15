@@ -1,4 +1,13 @@
-import { boolean, index, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import {
+    bigint,
+    boolean,
+    index,
+    integer,
+    pgTable,
+    text,
+    timestamp,
+    uniqueIndex,
+} from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
     id: text("id")
@@ -75,4 +84,20 @@ export const verification = pgTable(
             .notNull(),
     },
     (table) => [index("verification_identifier_idx").on(table.identifier)],
+);
+
+/**
+ * Better Auth rate-limit counters. In memory they'd live per serverless
+ * instance (and reset on every cold start); here every instance shares them.
+ */
+export const rateLimit = pgTable(
+    "rate_limit",
+    {
+        id: text("id").primaryKey(),
+        key: text("key").notNull(),
+        count: integer("count").notNull(),
+        lastRequest: bigint("last_request", { mode: "number" }).notNull(),
+    },
+    // Unique: on a race the limiter's insert fails, re-reads and counts.
+    (table) => [uniqueIndex("rate_limit_key_idx").on(table.key)],
 );

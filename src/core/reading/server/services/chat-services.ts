@@ -14,8 +14,11 @@ import {
     addChatTurn,
     findReading,
     listChatMessages,
+    startChatWindow,
 } from "../repository/readings";
 import { toChatMessage, toProfile } from "../repository/utils";
+
+const HOUR_MS = 60 * 60 * 1000;
 
 export async function listChatMessagesService(
     userId: string,
@@ -35,6 +38,7 @@ export async function listChatMessagesService(
 /**
  * One chat turn: checks the paid window and the message cap and streams the
  * answer. Question and answer are stored together once the answer finishes.
+ * The first question opens the window: the hours run from there.
  */
 export async function sendChatMessageService(
     userId: string,
@@ -44,11 +48,10 @@ export async function sendChatMessageService(
     try {
         const row = await findReading(userId, readingId);
         if (!row) return err(AppErrors.notFound({ targets: ["reading"] }));
-        if (!row.unlockedAt || !row.chatExpiresAt)
-            return err(AppErrors.forbidden());
+        if (!row.unlockedAt) return err(AppErrors.forbidden());
         if (!row.content)
             return err(AppErrors.conflict({ targets: ["content"] }));
-        if (row.chatExpiresAt.getTime() < Date.now())
+        if (row.chatExpiresAt && row.chatExpiresAt.getTime() < Date.now())
             return err(AppErrors.forbidden());
 
         const history = await listChatMessages(readingId);
@@ -57,6 +60,11 @@ export async function sendChatMessageService(
             return err(AppErrors.tooManyRequests());
 
         const askedAt = new Date();
+        if (!row.chatExpiresAt)
+            await startChatWindow(
+                readingId,
+                new Date(askedAt.getTime() + CHAT_LIMITS.hours * HOUR_MS),
+            );
         return ok(
             stream({
                 model: ServerConfig.ai.models.chat,

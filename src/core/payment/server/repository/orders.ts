@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, ne } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 import { db } from "@/server/drizzle/db";
 import {
     type NewOrderRow,
@@ -17,6 +17,23 @@ export async function createOrder(values: NewOrderRow): Promise<OrderRow> {
 export async function findOrderById(id: string): Promise<OrderRow | null> {
     const row = await db.query.orders.findFirst({ where: eq(orders.id, id) });
     return row ?? null;
+}
+
+/** E-mail the buyer gave the gateway for `referenceId`, if they paid. */
+export async function findPayerEmail(
+    userId: string,
+    referenceId: string,
+): Promise<string | null> {
+    const row = await db.query.orders.findFirst({
+        columns: { payerEmail: true },
+        where: and(
+            eq(orders.userId, userId),
+            eq(orders.referenceId, referenceId),
+            eq(orders.status, "paid"),
+        ),
+        orderBy: [desc(orders.paidAt)],
+    });
+    return row?.payerEmail ?? null;
 }
 
 export async function setOrderProviderRef(

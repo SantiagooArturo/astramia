@@ -3,6 +3,7 @@ import {
     approximateDate,
     aspectsBetween,
     dominantElement,
+    isTimeZone,
     natalChart,
     venusOutlook,
 } from "../chart";
@@ -104,5 +105,36 @@ describe("approximateDate", () => {
         expect(approximateDate(new Date("2026-11-30T12:00:00Z"))).toBe(
             "finales de noviembre",
         );
+    });
+});
+
+describe("birth time zone", () => {
+    const moon = (date: string, time: string | null, zone?: string | null) =>
+        natalChart(date, time, zone).placements[1].longitude;
+
+    it("reads Lima's 1994 summer time (UTC−4), which a fixed UTC−5 missed", () => {
+        expect(moon("1994-03-21", "08:30", "America/Lima")).toBeCloseTo(
+            moon("1994-03-21", "08:30", "Etc/GMT+4"),
+        );
+        expect(moon("1994-03-21", "08:30", "America/Lima")).not.toBeCloseTo(
+            moon("1994-03-21", "08:30", "Etc/GMT+5"),
+        );
+    });
+
+    it("places the same clock time six hours earlier in Madrid", () => {
+        // The Moon moves ~0.55°/h: 6 h earlier is ~3.3° behind.
+        const behind =
+            moon("1995-08-14", "07:30", "America/Lima") -
+            moon("1995-08-14", "07:30", "Europe/Madrid");
+        expect(behind).toBeGreaterThan(2.5);
+        expect(behind).toBeLessThan(4.5);
+    });
+
+    it("falls back to Lima for a missing or unknown zone", () => {
+        const lima = moon("1995-08-14", "07:30", "America/Lima");
+        expect(moon("1995-08-14", "07:30", null)).toBeCloseTo(lima);
+        expect(moon("1995-08-14", "07:30", "Mars/Olympus")).toBeCloseTo(lima);
+        expect(isTimeZone("Mars/Olympus")).toBe(false);
+        expect(isTimeZone("America/Bogota")).toBe(true);
     });
 });

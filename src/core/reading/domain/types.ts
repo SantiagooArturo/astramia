@@ -11,6 +11,7 @@ import type {
     readingBlockSchema,
     readingProfileSchema,
     readingSchema,
+    readingSummarySchema,
     readingTopicSchema,
     skyEventSchema,
     venusOutlookSchema,
@@ -20,6 +21,7 @@ export type ReadingTopic = z.infer<typeof readingTopicSchema>;
 export type QuizAnswer = z.infer<typeof quizAnswerSchema>;
 export type CreateReading = z.infer<typeof createReadingSchema>;
 export type Reading = z.infer<typeof readingSchema>;
+export type ReadingSummary = z.infer<typeof readingSummarySchema>;
 export type ChatMessage = z.infer<typeof chatMessageSchema>;
 export type ChatTurn = z.infer<typeof chatTurnSchema>;
 export type ReadingProfile = z.infer<typeof readingProfileSchema>;

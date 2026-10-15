@@ -146,7 +146,7 @@ export const STEPS: Step[] = [
         numeral: "05",
         title: `Conversa ${OFFER.chatHours} horas`,
         description:
-            "Pregunta lo que la lectura te dejó pensando. La IA ya sabe lo que respondiste y lo que te escribió.",
+            "Pregunta lo que la lectura te dejó pensando. La IA ya sabe lo que respondiste y lo que te escribió. Las horas empiezan con tu primera pregunta.",
         note: `${OFFER.chatHours} h`,
     },
 ];
@@ -234,7 +234,7 @@ export interface Faq {
 export const FAQS: Faq[] = [
     {
         question: `¿Qué recibo exactamente por ${OFFER.price}?`,
-        answer: `Una lectura de amor y relaciones escrita a partir de tu carta y tus respuestas, más ${OFFER.chatHours} horas de conversación con un asistente de IA que ya la leyó. La lectura queda guardada para siempre; el chat se cierra cuando se acaban las ${OFFER.chatHours} horas.`,
+        answer: `Una lectura de amor y relaciones escrita a partir de tu carta y tus respuestas, más ${OFFER.chatHours} horas de conversación con un asistente de IA que ya la leyó. La lectura queda guardada para siempre. Las ${OFFER.chatHours} horas de chat empiezan con tu primera pregunta, no al pagar.`,
     },
     {
         question: "¿Necesito saber mi hora exacta de nacimiento?",

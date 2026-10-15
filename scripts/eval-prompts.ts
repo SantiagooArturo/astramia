@@ -36,6 +36,7 @@ const PROFILES: Profile[] = [
         name: "aries-ruptura",
         birthDate: "1994-03-21",
         birthTime: "08:30",
+        birthTimeZone: null,
         birthPlace: "Lima",
         answers: answers(
             "femenino",
@@ -51,6 +52,7 @@ const PROFILES: Profile[] = [
         name: "cancer-sin-hora",
         birthDate: "1990-07-07",
         birthTime: null,
+        birthTimeZone: null,
         birthPlace: "Arequipa",
         answers: answers(
             "masculino",
@@ -66,6 +68,7 @@ const PROFILES: Profile[] = [
         name: "escorpio-relacion",
         birthDate: "1988-11-02",
         birthTime: "22:15",
+        birthTimeZone: null,
         birthPlace: "Cusco",
         answers: answers(
             "neutro",
@@ -82,6 +85,7 @@ const PROFILES: Profile[] = [
         name: "capricornio-soltera",
         birthDate: "1999-01-15",
         birthTime: "06:00",
+        birthTimeZone: null,
         birthPlace: "Trujillo",
         answers: answers(
             "femenino",
@@ -97,6 +101,7 @@ const PROFILES: Profile[] = [
         name: "tauro-luna-incierta",
         birthDate: "1992-05-08",
         birthTime: null,
+        birthTimeZone: null,
         birthPlace: null,
         answers: answers(
             "neutro",
@@ -112,6 +117,7 @@ const PROFILES: Profile[] = [
         name: "libra-joven",
         birthDate: "2001-09-30",
         birthTime: "14:40",
+        birthTimeZone: null,
         birthPlace: "Lima",
         answers: answers(
             "masculino",
@@ -262,7 +268,11 @@ const verdictSchema = z.object({
 type Verdict = z.infer<typeof verdictSchema>;
 
 function groundTruth(profile: Profile): string {
-    const chart = natalChart(profile.birthDate, profile.birthTime);
+    const chart = natalChart(
+        profile.birthDate,
+        profile.birthTime,
+        profile.birthTimeZone,
+    );
     const venus = venusOutlook(TODAY, {
         sun: chart.placements[0].sign,
         moon: chart.placements[1].sign,

@@ -120,13 +120,17 @@ export function LockedReadingScreen({
 export function UnlockedReadingScreen({
     reading,
     content,
+    notice,
 }: {
     reading: Reading;
     /** Streams in: the full text may still be being written. */
     content: React.ReactNode;
+    /** Above the reading (e.g. "it only lives in this browser"). */
+    notice?: React.ReactNode;
 }) {
     return (
         <ReadingShell>
+            {notice}
             <Header reading={reading} />
             <ReadingText text={reading.teaser} />
             <Suspense fallback={<WritingReading reading={reading} />}>
@@ -152,9 +156,12 @@ export function WritingReading({ reading }: { reading: Reading }) {
 export function ReadingBody({
     reading,
     messages,
+    account,
 }: {
     reading: Reading;
     messages: ChatMessage[];
+    /** Between the reading and the chat: save it in an account, or "saved". */
+    account?: React.ReactNode;
 }) {
     if (!reading.content)
         return (
@@ -166,13 +173,12 @@ export function ReadingBody({
     return (
         <>
             <ReadingText text={reading.content} />
-            {reading.chatExpiresAt && (
-                <ReadingChat
-                    readingId={reading.id}
-                    initialMessages={messages}
-                    expiresAt={reading.chatExpiresAt}
-                />
-            )}
+            {account}
+            <ReadingChat
+                readingId={reading.id}
+                initialMessages={messages}
+                expiresAt={reading.chatExpiresAt}
+            />
         </>
     );
 }

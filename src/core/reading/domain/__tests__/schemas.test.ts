@@ -15,6 +15,7 @@ describe("createReadingSchema", () => {
             topic: "amor",
             birthDate: "1995-08-14",
             birthTime: "07:30",
+            birthTimeZone: "America/Lima",
             answers,
         });
         expect(r.success).toBe(true);
@@ -66,6 +67,7 @@ describe("chart", () => {
         const text = describeProfile({
             birthDate: "1995-08-14",
             birthTime: null,
+            birthTimeZone: null,
             birthPlace: "Lima",
             answers,
         });
@@ -85,6 +87,7 @@ describe("chart", () => {
         const text = describeProfile({
             birthDate: "1995-08-14",
             birthTime: null,
+            birthTimeZone: null,
             birthPlace: null,
             answers: asMan,
         });
@@ -109,6 +112,7 @@ describe("chart", () => {
         const text = describeProfile({
             birthDate: "1992-05-08",
             birthTime: null,
+            birthTimeZone: null,
             birthPlace: null,
             answers,
         });
@@ -120,6 +124,7 @@ describe("chart", () => {
             {
                 birthDate: "1995-10-10",
                 birthTime: "10:00",
+                birthTimeZone: null,
                 birthPlace: null,
                 answers,
             },

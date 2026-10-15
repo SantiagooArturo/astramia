@@ -7,6 +7,7 @@ import { cache } from "react";
 import { ServerConfig } from "@/config/server-config";
 import { db } from "@/server/drizzle/db";
 import * as authSchema from "@/server/drizzle/schemas/auth-schema";
+import { claimAnonymousData } from "./claim-anonymous-data";
 
 const logger = getLogger(["server", "auth"]);
 
@@ -19,9 +20,12 @@ export const auth = betterAuth({
     // Long-lived: anonymous buyers keep their reading through this cookie.
     session: { freshAge: 0, expiresIn: 60 * 60 * 24 * 90 },
     rateLimit: {
+        // Shared by every serverless instance; in memory each counted alone.
+        storage: "database",
         customRules: {
-            // Every anonymous account can trigger a paid teaser call.
-            "/sign-in/anonymous": { window: 60 * 60, max: 5 },
+            // Every anonymous account can trigger a paid teaser call, but
+            // Peruvian mobile carriers put many buyers behind one IP (CGNAT).
+            "/sign-in/anonymous": { window: 60 * 60, max: 60 },
         },
     },
     emailAndPassword: {
@@ -30,8 +34,12 @@ export const auth = betterAuth({
         requireEmailVerification: false,
     },
     plugins: [
-        // Visitors take the quiz without signing up; see core/reading.
-        anonymous(),
+        // Visitors take the quiz and pay without signing up (see core/reading).
+        // Signing up or in later keeps what they bought.
+        anonymous({
+            onLinkAccount: ({ anonymousUser, newUser }) =>
+                claimAnonymousData(anonymousUser.user.id, newUser.user.id),
+        }),
         openAPI({ disableDefaultReference: !ServerConfig.isDevelopment }),
     ],
     database: drizzleAdapter(db, { provider: "pg", schema: authSchema }),

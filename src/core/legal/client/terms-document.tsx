@@ -97,10 +97,10 @@ const SECTIONS: LegalSection[] = [
                     <p>
                         Junto con la lectura obtienes acceso a un{" "}
                         <strong>asistente conversacional de IA</strong> durante{" "}
-                        {OFFER.chatHours} horas, contadas desde que tu lectura
-                        queda disponible. Al terminar ese plazo la sesión de
-                        chat se cierra y no puede extenderse, pero conservas
-                        acceso a tu lectura.
+                        {OFFER.chatHours} horas, contadas desde tu primera
+                        pregunta (no desde el pago). Al terminar ese plazo la
+                        sesión de chat se cierra y no puede extenderse, pero
+                        conservas acceso a tu lectura.
                     </p>
                 </SubClause>
                 <SubClause title="Naturaleza digital del Servicio">

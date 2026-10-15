@@ -31,9 +31,19 @@ export function SiteHeader() {
                         </Button>
                     ))}
                 </nav>
-                <GoldButton size="sm" asChild className="rounded-full px-4">
-                    <Link href={START_READING_HREF}>Mi lectura</Link>
-                </GoldButton>
+                <div className="flex items-center gap-1">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        asChild
+                        className="font-mono text-[11px] text-muted-foreground uppercase tracking-[0.16em] hover:text-foreground"
+                    >
+                        <Link href="/lecturas">Mis lecturas</Link>
+                    </Button>
+                    <GoldButton size="sm" asChild className="rounded-full px-4">
+                        <Link href={START_READING_HREF}>Empezar</Link>
+                    </GoldButton>
+                </div>
             </div>
         </header>
     );

@@ -77,7 +77,11 @@ const TRATO: Record<Trato, string> = {
 
 /** <trato>, <persona>, <carta> and <respuestas>: everything known about the person. */
 export function describeProfile(profile: ReadingProfile): string {
-    const chart = natalChart(profile.birthDate, profile.birthTime);
+    const chart = natalChart(
+        profile.birthDate,
+        profile.birthTime,
+        profile.birthTimeZone,
+    );
     const placements = chart.placements.map((p) => {
         if (p.body !== "Luna" || profile.birthTime)
             return `- ${p.body} en ${p.sign} (${p.degree}) · ${p.element}`;
@@ -122,6 +126,7 @@ export function describeSky(profile: ReadingProfile, today: Date): string {
     const [sun, moon, venus] = natalChart(
         profile.birthDate,
         profile.birthTime,
+        profile.birthTimeZone,
     ).placements;
     const outlook = venusOutlook(today, {
         sun: sun.sign,

@@ -1,4 +1,10 @@
 import { notFound, redirect } from "next/navigation";
+import {
+    SaveAccountCard,
+    SaveAccountNotice,
+    SavedInAccount,
+} from "@/core/account/client/save-account-card";
+import { payerEmailService } from "@/core/payment/server/services/payer-email-service";
 import { syncCheckoutReturnService } from "@/core/payment/server/services/sync-checkout-return-service";
 import {
     LockedReadingScreen,
@@ -34,10 +40,9 @@ export default async function ReadingPage({
     searchParams: Promise<Query>;
 }) {
     const { id } = await params;
-    const session = await authenticate();
-    if (!session) notFound();
-    const userId = session.user.id;
 
+    // Before the session check: a buyer who comes back from the gateway in
+    // another browser (no cookie) still gets the payment applied.
     let payment: PaymentState = "none";
     const returned = await syncCheckoutReturnService(
         flatten(await searchParams),
@@ -53,21 +58,42 @@ export default async function ReadingPage({
         payment = status === "failed" ? "failed" : "confirming";
     }
 
+    const session = await authenticate();
+    if (!session) notFound();
+    const userId = session.user.id;
+
     const reading = await getReadingService(userId, id);
     if (!reading.ok) notFound();
 
     if (reading.data.locked)
         return <LockedReadingScreen reading={reading.data} payment={payment} />;
 
+    // Bought without an account: offer one, pre-filled with the paying e-mail.
+    const anonymous = Boolean(session.user.isAnonymous);
+    const account = anonymous ? (
+        <SaveAccountCard defaultEmail={await payerEmailService(userId, id)} />
+    ) : (
+        <SavedInAccount email={session.user.email} />
+    );
+
     return (
         <UnlockedReadingScreen
             reading={reading.data}
-            content={<FullReading userId={userId} id={id} />}
+            notice={anonymous ? <SaveAccountNotice /> : undefined}
+            content={<FullReading userId={userId} id={id} account={account} />}
         />
     );
 }
 
-async function FullReading({ userId, id }: { userId: string; id: string }) {
+async function FullReading({
+    userId,
+    id,
+    account,
+}: {
+    userId: string;
+    id: string;
+    account: React.ReactNode;
+}) {
     const [reading, messages] = await Promise.all([
         ensureReadingContentService(userId, id),
         listChatMessagesService(userId, id),
@@ -77,6 +103,7 @@ async function FullReading({ userId, id }: { userId: string; id: string }) {
         <ReadingBody
             reading={reading.data}
             messages={messages.ok ? messages.data : []}
+            account={account}
         />
     );
 }

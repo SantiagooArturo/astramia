@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, count, eq, gte, isNull, lt, or } from "drizzle-orm";
+import { and, asc, count, eq, gte, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "@/server/drizzle/db";
 import {
     type ChatMessageRow,
@@ -27,6 +27,20 @@ export async function findReading(
     return row ?? null;
 }
 
+/** The user's readings, newest first, without their texts. */
+export async function listReadings(userId: string) {
+    return db.query.readings.findMany({
+        columns: {
+            id: true,
+            sunSign: true,
+            unlockedAt: true,
+            createdAt: true,
+        },
+        where: eq(readings.userId, userId),
+        orderBy: (r, { desc }) => [desc(r.createdAt)],
+    });
+}
+
 export async function countReadingsSince(
     userId: string,
     since: Date,
@@ -40,15 +54,11 @@ export async function countReadingsSince(
     return row?.value ?? 0;
 }
 
-/** Sets the unlock + chat window once; later calls change nothing. */
-export async function unlockReading(
-    userId: string,
-    id: string,
-    chatExpiresAt: Date,
-): Promise<void> {
+/** Unlocks once; later calls change nothing. The chat clock starts apart. */
+export async function unlockReading(userId: string, id: string): Promise<void> {
     await db
         .update(readings)
-        .set({ unlockedAt: new Date(), chatExpiresAt })
+        .set({ unlockedAt: new Date() })
         .where(
             and(
                 eq(readings.id, id),
@@ -56,6 +66,24 @@ export async function unlockReading(
                 isNull(readings.unlockedAt),
             ),
         );
+}
+
+/**
+ * Opens the chat window at `expiresAt` unless it's already open (two first
+ * questions at once both get the earlier one). Returns when it closes.
+ */
+export async function startChatWindow(
+    id: string,
+    expiresAt: Date,
+): Promise<Date | null> {
+    const [row] = await db
+        .update(readings)
+        .set({
+            chatExpiresAt: sql`coalesce(${readings.chatExpiresAt}, ${expiresAt})`,
+        })
+        .where(eq(readings.id, id))
+        .returning({ chatExpiresAt: readings.chatExpiresAt });
+    return row?.chatExpiresAt ?? null;
 }
 
 /**

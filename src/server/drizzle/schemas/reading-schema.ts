@@ -29,6 +29,8 @@ export const readings = pgTable(
         birthDate: text("birth_date").notNull(),
         /** HH:mm, when the visitor knows it. */
         birthTime: text("birth_time"),
+        /** IANA zone `birthTime` is read in (the browser's); null → America/Lima. */
+        birthTimeZone: text("birth_time_zone"),
         birthPlace: text("birth_place"),
         sunSign: text("sun_sign").notNull(),
         answers: jsonb("answers")

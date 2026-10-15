@@ -26,18 +26,22 @@ function textOf(message: UIMessage): string {
         .join("");
 }
 
+const HOUR_MS = 60 * 60 * 1000;
+
 /**
  * Formatted after mount: the server doesn't know the visitor's time zone, and
  * formatting there (UTC on Vercel) would not match the browser's hydration.
  */
-function useLocalTime(iso: string): string | null {
+function useLocalTime(iso: string | null): string | null {
     const [time, setTime] = useState<string | null>(null);
     useEffect(() => {
         setTime(
-            new Date(iso).toLocaleTimeString("es-PE", {
-                hour: "2-digit",
-                minute: "2-digit",
-            }),
+            iso
+                ? new Date(iso).toLocaleTimeString("es-PE", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                  })
+                : null,
         );
     }, [iso]);
     return time;
@@ -54,9 +58,11 @@ export function ReadingChat({
 }: {
     readingId: string;
     initialMessages: ChatMessage[];
-    expiresAt: string;
+    /** `null` until the first question: that's when the hours start. */
+    expiresAt: string | null;
 }) {
     const [input, setInput] = useState("");
+    const [openUntil, setOpenUntil] = useState(expiresAt);
     const transport = useMemo(
         () =>
             new DefaultChatTransport<UIMessage>({
@@ -73,7 +79,8 @@ export function ReadingChat({
     });
 
     const asked = messages.filter((m) => m.role === "user").length;
-    const expired = new Date(expiresAt).getTime() < Date.now();
+    const expired =
+        openUntil !== null && new Date(openUntil).getTime() < Date.now();
     const exhausted = asked >= CHAT_LIMITS.maxUserMessages;
     const busy = status === "submitted" || status === "streaming";
     const closed = expired || exhausted;
@@ -82,11 +89,18 @@ export function ReadingChat({
         event.preventDefault();
         const text = input.trim();
         if (!text || busy || closed) return;
+        // The server opens the same window with this question.
+        if (!openUntil)
+            setOpenUntil(
+                new Date(
+                    Date.now() + CHAT_LIMITS.hours * HOUR_MS,
+                ).toISOString(),
+            );
         sendMessage({ text });
         setInput("");
     }
 
-    const closesAt = useLocalTime(expiresAt);
+    const closesAt = useLocalTime(openUntil);
 
     return (
         <section
@@ -98,9 +112,11 @@ export function ReadingChat({
                 <p className="font-mono text-[11px] text-muted-foreground uppercase tracking-[0.16em]">
                     {expired
                         ? "Chat cerrado"
-                        : closesAt
-                          ? `Abierto hasta las ${closesAt}`
-                          : "Chat abierto"}
+                        : !openUntil
+                          ? `${CHAT_LIMITS.hours} horas desde tu primera pregunta`
+                          : closesAt
+                            ? `Abierto hasta las ${closesAt}`
+                            : "Chat abierto"}
                 </p>
             </header>
 

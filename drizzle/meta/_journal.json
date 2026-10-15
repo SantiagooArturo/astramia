@@ -15,6 +15,13 @@
             "when": 1791955449978,
             "tag": "0001_astramia_core",
             "breakpoints": true
+        },
+        {
+            "idx": 2,
+            "version": "7",
+            "when": 1792044161982,
+            "tag": "0002_accounts_tz_rate_limit",
+            "breakpoints": true
         }
     ]
 }

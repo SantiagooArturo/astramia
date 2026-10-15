@@ -74,8 +74,8 @@ export function AiConversation() {
                     </p>
 
                     <p className="font-mono text-muted-foreground/70 text-xs leading-relaxed">
-                        El chat se cierra a las {OFFER.chatHours} horas. La
-                        lectura, no.
+                        Las {OFFER.chatHours} horas empiezan con tu primera
+                        pregunta. La lectura no se cierra nunca.
                     </p>
                 </Reveal>
             </div>

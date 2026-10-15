@@ -6,6 +6,7 @@ vi.mock("../../repository/readings", () => ({
     addChatTurn: vi.fn(),
     findReading: vi.fn(),
     listChatMessages: vi.fn(),
+    startChatWindow: vi.fn(),
 }));
 
 import { stream } from "@/core/ai/server/repository/llm";
@@ -13,6 +14,7 @@ import {
     addChatTurn,
     findReading,
     listChatMessages,
+    startChatWindow,
 } from "../../repository/readings";
 import { sendChatMessageService } from "../chat-services";
 
@@ -24,6 +26,7 @@ const reading = {
     topic: "amor" as const,
     birthDate: "1994-03-21",
     birthTime: null,
+    birthTimeZone: null,
     birthPlace: null,
     sunSign: "Aries",
     answers: [],
@@ -83,6 +86,28 @@ describe("sendChatMessageService", () => {
 
         expect(r.ok).toBe(false);
         expect(stream).not.toHaveBeenCalled();
+    });
+
+    it("starts the paid hours with the first question, not the payment", async () => {
+        vi.mocked(findReading).mockResolvedValue({
+            ...reading,
+            chatExpiresAt: null,
+        });
+
+        const before = Date.now();
+        const r = await sendChatMessageService("u1", "r1", "Primera");
+
+        expect(r.ok).toBe(true);
+        const [id, expiresAt] = vi.mocked(startChatWindow).mock.calls[0];
+        expect(id).toBe("r1");
+        expect(expiresAt.getTime()).toBeGreaterThanOrEqual(
+            before + CHAT_LIMITS.hours * HOUR_MS,
+        );
+    });
+
+    it("leaves an open window as it is", async () => {
+        await sendChatMessageService("u1", "r1", "Otra");
+        expect(startChatWindow).not.toHaveBeenCalled();
     });
 
     it("refuses after the chat window closes", async () => {
