@@ -333,6 +333,18 @@ describe("a reading after the free scenes", () => {
     });
 });
 
+describe("a reading bought with an old preview", () => {
+    it("opens with its paragraph, never an empty Venus or Mars", () => {
+        const { opening, venus, mars, ...paid } = SAMPLE_SCENES;
+        const story = buildStory(input({ content: JSON.stringify(paid) }));
+        expect(story.steps.slice(0, 2)).toMatchObject([
+            { kind: "prologue", text: SAMPLE_READING.teaser },
+            { kind: "scene", text: SAMPLE_SCENES.venusMars },
+        ]);
+        expect(story.continueAt).toBe(1);
+    });
+});
+
 describe("the preview, before paying", () => {
     const preview = previewStory({
         teaser: JSON.stringify(SAMPLE_FREE),

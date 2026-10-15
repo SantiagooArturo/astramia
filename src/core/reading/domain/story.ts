@@ -286,12 +286,24 @@ function freeSteps(
  */
 function sceneStory(input: StoryInput, scenes: ReadingScenes): Story {
     const facts = skyFacts(input.chart);
-    const free = parseFreeScenes(input.teaser) ?? {
-        venus: scenes.venus ?? "",
-        mars: scenes.mars ?? "",
-    };
+    const free =
+        parseFreeScenes(input.teaser) ??
+        (scenes.venus && scenes.mars
+            ? { venus: scenes.venus, mars: scenes.mars }
+            : null);
     const chapters: StoryChapter[] = [];
-    const steps: StoryStep[] = [];
+    // Bought with an old preview (a paragraph) after the free scenes
+    // existed: no Venus or Mars text anywhere, so the paragraph opens it.
+    const steps: StoryStep[] = free
+        ? []
+        : [
+              {
+                  kind: "prologue",
+                  text: input.teaser,
+                  visual: SKY,
+                  chapter: null,
+              },
+          ];
     const chapter = (label: string, add: (index: number) => StoryStep[]) => {
         const index = chapters.length;
         const added = add(index);
@@ -302,7 +314,7 @@ function sceneStory(input: StoryInput, scenes: ReadingScenes): Story {
     const born = "El día que naciste";
 
     chapter(LOVE, (i) => [
-        ...freeSteps(facts, free, i),
+        ...(free ? freeSteps(facts, free, i) : []),
         {
             kind: "scene",
             eyebrow: "Juntos",
@@ -410,8 +422,9 @@ function sceneStory(input: StoryInput, scenes: ReadingScenes): Story {
         visual: { kind: "star" },
         chapter: null,
     });
-    // Venus and Mars were free: what was bought starts with them together.
-    return { chapters, steps, continueAt: 2 };
+    // Venus and Mars (or the paragraph) were free: what was bought starts
+    // with the two together.
+    return { chapters, steps, continueAt: free ? 2 : 1 };
 }
 
 /** Older readings' five sections, in their prompt's order. */
