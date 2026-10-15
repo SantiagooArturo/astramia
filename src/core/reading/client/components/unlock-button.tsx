@@ -32,7 +32,22 @@ export function UnlockButton({
     async function start() {
         try {
             const result = await checkout.mutateAsync(undefined);
-            window.location.assign(result.response.checkoutUrl);
+            const target = new URL(
+                result.response.checkoutUrl,
+                window.location.href,
+            );
+            // Back on this very page (the owner skips the gateway): a URL
+            // that differs only after # doesn't reload, so reload it here.
+            if (
+                target.origin === window.location.origin &&
+                target.pathname === window.location.pathname &&
+                target.search === window.location.search
+            ) {
+                window.location.hash = target.hash;
+                window.location.reload();
+                return;
+            }
+            window.location.assign(target.href);
         } catch {
             toast.error("No pudimos abrir el pago. Inténtalo de nuevo.");
         }
