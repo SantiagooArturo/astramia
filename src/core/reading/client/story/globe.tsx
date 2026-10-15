@@ -329,10 +329,15 @@ export function Globe({
         const picture = document.createElement("img");
         picture.className = "block size-full";
         picture.alt = "";
+        picture.style.display = "none";
         host.appendChild(picture);
+        // Until a frame is drawn into it, the picture is an empty image
+        // (a broken-image box, on some browsers): the canvas stands in.
+        let pictured = false;
         const showLive = (live: boolean) => {
-            canvas.style.display = live ? "" : "none";
-            picture.style.display = live ? "none" : "";
+            const still = !live && pictured;
+            canvas.style.display = still ? "none" : "";
+            picture.style.display = still ? "" : "none";
         };
         const gl = canvas.getContext("webgl", {
             premultipliedAlpha: true,
@@ -394,24 +399,27 @@ export function Globe({
         let frame = 0;
         const start = performance.now();
 
+        /** Sized by its host: the canvas has no size while a still shows. */
         const resize = () => {
             const ratio = Math.min(
                 window.devicePixelRatio || 1,
                 look.maxPixelRatio,
             );
-            const width = Math.round(canvas.clientWidth * ratio);
-            const height = Math.round(canvas.clientHeight * ratio);
+            const width = Math.round(host.clientWidth * ratio);
+            const height = Math.round(host.clientHeight * ratio);
+            if (!width || !height) return false;
             if (canvas.width !== width || canvas.height !== height) {
                 canvas.width = width;
                 canvas.height = height;
             }
             gl.viewport(0, 0, canvas.width, canvas.height);
             gl.uniform2f(at("uRes"), canvas.width, canvas.height);
+            return true;
         };
 
         const draw = () => {
-            if (disposed) return;
-            resize();
+            // Not laid out yet: the last frame stays.
+            if (disposed || !resize()) return;
             const t = reducedMotion ? 0 : (performance.now() - start) / 1000;
             const turning = Math.max(0, t - turnDelay);
             // The Moon shows one face; it only sways a little (libration).
@@ -432,7 +440,11 @@ export function Globe({
             gl.clear(gl.COLOR_BUFFER_BIT);
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
             // Read in the same task as the draw: the buffer is still there.
-            if (pausedRef.current) picture.src = canvas.toDataURL();
+            if (pausedRef.current) {
+                picture.src = canvas.toDataURL();
+                pictured = true;
+                showLive(false);
+            }
         };
         drawRef.current = draw;
 

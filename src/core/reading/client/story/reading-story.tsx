@@ -328,6 +328,7 @@ export function ReadingStory({
     // -1 is the cover.
     const [active, setActive] = useState(COVER_STEP);
     const stepRefs = useRef<(HTMLElement | null)[]>([]);
+    const coverRef = useRef<HTMLElement>(null);
     const storyRef = useRef<HTMLElement>(null);
     const { scrollYProgress } = useScroll({
         target: storyRef,
@@ -345,36 +346,45 @@ export function ReadingStory({
             document.getElementById(CONTINUE_ANCHOR)?.scrollIntoView();
     }, [content]);
 
-    // Once the chat is on screen, "Ir al chat" has nothing left to do.
+    // Once the chat is on screen, "Ir al chat" has nothing left to do. The
+    // chat may arrive later, with the paid text, on a page already open.
     const [inChat, setInChat] = useState(false);
+    const hasChat = Boolean(chat);
     useEffect(() => {
-        const chat = document.getElementById(CHAT_ANCHOR);
-        if (!chat) return;
+        const room = hasChat && document.getElementById(CHAT_ANCHOR);
+        if (!room) return;
         const observer = new IntersectionObserver(
             ([entry]) => setInChat(entry.isIntersecting),
             { threshold: 0.15 },
         );
-        observer.observe(chat);
+        observer.observe(room);
         return () => observer.disconnect();
-    }, []);
+    }, [hasChat]);
 
-    // The step crossing the middle of the screen owns the stage.
+    // The step on the middle of the screen owns the stage. Watched afresh
+    // when the steps change: once paid, they arrive on a page already open.
     useEffect(() => {
+        const steps = [
+            coverRef.current,
+            ...stepRefs.current.slice(0, story.steps.length),
+        ].filter((el) => el !== null);
         const observer = new IntersectionObserver(
-            (entries) => {
-                for (const entry of entries) {
-                    if (!entry.isIntersecting) continue;
-                    const index = Number(
-                        (entry.target as HTMLElement).dataset.step,
-                    );
-                    if (!Number.isNaN(index)) setActive(index);
-                }
+            () => {
+                // Asked of the page, not of the entries: a fast scroll
+                // reports several at once, in no useful order.
+                const middle = window.innerHeight / 2;
+                const at = steps.find((el) => {
+                    const { top, bottom } = el.getBoundingClientRect();
+                    return top <= middle && bottom > middle;
+                });
+                const index = Number(at?.dataset.step);
+                if (at && !Number.isNaN(index)) setActive(index);
             },
             { rootMargin: "-50% 0px -50% 0px" },
         );
-        for (const el of stepRefs.current) if (el) observer.observe(el);
+        for (const el of steps) observer.observe(el);
         return () => observer.disconnect();
-    }, []);
+    }, [story]);
 
     const step = story.steps[active] ?? COVER;
     const chapter = step.chapter === null ? null : story.chapters[step.chapter];
@@ -446,9 +456,7 @@ export function ReadingStory({
 
                     <div className="relative -mt-[100svh] px-5 sm:px-8 lg:mt-0 lg:px-14 xl:px-20">
                         <article
-                            ref={(el) => {
-                                stepRefs.current[story.steps.length] = el;
-                            }}
+                            ref={coverRef}
                             data-step={COVER_STEP}
                             className="flex min-h-[100svh] flex-col justify-end gap-6 pb-[10svh] lg:justify-center lg:pb-0"
                         >

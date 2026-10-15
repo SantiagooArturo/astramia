@@ -277,9 +277,11 @@ export function SolarSystemScene({
                 return;
             }
             setLanded(false);
+            // Whatever it pointed at goes, even if the camera never left:
+            // scrolling on before it flies must not leave that line behind.
+            setSight(null);
+            setAim(null);
             if (progress.get() > 0) {
-                setSight(null);
-                setAim(null);
                 // The globe shrinks back into its dot as the camera pulls out.
                 await animate(progress, 0, OUT);
             }
@@ -523,9 +525,16 @@ export function SolarSystemScene({
                                 key={sight}
                                 className="absolute inset-0"
                                 initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ delay: 0.7, duration: 0.5 }}
+                                animate={{
+                                    opacity: 1,
+                                    // Once the line has reached the sign.
+                                    transition: { delay: 0.7, duration: 0.5 },
+                                }}
+                                // Gone at once: it must not outlive its line.
+                                exit={{
+                                    opacity: 0,
+                                    transition: { duration: 0.2 },
+                                }}
                             >
                                 <Label
                                     at={line.label}

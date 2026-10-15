@@ -4,6 +4,8 @@ import { ServerConfig } from "@/config/server-config";
 import { ReadingChat } from "@/core/reading/client/components/reading-chat";
 import {
     LockedReadingScreen,
+    ReadingBody,
+    UnlockedReadingScreen,
     WritingScreen,
 } from "@/core/reading/client/screens/reading-screen";
 import { ReadingStory } from "@/core/reading/client/story/reading-story";
@@ -40,6 +42,18 @@ const SAMPLE_CHAT: ChatMessage[] = [
     },
 ];
 
+/** As if written during this render: the text lands a few seconds late. */
+async function LateReading({
+    reading,
+    seconds,
+}: {
+    reading: Reading;
+    seconds: number;
+}) {
+    await new Promise((done) => setTimeout(done, seconds * 1000));
+    return <ReadingBody reading={reading} messages={SAMPLE_CHAT} />;
+}
+
 /**
  * The paid reading with a sample text and chart, to see (and check) the
  * experience without paying. Never on the live site.
@@ -47,11 +61,16 @@ const SAMPLE_CHAT: ChatMessage[] = [
 export default async function SampleReadingPage({
     searchParams,
 }: {
-    /** `?vista=bloqueada` or `escribiendo`: the preview before paying, or while it's written. */
-    searchParams: Promise<{ vista?: string }>;
+    /**
+     * `?vista=bloqueada`, `escribiendo` or `pagada`: the preview before
+     * paying, while it's written, or just paid (the text streams in late,
+     * after `tarda` seconds). `?vista=refrescando&hasta=<ms>`: written
+     * elsewhere, the page refreshing itself until then.
+     */
+    searchParams: Promise<{ vista?: string; tarda?: string; hasta?: string }>;
 }) {
     if (ServerConfig.isLiveSite) notFound();
-    const { vista } = await searchParams;
+    const { vista, tarda, hasta } = await searchParams;
     const chart = natalChart(
         SAMPLE_READING.birthDate,
         SAMPLE_READING.birthTime,
@@ -93,6 +112,29 @@ export default async function SampleReadingPage({
         );
     if (vista === "escribiendo")
         return <WritingScreen reading={{ ...reading, content: null }} />;
+    if (vista === "refrescando")
+        return (
+            <ReadingBody
+                reading={
+                    Date.now() < Number(hasta)
+                        ? { ...reading, content: null }
+                        : reading
+                }
+                messages={SAMPLE_CHAT}
+            />
+        );
+    if (vista === "pagada")
+        return (
+            <UnlockedReadingScreen
+                reading={{ ...reading, content: null }}
+                content={
+                    <LateReading
+                        reading={reading}
+                        seconds={Number(tarda) || 4}
+                    />
+                }
+            />
+        );
     return (
         <ReadingStory
             reading={reading}
