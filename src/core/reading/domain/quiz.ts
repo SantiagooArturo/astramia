@@ -97,6 +97,7 @@ export const LOVE_QUIZ: readonly QuizQuestion[] = [
             { id: "algo_falta", label: "Bien, pero algo falta" },
             { id: "rutina", label: "En piloto automático" },
             { id: "peleas", label: "Peleamos seguido" },
+            { id: "caminos", label: "Queremos cosas distintas para el futuro" },
             { id: "dudas", label: "Con dudas de seguir" },
         ],
     }),

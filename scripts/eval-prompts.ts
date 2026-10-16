@@ -153,6 +153,26 @@ const PROFILES: Profile[] = [
         ),
         chatQuestion: "¿Le escribo o espero a que me busque?",
     },
+    {
+        // A real tester: they chose "perderme a mí" over clashing life plans
+        // (moving abroad, children), and were told it was about friends.
+        name: "geminis-caminos",
+        birthDate: "2003-06-12",
+        birthTime: null,
+        birthTimeZone: null,
+        birthPlace: "Lima",
+        answers: answers(
+            "masculino",
+            "relacion",
+            "caminos",
+            "no_se",
+            "sigo",
+            "perder_me",
+            "quedarme",
+        ),
+        chatQuestion:
+            "Yo quiero emigrar y tener hijos, y mi pareja no. ¿Vale la pena renunciar a eso?",
+    },
 ];
 
 /** The prompts module's own shape; older versions may lack `AI_TASKS`. */
@@ -308,6 +328,11 @@ const verdictSchema = z.object({
         .array(z.string())
         .describe(
             "afirmaciones astrológicas que no salen de los datos, literal",
+        ),
+    supuestos: z
+        .array(z.string())
+        .describe(
+            "afirmaciones concretas sobre su vida que no salen de sus respuestas y podrían ser falsas para esta persona (a quién deja, qué hace, qué le pasó, por qué eligió una respuesta), literal",
         ),
     mejor_frase: z.string(),
     peor_frase: z.string(),
@@ -629,6 +654,7 @@ const summary = {
         0,
     ),
     inventos: results.reduce((n, r) => n + r.verdict.inventos.length, 0),
+    supuestos: results.reduce((n, r) => n + r.verdict.supuestos.length, 0),
     cliches: results.reduce((n, r) => n + r.verdict.cliches.length, 0),
     cortes: results.filter((r) => r.checks.cut).length,
     voseo: results.reduce((n, r) => n + r.checks.voseo.length, 0),

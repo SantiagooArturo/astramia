@@ -11,20 +11,23 @@ import type { QuizAnswer } from "./types";
  * pasted, the same line would show up for everyone who gave that answer.
  * Only the reader's own answers' clues go in its prompt. High base rate on
  * purpose (nothing a reader of that answer would deny), and nothing about
- * the other person's gender, nor events they didn't tell.
+ * the other person's gender, nor events they didn't tell. Where an answer
+ * can mean several things, the note says the range, never picks one: a
+ * reader who chose "perderme a mí" over clashing life plans was told it
+ * was about leaving their friends.
  */
 const CLUES: Record<string, Record<string, readonly string[]>> = {
     situacion: {
         soltera: [
-            "planes con amigos que llenan el fin de semana; algunas noches, alguien que aún no existe",
-            "en una presentación, sabe en minutos si vale la pena",
+            "su tiempo es suyo y lo cuida; algunas noches imagina a alguien que aún no existe",
+            "conociendo a alguien, sabe pronto si vale la pena",
         ],
         alguien: [
             "mensajes escritos, borrados, reescritos más cortos",
             "conversaciones enteras imaginadas que aún no pasaron",
         ],
         relacion: [
-            "lo que de verdad siente, a veces más fácil de contar a amigos que a su pareja",
+            "hay algo que todavía no le ha dicho a su pareja",
             "recuerda cómo empezó y a ratos lo compara con hoy",
         ],
         ruptura: [
@@ -32,7 +35,7 @@ const CLUES: Record<string, Record<string, readonly string[]>> = {
             "cosas que dejó de hacer porque las hacían juntos",
         ],
         complicado: [
-            "amigos con opinión; no siempre les cuenta todo",
+            "no siempre cuenta toda la historia a quien le pregunta",
             "un gesto bonito alcanza para esperar un poco más",
         ],
     },
@@ -53,6 +56,9 @@ const CLUES: Record<string, Record<string, readonly string[]>> = {
         algo_falta: ["quiere algo concreto y no sabe cómo pedirlo"],
         rutina: ["días iguales; extraña cómo era al principio"],
         peleas: ["peleas por cosas pequeñas que esconden otra más grande"],
+        caminos: [
+            "el cariño no está en duda, el rumbo sí: qué cedería y qué no",
+        ],
         dudas: ["piensa en irse y en quedarse el mismo día"],
     },
     termino: {
@@ -63,10 +69,14 @@ const CLUES: Record<string, Record<string, readonly string[]>> = {
     },
     complica: {
         sin_nombre: ["vive lo que hay hoy, sin ponerle nombre"],
-        otra_persona: ["espera, y compara aunque no quiera"],
+        otra_persona: [
+            "hay más de una historia en juego; no todo depende de sí",
+        ],
         idas_y_vueltas: ["cada regreso parece distinto y termina igual"],
         distancia: ["la pantalla sostiene lo que la distancia pone a prueba"],
-        entorno: ["defiende a esa persona ante otros; a solas, duda"],
+        entorno: [
+            "a veces le toca elegir entre lo que siente y lo que le dicen",
+        ],
     },
     espera: {
         reviso: ["mira la última conexión; la espera le inquieta"],
@@ -86,7 +96,7 @@ const CLUES: Record<string, Record<string, readonly string[]>> = {
         ],
         me_alejo: [
             "planes a largo plazo → de pronto, muchos pendientes",
-            "amistades de años: el problema no es querer sino quedarse",
+            "sabe querer; lo difícil es quedarse cuando se vuelve serio",
         ],
         celos: [
             "atiende al tono de un mensaje más que a sus palabras",
@@ -94,7 +104,7 @@ const CLUES: Record<string, Record<string, readonly string[]>> = {
         ],
         no_se: [
             "historias que empiezan distinto y terminan parecido",
-            "amigos que ya le señalaron algo que se repite",
+            "desde adentro le cuesta ver lo que se repite",
         ],
     },
     // No longer asked: readings made before still carry it.
@@ -123,7 +133,7 @@ const CLUES: Record<string, Record<string, readonly string[]>> = {
     herida: {
         abandono: [
             "una demora en responder → imagina lo peor primero",
-            "cuando termina algo, lo dice claro: sabe lo que duele lo otro",
+            "le importa cerrar bien las cosas: sabe lo que duele lo contrario",
         ],
         engano: [
             "nota cuando una historia no encaja, aunque calle",
@@ -134,12 +144,12 @@ const CLUES: Record<string, Record<string, readonly string[]>> = {
             "prefiere una charla difícil a un día de silencio",
         ],
         control: [
-            "defiende sus horarios y sus amistades más de lo que parece",
+            "cuida su espacio y su gente más de lo que parece",
             "desconfía de lo que va demasiado rápido",
         ],
         perder_me: [
-            "volvió a algo que había dejado: un deporte, una amistad, una música",
-            "en una cita se pregunta si podría seguir siendo quien es",
+            "alguna vez cedió algo suyo para que una relación funcionara (tiempo, gente, planes, sueños): cuál, lo sabe su vida; no lo elijas",
+            "quiere que querer a alguien no le cueste lo que quiere para su vida",
         ],
     },
     pregunta: {
