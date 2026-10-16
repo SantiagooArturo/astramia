@@ -11,10 +11,11 @@
  *
  * It spends real money. Drafts are written on Gemini 3.8 Flash, production's
  * family, reasoning little (at "medium" it thinks 9k tokens a reading and
- * costs more than Argon), and judged by Claude Haiku 5.5 (a twentieth of
- * Argon's price, and not judging its own family's writing), unless told
- * otherwise; the run stops at `--max-usd` (0.30 by default). An afternoon
- * of runs on Argon once burned the account's credit.
+ * costs more than Argon), and judged by Gemini 3.8 Flash too, reasoning
+ * little (`--judge-reasoning`), unless told otherwise; the run stops at
+ * `--max-usd` (0.30 by default). An afternoon of runs on Argon once burned
+ * the account's credit. A judge favors its own family's writing: compare
+ * versions under the same judge, never scores across judges.
  *
  * Needs AI_GATEWAY_API_KEY. Writes JSON + Markdown to `.eval/`.
  */
@@ -282,7 +283,10 @@ const MODELS = {
 };
 /** `--sin-revision`: as written, without the editor's pass. */
 const REVIEW = !("sin-revision" in args);
-const JUDGE = args.judge ?? "anthropic/claude-haiku-5.5";
+const JUDGE = args.judge ?? CHEAP;
+const JUDGE_REASONING = aiReasoningSchema.parse(
+    args["judge-reasoning"] ?? "low",
+);
 
 /** What the run may spend, judge included; past it, no call starts. */
 const BUDGET = Number(args["max-usd"] ?? 0.3);
@@ -491,7 +495,7 @@ async function judge(
     const result = await generateText({
         model: JUDGE,
         maxRetries: 5,
-        reasoning: "medium",
+        reasoning: JUDGE_REASONING,
         maxOutputTokens: 6000,
         output: Output.object({ schema: verdictSchema }),
         system: `Eres editora de un producto de astrología de pago en español latinoamericano, exigente con la calidad literaria y con la precisión. Evalúas sin piedad: un 5 es excepcional y raro; un texto correcto pero genérico es un 2. El público es masivo (llega desde TikTok e Instagram) y no sabe astrología: un texto que solo entiende quien sabe astrología falla, por bien escrito que esté. Juzgas solo contra los datos dados: cualquier dato astrológico que no esté en ellos es un invento.
