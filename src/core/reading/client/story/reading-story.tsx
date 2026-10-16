@@ -533,7 +533,10 @@ export function ReadingStory({
                         <article
                             ref={coverRef}
                             data-step={COVER_STEP}
-                            className="flex min-h-[100svh] flex-col justify-end gap-6 pb-[10svh] lg:justify-center lg:pb-0"
+                            // On a phone it starts under the drawing, whatever
+                            // the screen's height: grown up from the bottom, a
+                            // short screen pushed it into the image.
+                            className="flex min-h-[100svh] flex-col gap-4 pt-[52svh] pb-[6svh] lg:justify-center lg:gap-6 lg:pt-0 lg:pb-0"
                         >
                             <motion.div
                                 {...ENTER}
@@ -542,10 +545,10 @@ export function ReadingStory({
                                 <p className="font-mono text-[11px] text-astral-gold uppercase tracking-[0.24em]">
                                     Tu lectura de amor · {reading.sunSign}
                                 </p>
-                                <h1 className="text-balance font-display text-5xl leading-[1.02] sm:text-6xl lg:text-7xl">
+                                <h1 className="text-balance font-display text-4xl leading-[1.02] sm:text-6xl lg:text-7xl">
                                     Los astros el día que naciste
                                 </h1>
-                                <p className="max-w-md text-pretty text-lg text-muted-foreground">
+                                <p className="max-w-md text-pretty text-base text-muted-foreground sm:text-lg">
                                     Así estaba el cielo el{" "}
                                     {longDate(reading.birthDate)}. Esta es la
                                     historia que cuenta sobre cómo amas.
