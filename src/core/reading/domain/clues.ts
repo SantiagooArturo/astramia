@@ -165,7 +165,55 @@ const CLUES: Record<string, Record<string, readonly string[]>> = {
     },
 };
 
+/**
+ * For a ranking: what its first place says weighs on them, and what its
+ * last rules out. The bottom is the safer signal: whatever they put last is
+ * almost never what their other answers are about, so no scene goes there.
+ */
+const RANKED: Record<
+    string,
+    {
+        first: Record<string, readonly string[]>;
+        last: Record<string, readonly string[]>;
+    }
+> = {
+    prioridades: {
+        first: {
+            amor: ["hoy lo que pase en el amor le mueve todo lo demás"],
+            familia: [
+                "su familia es su base: lo que elija en el amor tiene que poder convivir con ella",
+            ],
+            amigos: [
+                "su gente es su lugar seguro: no quiere un amor que le aleje de ella",
+            ],
+            dinero: [
+                "hoy sus planes y su estabilidad pesan mucho: quiere un amor que sume a eso, no que lo frene",
+            ],
+        },
+        last: {
+            amor: [
+                "hoy pone otras cosas antes que el amor: no le pintes una vida que gira alrededor de alguien",
+            ],
+            familia: [
+                "su familia va al final de lo que hoy le importa: si ninguna otra respuesta la nombra, no la pongas en escena",
+            ],
+            amigos: [
+                "sus amigos van al final de lo que hoy le importa: si ninguna otra respuesta los nombra, no los pongas en escena",
+            ],
+            dinero: [
+                "el dinero y el trabajo van al final de lo que hoy le importa: no los pongas en escena",
+            ],
+        },
+    },
+};
+
 /** The clues for these answers, in the quiz's order. */
 export function cluesFor(answers: readonly QuizAnswer[]): string[] {
-    return answers.flatMap((a) => CLUES[a.questionId]?.[a.optionId] ?? []);
+    return answers.flatMap((a) => {
+        if ("optionId" in a) return CLUES[a.questionId]?.[a.optionId] ?? [];
+        const ranked = RANKED[a.questionId];
+        const first = a.ranking[0];
+        const last = a.ranking[a.ranking.length - 1];
+        return [...(ranked?.first[first] ?? []), ...(ranked?.last[last] ?? [])];
+    });
 }

@@ -15,12 +15,16 @@ import { createReadingSchema, knownBirthDaySchema } from "../schemas";
 
 import type { QuizAnswer } from "../types";
 
-/** Each question's first option, along the path those answers lead to. */
+/** Each question's first option (a ranking, as listed), along their path. */
 function firstOptions(): QuizAnswer[] {
     const path: QuizAnswer[] = [];
     for (const q of LOVE_QUIZ)
         if (questionsFor(path).includes(q))
-            path.push({ questionId: q.id, optionId: q.options[0].id });
+            path.push(
+                q.kind === "rank"
+                    ? { questionId: q.id, ranking: q.options.map((o) => o.id) }
+                    : { questionId: q.id, optionId: q.options[0].id },
+            );
     return path;
 }
 
@@ -97,9 +101,10 @@ describe("the questionnaire", () => {
             "patron",
             "espera",
             "herida",
+            "prioridades",
             "pregunta",
         ]);
-        expect(QUIZ_LENGTH).toBe(7);
+        expect(QUIZ_LENGTH).toBe(8);
     });
 
     it("has a follow-up for every answer about where their heart is", () => {
@@ -113,9 +118,77 @@ describe("the questionnaire", () => {
     });
 
     it("still reads what older readings answered", () => {
-        expect(describeAnswer("necesidad", "libertad")?.answer).toBe(
-            "Espacio y libertad",
+        expect(
+            describeAnswer({ questionId: "necesidad", optionId: "libertad" })
+                ?.answer,
+        ).toBe("Espacio y libertad");
+    });
+});
+
+describe("a ranking", () => {
+    const order = ["dinero", "familia", "amor", "amigos"];
+    const ranked = (ranking: string[]) =>
+        answers.map((a) =>
+            a.questionId === "prioridades"
+                ? { questionId: "prioridades", ranking }
+                : a,
         );
+
+    it("takes every option once, in any order", () => {
+        expect(isCompleteQuiz(ranked(order))).toBe(true);
+        expect(isCompleteQuiz(ranked(order.slice(0, 3)))).toBe(false);
+        expect(
+            isCompleteQuiz(ranked(["dinero", "dinero", "amor", "amigos"])),
+        ).toBe(false);
+        expect(isCompleteQuiz(ranked([...order.slice(0, 3), "nope"]))).toBe(
+            false,
+        );
+    });
+
+    it("never takes one picked option, nor a ranking for a one-tap question", () => {
+        expect(
+            isCompleteQuiz(
+                answers.map((a) =>
+                    a.questionId === "prioridades"
+                        ? { questionId: "prioridades", optionId: "amor" }
+                        : a,
+                ),
+            ),
+        ).toBe(false);
+        expect(
+            isCompleteQuiz(
+                answers.map((a) =>
+                    a.questionId === "pregunta"
+                        ? { questionId: "pregunta", ranking: ["cuando"] }
+                        : a,
+                ),
+            ),
+        ).toBe(false);
+    });
+
+    it("reaches the prompt in order, love named as the reader saw it", () => {
+        const inLove = ranked(order).map((a) =>
+            a.questionId === "situacion" ? { ...a, optionId: "relacion" } : a,
+        );
+        const prioridades = inLove.find((a) => a.questionId === "prioridades");
+        expect(prioridades && describeAnswer(prioridades, inLove)?.answer).toBe(
+            "Éxito financiero > Familia > Mi relación > Amigos (de más a menos importante)",
+        );
+        const single = ranked(order);
+        expect(
+            describeAnswer(
+                { questionId: "prioridades", ranking: order },
+                single,
+            )?.answer,
+        ).toContain("> Amor >");
+    });
+
+    it("tells the reading what weighs most and keeps it off what's last", () => {
+        const clues = cluesFor([
+            { questionId: "prioridades", ranking: order },
+        ]).join(" | ");
+        expect(clues).toContain("sus planes y su estabilidad");
+        expect(clues).toContain("sus amigos van al final");
     });
 });
 
@@ -169,9 +242,10 @@ describe("chart", () => {
         expect(text).toContain("<trato>\nHáblale en masculino");
         expect(text).toContain("Solo, y sin nadie en mente");
         expect(text).not.toMatch(/\bSola\b|segura|controlada/);
-        expect(describeAnswer("necesidad", "seguridad", "neutro")?.answer).toBe(
-            "Sentir seguridad",
-        );
+        expect(
+            describeAnswer({ questionId: "necesidad", optionId: "seguridad" })
+                ?.answer,
+        ).toBe("Sentir seguridad");
     });
 
     it("gives the model their age and what usually comes with their answers", () => {

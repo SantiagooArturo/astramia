@@ -10,6 +10,7 @@ import {
     scenesOf,
     sceneText,
 } from "./plan";
+import { chosen } from "./quiz";
 import { parseTexts } from "./reading-content";
 import { MOON_PHASES, skyFacts } from "./sky-facts";
 import type { NatalChart, QuizAnswer, ReadingTopic, SkyEvent } from "./types";
@@ -135,7 +136,7 @@ const QUESTIONS: Record<string, string> = {
 };
 
 export function storyQuestion(answers: readonly QuizAnswer[]): string | null {
-    const id = answers.find((a) => a.questionId === "pregunta")?.optionId;
+    const id = chosen(answers, "pregunta");
     return (id && QUESTIONS[id]) ?? null;
 }
 

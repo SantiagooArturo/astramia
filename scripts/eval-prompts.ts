@@ -35,7 +35,6 @@ import {
     describeAnswer,
     LOVE_QUIZ,
     questionsFor,
-    tratoOf,
 } from "@/core/reading/domain/quiz";
 import {
     freeAsText,
@@ -49,12 +48,21 @@ import type { QuizAnswer, ReadingProfile } from "@/core/reading/domain/types";
 
 type Profile = ReadingProfile & { name: string; chatQuestion: string };
 
-/** One option per question asked, in order: the follow-up comes third. */
-const answers = (...ids: string[]): QuizAnswer[] => {
+/**
+ * One answer per question asked, in order (the follow-up comes third): an
+ * option, or a list for a ranking.
+ */
+const answers = (...given: (string | string[])[]): QuizAnswer[] => {
     const path: QuizAnswer[] = [];
     for (const q of LOVE_QUIZ)
-        if (questionsFor(path).includes(q))
-            path.push({ questionId: q.id, optionId: ids[path.length] });
+        if (questionsFor(path).includes(q)) {
+            const id = given[path.length];
+            path.push(
+                typeof id === "string"
+                    ? { questionId: q.id, optionId: id }
+                    : { questionId: q.id, ranking: id },
+            );
+        }
     return path;
 };
 
@@ -72,6 +80,7 @@ const PROFILES: Profile[] = [
             "doy_demasiado",
             "que_hice",
             "abandono",
+            ["amor", "amigos", "familia", "dinero"],
             "por_que",
         ),
         chatQuestion: "¿Por qué siempre termino con el mismo tipo de persona?",
@@ -89,6 +98,7 @@ const PROFILES: Profile[] = [
             "me_alejo",
             "como_si_nada",
             "control",
+            ["dinero", "amor", "familia", "amigos"],
             "cuando",
         ),
         chatQuestion: "¿Cuándo voy a conocer a alguien que valga la pena?",
@@ -106,6 +116,7 @@ const PROFILES: Profile[] = [
             "celos",
             "reviso",
             "engano",
+            ["familia", "amor", "dinero", "amigos"],
             "quedarme",
         ),
         chatQuestion:
@@ -124,6 +135,7 @@ const PROFILES: Profile[] = [
             "indisponibles",
             "sigo",
             "indiferencia",
+            ["dinero", "familia", "amigos", "amor"],
             "quien",
         ),
         chatQuestion: "¿Qué tipo de persona me conviene de verdad?",
@@ -141,6 +153,7 @@ const PROFILES: Profile[] = [
             "no_se",
             "escribo",
             "perder_me",
+            ["amor", "familia", "dinero", "amigos"],
             "volvera",
         ),
         chatQuestion: "Me escribió anoche después de dos meses. ¿Va a volver?",
@@ -158,6 +171,7 @@ const PROFILES: Profile[] = [
             "celos",
             "reviso",
             "engano",
+            ["amigos", "amor", "familia", "dinero"],
             "volvera",
         ),
         chatQuestion: "¿Le escribo o espero a que me busque?",
@@ -177,6 +191,7 @@ const PROFILES: Profile[] = [
             "no_se",
             "sigo",
             "perder_me",
+            ["familia", "dinero", "amor", "amigos"],
             "quedarme",
         ),
         chatQuestion:
@@ -196,6 +211,7 @@ const PROFILES: Profile[] = [
             "celos",
             "reviso",
             "engano",
+            ["amor", "dinero", "amigos", "familia"],
             "quedarme",
         ),
         chatQuestion: "¿Cómo sé si de verdad me va a elegir?",
@@ -214,6 +230,7 @@ const PROFILES: Profile[] = [
             "indisponibles",
             "sigo",
             "perder_me",
+            ["dinero", "amigos", "familia", "amor"],
             "cuando",
         ),
         chatQuestion: "¿Por qué nunca me he enamorado de verdad?",
@@ -232,6 +249,7 @@ const PROFILES: Profile[] = [
             "doy_demasiado",
             "que_hice",
             "control",
+            ["amor", "dinero", "amigos", "familia"],
             "volvera",
         ),
         chatQuestion: "¿Debo hacer caso a lo que me dicen o a lo que siento?",
@@ -453,11 +471,7 @@ function groundTruth(profile: Profile): string {
         `Hoy 14 de octubre de 2026. Venus en ${venus.sign}${venus.retrograde ? " retrógrada" : ""}. ${venus.events.map((e) => `${e.when}: ${e.text}`).join("; ")}`,
         "Respuestas:",
         ...profile.answers.map((a) => {
-            const d = describeAnswer(
-                a.questionId,
-                a.optionId,
-                tratoOf(profile.answers),
-            );
+            const d = describeAnswer(a, profile.answers);
             return `- ${d?.question} → ${d?.answer}`;
         }),
     ]
@@ -554,11 +568,10 @@ const normal = (text: string) =>
 
 /** Their answers, said back word for word: an echo they'll notice. */
 function echoes(profile: Profile, text: string): string[] {
-    const trato = tratoOf(profile.answers);
     const said = normal(text);
     return profile.answers
-        .filter((a) => a.questionId !== "trato")
-        .map((a) => describeAnswer(a.questionId, a.optionId, trato)?.answer)
+        .filter((a) => a.questionId !== "trato" && "optionId" in a)
+        .map((a) => describeAnswer(a, profile.answers)?.answer)
         .filter((answer): answer is string => Boolean(answer))
         .filter((answer) => said.includes(normal(answer)));
 }

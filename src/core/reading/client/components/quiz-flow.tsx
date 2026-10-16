@@ -9,11 +9,11 @@ import { GoldButton } from "@/core/landing/client/effects";
 import { MONTHS_ES } from "@/core/landing/domain/zodiac";
 import { natalChart } from "@/core/reading/domain/chart";
 import {
-    optionLabel,
+    chosen,
+    labelFor,
     type QuizQuestion,
     questionsFor,
     quizLength,
-    tratoOf,
 } from "@/core/reading/domain/quiz";
 import {
     createdReadingSchema,
@@ -38,6 +38,7 @@ import {
 import { Spinner } from "@/frontend/components/ui/spinner";
 import { useReadings } from "../hooks";
 import { ChartReveal } from "./chart-reveal";
+import { RankQuestion } from "./rank-question";
 
 /** Anonymous session first, so the reading has an owner without a sign-up. */
 async function ensureSession(): Promise<void> {
@@ -45,6 +46,15 @@ async function ensureSession(): Promise<void> {
     if (data) return;
     const { error } = await authClient.signIn.anonymous();
     if (error) throw new Error(error.message ?? "No pudimos iniciar tu sesión");
+}
+
+/** The order they gave this question, if they ranked it. */
+function rankingOf(
+    answers: readonly QuizAnswer[],
+    questionId: string,
+): string[] | undefined {
+    const given = answers.find((a) => a.questionId === questionId);
+    return given && "ranking" in given ? given.ranking : undefined;
 }
 
 const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1));
@@ -103,7 +113,6 @@ export function QuizFlow({
     const asked = questionsFor(answers, questions);
     const total = quizLength(questions) + 1;
     const question = asked[step];
-    const trato = tratoOf(answers);
     const onBirthStep = !question;
 
     // Only the year is missing: go straight to it.
@@ -111,10 +120,10 @@ export function QuizFlow({
         if (onBirthStep && knownBirthDay) yearRef.current?.focus();
     }, [onBirthStep, knownBirthDay]);
 
-    function choose(optionId: string) {
+    function answer(given: QuizAnswer) {
         const next = [
             ...answers.filter((a) => a.questionId !== question.id),
-            { questionId: question.id, optionId },
+            given,
         ];
         // Back and changed: the follow-up of the old answer goes with it.
         const stillAsked = new Set(
@@ -210,27 +219,39 @@ export function QuizFlow({
                 </span>
             </div>
 
-            {question ? (
+            {question?.kind === "rank" ? (
+                <RankQuestion
+                    key={question.id}
+                    question={question}
+                    answers={answers}
+                    ranking={rankingOf(answers, question.id)}
+                    onRank={(ranking) =>
+                        answer({ questionId: question.id, ranking })
+                    }
+                />
+            ) : question ? (
                 <fieldset className="flex flex-col gap-5">
                     <legend className="mb-5 text-pretty font-display text-3xl sm:text-4xl">
                         {question.question}
                     </legend>
                     <div className="flex flex-col gap-3">
                         {question.options.map((option) => {
-                            const selected = answers.some(
-                                (a) =>
-                                    a.questionId === question.id &&
-                                    a.optionId === option.id,
-                            );
+                            const selected =
+                                chosen(answers, question.id) === option.id;
                             return (
                                 <Button
                                     key={option.id}
                                     variant="outline"
                                     aria-pressed={selected}
                                     className="h-auto justify-start whitespace-normal border-astral-ink bg-card/40 px-5 py-4 text-left text-base aria-pressed:border-astral-gold"
-                                    onClick={() => choose(option.id)}
+                                    onClick={() =>
+                                        answer({
+                                            questionId: question.id,
+                                            optionId: option.id,
+                                        })
+                                    }
                                 >
-                                    {optionLabel(option.label, trato)}
+                                    {labelFor(option, answers)}
                                 </Button>
                             );
                         })}

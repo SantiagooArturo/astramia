@@ -48,10 +48,14 @@ export const knownBirthDaySchema = z
     )
     .transform(({ dia, mes }) => ({ day: dia, month: mes }));
 
-export const quizAnswerSchema = z.object({
-    questionId: z.string(),
-    optionId: z.string(),
-});
+/** One option picked, or (for a "rank" question) all of them in order. */
+export const quizAnswerSchema = z.union([
+    z.object({ questionId: z.string(), optionId: z.string() }),
+    z.object({
+        questionId: z.string(),
+        ranking: z.array(z.string()).min(2).max(12),
+    }),
+]);
 
 export const createReadingSchema = z.object({
     topic: readingTopicSchema,

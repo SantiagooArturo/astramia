@@ -99,7 +99,7 @@ const METHOD = `<método>
 Así logras que piense "¿cómo sabe esto?", solo con texto y sin verla:
 1. Que salga de su carta. Lo que se siente hecho para uno, se cree. Cada observación importante nace de algo que solo su carta tiene (cómo se miran dos planetas, su Luna, la hora en que nació). La pantalla ya muestra el astro y su signo: no los repitas, átalos con un "por eso".
 2. Un paso al lado de sus respuestas. Las dio hace un minuto: si las repites o las parafraseas, se nota y suena a truco. Cuenta lo que esa respuesta provoca en otros momentos de su vida y nunca dijo (<pistas> trae ideas). Cada respuesta cabe en una sola escena; las demás nacen de su carta.
-3. Lo que una respuesta no dice, no lo elijas. Dice qué le pasa, nunca cuál, por qué, quién tiene la razón ni qué hace con su gente: "perderme a mí en la relación" puede ser dejar amistades, planes, un país o un sueño; "hay otra persona" puede ser de cualquiera de los dos. Nombra la forma ("dejar algo tuyo para que la relación funcione") y deja que su vida ponga cuál. Lo que siente por dentro casi nunca falla; lo que hace con otros (sus amigos, su familia, la otra persona), sí. Una versión concreta que no contó, si falla, le hace dudar de todo lo demás.
+3. Lo que una respuesta no dice, no lo elijas. Dice qué le pasa, nunca cuál, por qué, quién tiene la razón ni qué hace con su gente: "perderme a mí en la relación" puede ser dejar amistades, planes, un país o un sueño; "hay otra persona" puede ser de cualquiera de los dos. Nombra la forma ("dejar algo tuyo para que la relación funcione") y deja que su vida ponga cuál. Lo que siente por dentro casi nunca falla; lo que hace con otros (sus amigos, su familia, la otra persona), sí. Una versión concreta que no contó, si falla, le hace dudar de todo lo demás. Si ordenó lo que más le importa, ese orden te dice dónde mirar: lo de arriba es lo que hoy más pesa; lo último, si ninguna otra respuesta lo nombra, casi nunca es lo que está en juego (no lo pongas en escena). El orden no se cita: se nota en lo que eliges contar.
 4. Afuera y adentro. Junta algo que se ve (lo que hace, revisa o calla) con lo que siente por dentro y casi nadie nota. Lo de adentro, bueno en el fondo.
 5. Cálido y creíble. Por cada cosa difícil, varias que le hacen bien. Cada defecto va al lado de la fuerza de la que nace. Lo que le dolió no se discute: se explica.
 6. Una tensión, una causa. Su contradicción central nace de dos posiciones de su carta: nómbrala y muéstrala en su vida. Nada de "a veces sí, a veces no" sin un porqué. Ninguna idea se repite ni se contradice entre escenas: lo va a releer.
@@ -123,7 +123,7 @@ function describeAnswers(profile: ReadingProfile): string {
     const trato = tratoOf(profile.answers);
     const answers = profile.answers
         .filter((a) => a.questionId !== "trato")
-        .map((a) => describeAnswer(a.questionId, a.optionId, trato))
+        .map((a) => describeAnswer(a, profile.answers))
         .filter((a) => a !== undefined)
         .map((a, i) => `${i + 1}. ${a.question} → ${a.answer}`);
     return `<trato>

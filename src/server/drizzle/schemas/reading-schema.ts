@@ -34,7 +34,12 @@ export const readings = pgTable(
         birthPlace: text("birth_place"),
         sunSign: text("sun_sign").notNull(),
         answers: jsonb("answers")
-            .$type<{ questionId: string; optionId: string }[]>()
+            .$type<
+                (
+                    | { questionId: string; optionId: string }
+                    | { questionId: string; ranking: string[] }
+                )[]
+            >()
             .notNull(),
         /** The free scenes (Venus, Mars) as JSON; older readings, a paragraph. */
         teaser: text("teaser").notNull(),
