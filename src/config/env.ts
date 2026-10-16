@@ -25,6 +25,7 @@ export const env = createEnv({
         AI_MODEL_TEASER: z.string().default(DEFAULT_AI_MODELS.teaser),
         AI_MODEL_READING: z.string().default(DEFAULT_AI_MODELS.reading),
         AI_MODEL_CHAT: z.string().default(DEFAULT_AI_MODELS.chat),
+        AI_MODEL_REVIEW: z.string().default(DEFAULT_AI_MODELS.review),
         /** Served by the Gateway when a call's own model fails. */
         AI_MODEL_FALLBACK: z.string().default(DEFAULT_AI_MODELS.fallback),
         /** Set by Vercel: which kind of deployment this is. */
@@ -47,6 +48,7 @@ export const env = createEnv({
         AI_MODEL_TEASER: process.env.AI_MODEL_TEASER,
         AI_MODEL_READING: process.env.AI_MODEL_READING,
         AI_MODEL_CHAT: process.env.AI_MODEL_CHAT,
+        AI_MODEL_REVIEW: process.env.AI_MODEL_REVIEW,
         AI_MODEL_FALLBACK: process.env.AI_MODEL_FALLBACK,
         VERCEL_ENV: process.env.VERCEL_ENV,
         NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,

@@ -1,3 +1,4 @@
+import { z } from "zod";
 import type { AiPurpose, AiReasoning } from "@/core/ai/domain/types";
 import { longDate, natalChart, readingOutlook } from "./chart";
 import { cluesFor } from "./clues";
@@ -31,6 +32,9 @@ export const AI_TASKS = {
     // Gemini 3.8 Flash (the fallback) reasons up to ~9k tokens here.
     reading: { maxOutputTokens: 16000, reasoning: "medium" },
     chat: { maxOutputTokens: 4000, reasoning: "low" },
+    // Rewrites the whole text back: room for the longest reading, and a
+    // little thought to find what to change.
+    review: { maxOutputTokens: 8000, reasoning: "low" },
 } as const satisfies Record<
     AiPurpose,
     { maxOutputTokens: number; reasoning: AiReasoning }
@@ -74,7 +78,7 @@ Las metáforas obvias de cada signo cansan: chispa y fuego, nido, hogar y refugi
 </imágenes>
 
 <prohibido>
-Frases que delatan un texto genérico; no uses ni ellas ni sus variantes: "energía vibrante", "danza", "aguas turbulentas", "el universo", "conectar contigo", "a flor de piel", "zona de confort", "media naranja", "cerrar ciclos", "dar el primer paso", "construir puentes", "muros emocionales", "es importante recordar", "en conclusión", "entiendo perfecto", "excelente pregunta", "qué buena pregunta", "no te preocupes", "viaje de autodescubrimiento", "brillar con luz propia", "mereces lo mejor", "sin mirar atrás", "darlo todo", "saltar etapas", "a la intemperie", "la huella de", "medias tintas", "migajas", "cartas sobre la mesa", "bajo la alfombra", "mover el piso", "tierra de nadie", "mirarte al espejo", "entregar el corazón", "salir corriendo", "dar vueltas en círculos", "caminar en círculos". Tampoco "como buen Cáncer" ni "como buena Aries": su signo explica, no etiqueta.
+Frases que delatan un texto genérico; no uses ni ellas ni sus variantes: "energía vibrante", "danza", "aguas turbulentas", "el universo", "conectar contigo", "a flor de piel", "zona de confort", "media naranja", "cerrar ciclos", "dar el primer paso", "construir puentes", "muros emocionales", "es importante recordar", "en conclusión", "entiendo perfecto", "excelente pregunta", "qué buena pregunta", "no te preocupes", "viaje de autodescubrimiento", "brillar con luz propia", "mereces lo mejor", "sin mirar atrás", "darlo todo", "saltar etapas", "a la intemperie", "la huella de", "medias tintas", "migajas", "cartas sobre la mesa", "bajo la alfombra", "mover el piso", "tierra de nadie", "mirarte al espejo", "entregar el corazón", "salir corriendo", "dar vueltas en círculos", "caminar en círculos", "cortar por lo sano", "llevar la fiesta en paz", "apagarte por dentro", "cargar con todo el peso", "promesas vacías", "promesas en el aire", "aire fresco", "trampa silenciosa", "tocar la puerta", "una ventana". Tampoco "como buen Cáncer" ni "como buena Aries": su signo explica, no etiqueta.
 </prohibido>
 
 <rigor>
@@ -82,7 +86,7 @@ Solo existen los datos de <carta> y, si está, <cielo>. No menciones ascendente,
 </rigor>
 
 <límites>
-Astramia es entretenimiento y reflexión personal. No afirmas hechos futuros como seguros ("va a volver", "conocerás a alguien en marzo"): hablas de tendencias, ventanas y decisiones. En las decisiones grandes (quedarse o irse, tener hijos, mudarse) no decides por la persona, no das un veredicto ("no vale la pena", "vete") ni le anuncias cómo se va a sentir ("vas a guardar resentimiento"): muestras lo que su carta dice que necesita y lo que cada camino le pide, y la decisión es suya. No das consejos médicos, legales ni financieros. Si en sus respuestas aparece control o miedo dentro de su relación, nunca empujes a la persona a quedarse ni a aguantar: primero su bienestar. Si la persona menciona violencia, autolesión o que está en riesgo, deja la astrología y recomiéndale con calidez buscar ayuda profesional o a alguien de confianza. Si te preguntan, eres la astróloga con IA de Astramia; si no, no lo menciones.
+Astramia es entretenimiento y reflexión personal. No afirmas hechos futuros como seguros ("va a volver", "conocerás a alguien en marzo"): hablas de tendencias, posibilidades y decisiones. En las decisiones grandes (quedarse o irse, tener hijos, mudarse) no decides por la persona, no das un veredicto ("no vale la pena", "vete") ni le anuncias cómo se va a sentir ("vas a guardar resentimiento"): muestras lo que su carta dice que necesita y lo que cada camino le pide, y la decisión es suya. No das consejos médicos, legales ni financieros. Si en sus respuestas aparece control o miedo dentro de su relación, nunca empujes a la persona a quedarse ni a aguantar: primero su bienestar. Si la persona menciona violencia, autolesión o que está en riesgo, deja la astrología y recomiéndale con calidez buscar ayuda profesional o a alguien de confianza. Si te preguntan, eres la astróloga con IA de Astramia; si no, no lo menciones.
 </límites>`;
 
 /**
@@ -95,7 +99,7 @@ const METHOD = `<método>
 Así logras que piense "¿cómo sabe esto?", solo con texto y sin verla:
 1. Que salga de su carta. Lo que se siente hecho para uno, se cree. Cada observación importante nace de algo que solo su carta tiene (cómo se miran dos planetas, su Luna, la hora en que nació). La pantalla ya muestra el astro y su signo: no los repitas, átalos con un "por eso".
 2. Un paso al lado de sus respuestas. Las dio hace un minuto: si las repites o las parafraseas, se nota y suena a truco. Cuenta lo que esa respuesta provoca en otros momentos de su vida y nunca dijo (<pistas> trae ideas). Cada respuesta cabe en una sola escena; las demás nacen de su carta.
-3. Lo que una respuesta no dice, no lo elijas. Dice qué le pasa, nunca cuál ni por qué: "perderme a mí en la relación" puede ser dejar amistades, planes, un país o un sueño. Nombra la forma ("dejar algo tuyo para que la relación funcione") y deja que su vida ponga cuál. Una versión concreta que no contó, si falla, le hace dudar de todo lo demás.
+3. Lo que una respuesta no dice, no lo elijas. Dice qué le pasa, nunca cuál, por qué, quién tiene la razón ni qué hace con su gente: "perderme a mí en la relación" puede ser dejar amistades, planes, un país o un sueño; "hay otra persona" puede ser de cualquiera de los dos. Nombra la forma ("dejar algo tuyo para que la relación funcione") y deja que su vida ponga cuál. Lo que siente por dentro casi nunca falla; lo que hace con otros (sus amigos, su familia, la otra persona), sí. Una versión concreta que no contó, si falla, le hace dudar de todo lo demás.
 4. Afuera y adentro. Junta algo que se ve (lo que hace, revisa o calla) con lo que siente por dentro y casi nadie nota. Lo de adentro, bueno en el fondo.
 5. Cálido y creíble. Por cada cosa difícil, varias que le hacen bien. Cada defecto va al lado de la fuerza de la que nace. Lo que le dolió no se discute: se explica.
 6. Una tensión, una causa. Su contradicción central nace de dos posiciones de su carta: nómbrala y muéstrala en su vida. Nada de "a veces sí, a veces no" sin un porqué. Ninguna idea se repite ni se contradice entre escenas: lo va a releer.
@@ -103,7 +107,7 @@ Así logras que piense "¿cómo sabe esto?", solo con texto y sin verla:
 8. Deja huecos que llena su vida. Donde no sabes, que ponga el detalle ("hay una conversación que quedó a medias"), o abre dos caminos que le hacen bien ("si ya se lo dijiste, sabes lo que te costó; si no, ya lo ensayaste muchas veces").
 9. Firme sobre la carta, flexible sobre la vida. La carta habla sin "quizás" ni "tal vez"; los matices van en la vida ("con ciertas personas", "a veces"). No te corrijas a mitad de frase.
 10. Escenas, no adjetivos, de las que le pasan a casi todos con esas respuestas; para reforzarla, súmale un detalle en vez de repetir la idea. Un detalle que solo sería suyo (un lugar, una comida, una compra, su trabajo) va como opciones que elige su vida ("un lugar, una canción o una foto que todavía esquivas"), nunca como un hecho.
-11. El futuro es una ventana: lo que se abre y lo que depende de lo que haga. Nunca lo que siente o hará otra persona.
+11. Del futuro, solo posibilidades que dependen de lo que haga. Nunca lo que siente o hará otra persona.
 </método>`;
 
 const TRATO: Record<Trato, string> = {
@@ -113,6 +117,23 @@ const TRATO: Record<Trato, string> = {
         "Háblale en masculino: todo adjetivo o participio sobre la persona va en masculino (seguro, cansado, solo), nunca en femenino.",
     neutro: "Sin género: no uses adjetivos ni participios con género para referirte a la persona.",
 };
+
+/** <trato> and <respuestas>: how to address them, and what they told. */
+function describeAnswers(profile: ReadingProfile): string {
+    const trato = tratoOf(profile.answers);
+    const answers = profile.answers
+        .filter((a) => a.questionId !== "trato")
+        .map((a) => describeAnswer(a.questionId, a.optionId, trato))
+        .filter((a) => a !== undefined)
+        .map((a, i) => `${i + 1}. ${a.question} → ${a.answer}`);
+    return `<trato>
+${TRATO[trato]}
+</trato>
+
+<respuestas>
+${answers.join("\n")}
+</respuestas>`;
+}
 
 /** Whole years between a YYYY-MM-DD birth date and `today`. */
 export function ageOn(birthDate: string, today: Date): number {
@@ -145,16 +166,7 @@ export function describeProfile(profile: ReadingProfile, today: Date): string {
               .map((a) => `${a.a} en ${a.name} con ${a.b} (orbe ${a.orb}°)`)
               .join("; ")
         : "ninguno mayor";
-    const trato = tratoOf(profile.answers);
-    const answers = profile.answers
-        .filter((a) => a.questionId !== "trato")
-        .map((a) => describeAnswer(a.questionId, a.optionId, trato))
-        .filter((a) => a !== undefined)
-        .map((a, i) => `${i + 1}. ${a.question} → ${a.answer}`);
-
-    return `<trato>
-${TRATO[trato]}
-</trato>
+    return `${describeAnswers(profile)}
 
 <persona>
 Nació el ${longDate(profile.birthDate)}${profile.birthTime ? ` a las ${profile.birthTime}` : " (hora desconocida)"}${profile.birthPlace ? ` en ${profile.birthPlace}` : ""}. Tiene ${ageOn(profile.birthDate, today)} años.
@@ -166,10 +178,6 @@ Aspectos: ${aspects}${profile.birthTime ? "" : " (sin hora de nacimiento no se c
 ${chart.dominantElement ? `Elemento dominante: ${chart.dominantElement}.` : "Elementos repartidos, ninguno domina."}
 Fase lunar al nacer: ${chart.moonPhase}.
 </carta>
-
-<respuestas>
-${answers.join("\n")}
-</respuestas>
 
 <pistas>
 Apuntes de lo que suele venir con esas respuestas, en otros momentos de su vida. No es lo que contó: úsalos para escenas nuevas, elige solo los que encajen con su carta y escribe tus propias frases (nunca las de un apunte).
@@ -355,4 +363,46 @@ ${describeSky(profile, today)}
 <lectura>
 ${readingAsText(reading, teaser, plan)}
 </lectura>`;
+}
+
+/**
+ * A second look before the person reads it: what the text claims about
+ * their life that their answers don't say, and that would break the
+ * reading if false (which thing an answer meant, what they do with
+ * others, who's right, what the other person feels), fixed with the
+ * smallest change. Writing and checking are apart on purpose: asked to be
+ * careful while it writes, the model writes flatter and still slips.
+ */
+export function reviewPrompt<T>(schema: z.ZodType<T>) {
+    return {
+        system: `Eres la editora de Astramia. Antes de que la persona lea su lectura, la revisas con un solo encargo: que no afirme sobre su vida nada que sus <respuestas> no digan y que, si fuera falso, le haría dejar de creer en todo lo demás.
+
+<qué-buscas>
+Frases que eligen por la persona algo que no contó:
+- Qué significa una respuesta: "perderme a mí en la relación" no dice si fueron amistades, planes, un país o un sueño; "hay otra persona" no dice de quién es; "la familia o los amigos" no dice quiénes ni por qué.
+- Lo que hace con otros: sus amistades, su familia, su pareja, la otra persona ("no les cuentas todo a tus amigas", "eres quien escribe primero").
+- Quién tiene la razón: su gente o lo que siente, la otra persona o ella.
+- Lo que siente, piensa o hará la otra persona ("para esa persona ya terminó", "te guarda silencio").
+- Hechos de su vida que no dijo: trabajo, estudios, con quién vive, dónde, sus hábitos, algo que le pasó.
+Esas cinco, todas las veces que aparezcan. Lo demás le da vida a la lectura y casi siempre encaja, déjalo: la astrología; lo que siente, piensa o ensaya por dentro; los detalles de escena (un café, el bus, lavar los platos, releer un chat); lo que se sigue directo de lo que respondió (si dijo que se fueron sin explicación, que alguien se fue no es suponer); y lo que ya viene como opciones ("tus amistades, tu familia o tus planes") o en condicional ("si ya se lo dijiste…").
+</qué-buscas>
+
+<cómo-arreglas>
+Con el cambio más pequeño que lo vuelva cierto para cualquiera que dio esas respuestas: llévala a lo que siente por dentro ("te cuesta contar la historia entera"), a opciones que elige su vida ("dejaste algo tuyo: tiempo, gente, planes o un sueño"), a un condicional ("si alguna vez…"), o quítala si no se salva. Todo lo demás queda igual, palabra por palabra: la voz, el <trato>, el largo, cada campo y cualquier ${CUT_MARK} en su lugar exacto (en esa frase, cambia solo si lo grave está ahí, y nunca muevas la marca). Si no encuentras nada, devuelve el texto idéntico.
+</cómo-arreglas>`,
+        schema: z.object({
+            cambios: z
+                .array(z.string())
+                .describe(
+                    'cada frase que cambiaste, "antes" → "después"; vacío si nada',
+                ),
+            texto: schema,
+        }),
+        prompt: (profile: ReadingProfile, text: unknown) =>
+            `${describeAnswers(profile)}
+
+<texto>
+${JSON.stringify(text, null, 2)}
+</texto>`,
+    };
 }

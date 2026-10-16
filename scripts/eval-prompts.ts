@@ -40,6 +40,7 @@ import {
 import {
     freeAsText,
     hookShown,
+    keepCutMark,
     keptFree,
     parseTexts,
     readingAsText,
@@ -181,6 +182,60 @@ const PROFILES: Profile[] = [
         chatQuestion:
             "Yo quiero emigrar y tener hijos, y mi pareja no. ¿Vale la pena renunciar a eso?",
     },
+    {
+        // "Hay otra persona": theirs, the other's, or a third in between?
+        name: "virgo-otra-persona",
+        birthDate: "1997-09-05",
+        birthTime: "19:20",
+        birthTimeZone: null,
+        birthPlace: "Lima",
+        answers: answers(
+            "femenino",
+            "complicado",
+            "otra_persona",
+            "celos",
+            "reviso",
+            "engano",
+            "quedarme",
+        ),
+        chatQuestion: "¿Cómo sé si de verdad me va a elegir?",
+    },
+    {
+        // Never really in love: no past to lean on.
+        name: "leo-nunca",
+        birthDate: "2000-08-10",
+        birthTime: null,
+        birthTimeZone: null,
+        birthPlace: "Piura",
+        answers: answers(
+            "masculino",
+            "soltera",
+            "nunca",
+            "indisponibles",
+            "sigo",
+            "perder_me",
+            "cuando",
+        ),
+        chatQuestion: "¿Por qué nunca me he enamorado de verdad?",
+    },
+    {
+        // Family or friends against: which, and why?
+        name: "acuario-entorno",
+        birthDate: "1995-02-01",
+        birthTime: "11:05",
+        birthTimeZone: null,
+        birthPlace: "Chiclayo",
+        answers: answers(
+            "neutro",
+            "complicado",
+            "entorno",
+            "doy_demasiado",
+            "que_hice",
+            "control",
+            "volvera",
+        ),
+        chatQuestion: "¿Debo hacer caso a lo que me dicen o a lo que siento?",
+    },
 ];
 
 /** The prompts module's own shape; older versions may lack `AI_TASKS`. */
@@ -204,7 +259,10 @@ const MODELS = {
     teaser: args["teaser-model"] ?? args.model ?? BASE?.teaser ?? CHEAP,
     reading: args["reading-model"] ?? args.model ?? BASE?.reading ?? CHEAP,
     chat: args["chat-model"] ?? args.model ?? BASE?.chat ?? CHEAP,
+    review: args["review-model"] ?? BASE?.review ?? CHEAP,
 };
+/** `--sin-revision`: as written, without the editor's pass. */
+const REVIEW = !("sin-revision" in args);
 const JUDGE = args.judge ?? "anthropic/claude-haiku-5.5";
 
 /** What the run may spend, judge included; past it, no call starts. */
@@ -253,7 +311,7 @@ async function call(
     const maxOutputTokens = Number(
         args[`${task}-max`] ??
             settings?.maxOutputTokens ??
-            { teaser: 300, reading: 2500, chat: 800 }[task],
+            { teaser: 300, reading: 2500, chat: 800, review: 8000 }[task],
     );
     await slot();
     afford();
@@ -356,10 +414,15 @@ const verdictSchema = z.object({
         .describe(
             "afirmaciones astrológicas que no salen de los datos, literal",
         ),
-    supuestos: z
+    supuestos_graves: z
         .array(z.string())
         .describe(
-            "afirmaciones concretas sobre su vida que no salen de sus respuestas y podrían ser falsas para esta persona (a quién deja, qué hace, qué le pasó, por qué eligió una respuesta), literal",
+            'afirmaciones que eligen por la persona algo que sus respuestas no dicen y que, si es falso, rompe la lectura: qué significa una respuesta ("perderme a mí" = dejar a sus amigos), un hecho de su vida (trabajo, familia, con quién vive, qué pasó), quién tiene la razón, qué siente o hará la otra persona; literal. No cuentes lo que se sigue directo de una respuesta (si dijo que se fueron sin explicación, que alguien se fue no es un supuesto) ni lo que viene como opciones o en condicional',
+        ),
+    supuestos_leves: z
+        .array(z.string())
+        .describe(
+            'detalles de escena que no contó y podrían no ser suyos (un café, el bus, una comida), dichos como hecho; literal. No cuentes lo que viene como opciones ("un lugar, una canción o una foto") ni en condicional',
         ),
     mejor_frase: z.string(),
     peor_frase: z.string(),
@@ -534,15 +597,57 @@ function sharedAcrossProfiles(
     return [...seen.values()].filter((profiles) => profiles.size > 1).length;
 }
 
+/**
+ * The editor's pass, as the app runs it (`reviewTexts`), when the prompts
+ * module has one: the call, and what it changed.
+ */
+async function reviewed(
+    prompts: PromptModule,
+    profile: Profile,
+    written: Call,
+    schema: z.ZodType | undefined,
+): Promise<{ text: string; changes: string[]; call?: Call }> {
+    if (!REVIEW || !schema || !("reviewPrompt" in prompts))
+        return { text: written.text, changes: [] };
+    const review = prompts.reviewPrompt(schema);
+    const result = await call("review", prompts, {
+        system: review.system,
+        prompt: review.prompt(profile, JSON.parse(written.text)),
+        schema: review.schema,
+    });
+    const { cambios, texto } = JSON.parse(result.text);
+    return { text: JSON.stringify(texto), changes: cambios, call: result };
+}
+
 async function runProfile(prompts: PromptModule, profile: Profile) {
-    const teaser = await call("teaser", prompts, {
+    const teaserSchema =
+        "schema" in prompts.TEASER_PROMPT
+            ? prompts.TEASER_PROMPT.schema
+            : undefined;
+    const teaserWritten = await call("teaser", prompts, {
         system: prompts.TEASER_PROMPT.system,
         prompt: prompts.TEASER_PROMPT.prompt(profile, TODAY),
-        schema:
-            "schema" in prompts.TEASER_PROMPT
-                ? prompts.TEASER_PROMPT.schema
-                : undefined,
+        schema: teaserSchema,
     });
+    const teaserReview = await reviewed(
+        prompts,
+        profile,
+        teaserWritten,
+        teaserSchema,
+    );
+    const teaser = {
+        ...teaserWritten,
+        // As the server keeps it: the editor's text, the first cut mark.
+        text: teaserReview.call
+            ? JSON.stringify(
+                  keepCutMark(
+                      JSON.parse(teaserWritten.text),
+                      JSON.parse(teaserReview.text),
+                      LOVE_PLAN,
+                  ),
+              )
+            : teaserWritten.text,
+    };
     // The free scenes as the server keeps them (older prompts: a paragraph).
     const written = parseTexts(teaser.text);
     const keptTexts = written && keptFree(written, LOVE_PLAN);
@@ -559,14 +664,29 @@ async function runProfile(prompts: PromptModule, profile: Profile) {
                   `${shown} [CORTE] ${hook.slice(shown.length).trim()}`,
               )
             : teaserText;
-    const reading = await call("reading", prompts, {
+    const readingSchema =
+        "schema" in prompts.READING_PROMPT
+            ? prompts.READING_PROMPT.schema
+            : undefined;
+    const readingWritten = await call("reading", prompts, {
         system: prompts.READING_PROMPT.system,
         prompt: prompts.READING_PROMPT.prompt(profile, kept, TODAY),
-        schema:
-            "schema" in prompts.READING_PROMPT
-                ? prompts.READING_PROMPT.schema
-                : undefined,
+        schema: readingSchema,
     });
+    const readingReview = await reviewed(
+        prompts,
+        profile,
+        readingWritten,
+        readingSchema,
+    );
+    const reading = { ...readingWritten, text: readingReview.text };
+    const review = {
+        changes: [...teaserReview.changes, ...readingReview.changes],
+        costUsd:
+            (teaserReview.call?.costUsd ?? 0) +
+            (readingReview.call?.costUsd ?? 0),
+        seconds: [teaserReview.call?.seconds, readingReview.call?.seconds],
+    };
     // Free and paid scenes together: everything the person reads.
     const readingText = readingAsText(reading.text, kept, LOVE_PLAN);
     // What paying adds: the judge reads it apart from the free scenes.
@@ -587,6 +707,7 @@ async function runProfile(prompts: PromptModule, profile: Profile) {
         teaser,
         reading,
         chat,
+        review,
         verdict,
         judgeCostUsd: costUsd,
         checks: {
@@ -709,7 +830,16 @@ const summary = {
         0,
     ),
     inventos: results.reduce((n, r) => n + r.verdict.inventos.length, 0),
-    supuestos: results.reduce((n, r) => n + r.verdict.supuestos.length, 0),
+    supuestosGraves: results.reduce(
+        (n, r) => n + r.verdict.supuestos_graves.length,
+        0,
+    ),
+    cambiosRevision: results.reduce((n, r) => n + r.review.changes.length, 0),
+    segundosRevisionGancho: mean(results.map((r) => r.review.seconds[0] ?? 0)),
+    supuestosLeves: results.reduce(
+        (n, r) => n + r.verdict.supuestos_leves.length,
+        0,
+    ),
     cliches: results.reduce((n, r) => n + r.verdict.cliches.length, 0),
     cortes: results.filter((r) => r.checks.cut).length,
     voseo: results.reduce((n, r) => n + r.checks.voseo.length, 0),
@@ -725,7 +855,10 @@ const summary = {
         mean(
             results.map(
                 (r) =>
-                    (r.teaser.costUsd + r.reading.costUsd + r.chat.costUsd) *
+                    (r.teaser.costUsd +
+                        r.reading.costUsd +
+                        r.chat.costUsd +
+                        r.review.costUsd) *
                     1000,
             ),
         ) / 1000,

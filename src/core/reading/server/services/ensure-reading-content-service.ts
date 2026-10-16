@@ -18,6 +18,7 @@ import {
     saveReadingContent,
 } from "../repository/readings";
 import { toProfile, toReading } from "../repository/utils";
+import { reviewTexts } from "./review-texts";
 
 const logger = getLogger(["server", "reading"]);
 
@@ -38,14 +39,26 @@ async function writeReadingContent(row: ReadingRow): Promise<string | null> {
     try {
         // One text per scene after the free ones, stored as JSON (see plan.ts).
         const prompt = paidPrompt(planFor(row.topic));
-        const scenes = await generateObject({
+        const profile = toProfile(row);
+        const written = await generateObject({
             model: ServerConfig.ai.models.reading,
             system: prompt.system,
-            prompt: prompt.prompt(toProfile(row), row.teaser, new Date()),
+            prompt: prompt.prompt(profile, row.teaser, new Date()),
             schema: prompt.schema,
             ...AI_TASKS.reading,
             usage: {
                 purpose: "reading",
+                userId: row.userId,
+                referenceId: row.id,
+            },
+        });
+        // A second look: nothing about their life their answers don't say.
+        const scenes = await reviewTexts({
+            schema: prompt.schema,
+            profile,
+            texts: written,
+            usage: {
+                purpose: "review",
                 userId: row.userId,
                 referenceId: row.id,
             },

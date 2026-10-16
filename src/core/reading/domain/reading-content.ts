@@ -192,3 +192,20 @@ export function readingAsText(
         .filter(Boolean)
         .join("\n\n");
 }
+
+/**
+ * The editor's version of the free scenes, unless it lost the hook's cut
+ * mark: then that scene as first written (a good cut is worth more than
+ * the edit).
+ */
+export function keepCutMark(
+    written: SceneTexts,
+    reviewed: SceneTexts,
+    plan: ReadingPlan,
+): SceneTexts {
+    const before = sceneText(written, plan.hook.key);
+    const after = sceneText(reviewed, plan.hook.key);
+    return before?.includes(CUT_MARK) && !after?.includes(CUT_MARK)
+        ? { ...reviewed, [plan.hook.key]: before }
+        : reviewed;
+}

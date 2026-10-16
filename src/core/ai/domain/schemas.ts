@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /** What a model call was for; the unit cost is reported by. */
-export const aiPurposeSchema = z.enum(["teaser", "reading", "chat"]);
+export const aiPurposeSchema = z.enum(["teaser", "reading", "chat", "review"]);
 
 /** Hidden reasoning before answering (AI SDK's provider-agnostic levels). */
 export const aiReasoningSchema = z.enum([
