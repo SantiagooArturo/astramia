@@ -497,7 +497,7 @@ export function ReadingStory({
                         style={{ scaleX: progress }}
                     />
                     <nav className="flex items-center justify-between gap-3 bg-gradient-to-b from-background/90 to-transparent px-4 pt-3 pb-6 sm:px-6">
-                        <Link href="/" aria-label="Astramia AI, inicio">
+                        <Link href="/" aria-label="Astramia, inicio">
                             <AstramiaLogo className="scale-90 max-sm:[&>span]:hidden" />
                         </Link>
                         <AnimatePresence mode="wait">

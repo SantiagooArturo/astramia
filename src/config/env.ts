@@ -21,7 +21,7 @@ export const env = createEnv({
         /** Resend: sign-in codes by e-mail. Without it, accounts use a password. */
         RESEND_API_KEY: z.string().optional(),
         /** Sender on a domain verified in Resend. */
-        EMAIL_FROM: z.string().default("Astramia AI <hola@astramia.app>"),
+        EMAIL_FROM: z.string().default("Astramia <hola@astramia.app>"),
         AI_MODEL_TEASER: z.string().default(DEFAULT_AI_MODELS.teaser),
         AI_MODEL_READING: z.string().default(DEFAULT_AI_MODELS.reading),
         AI_MODEL_CHAT: z.string().default(DEFAULT_AI_MODELS.chat),

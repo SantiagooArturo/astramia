@@ -24,7 +24,7 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-    title: "Astramia AI — Lecturas astrológicas personalizadas con IA",
+    title: "Astramia — Lecturas astrológicas personalizadas",
     description: `Recibe tu lectura astrológica sobre amor y relaciones en minutos y conversa ${OFFER.chatHours} horas con una IA que conoce tu carta. Pago único de ${OFFER.price}.`,
 };
 

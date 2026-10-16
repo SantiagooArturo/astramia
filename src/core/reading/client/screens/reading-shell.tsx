@@ -12,7 +12,7 @@ export function ReadingShell({ children }: PropsWithChildren) {
                 <nav className="flex items-center justify-between gap-4">
                     <Link
                         href="/"
-                        aria-label="Astramia AI, inicio"
+                        aria-label="Astramia, inicio"
                         className="w-fit"
                     >
                         <AstramiaLogo />

@@ -3,7 +3,7 @@ import { MyReadingsScreen } from "@/core/reading/client/screens/my-readings-scre
 import { listReadingsService } from "@/core/reading/server/services/get-reading-service";
 import { authenticate } from "@/server/auth/auth";
 
-export const metadata: Metadata = { title: "Mis lecturas · Astramia AI" };
+export const metadata: Metadata = { title: "Mis lecturas · Astramia" };
 
 export default async function MyReadingsPage() {
     const session = await authenticate();

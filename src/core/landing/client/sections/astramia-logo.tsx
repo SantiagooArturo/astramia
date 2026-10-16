@@ -22,7 +22,7 @@ export function AstramiaLogo({ className }: { className?: string }) {
                 />
             </svg>
             <span className="font-display text-2xl tracking-tight">
-                Astramia <span className="text-astral-gold italic">AI</span>
+                Astramia
             </span>
         </span>
     );

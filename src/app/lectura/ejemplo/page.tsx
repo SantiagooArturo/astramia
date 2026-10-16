@@ -21,7 +21,7 @@ import { storyQuestion } from "@/core/reading/domain/story";
 import type { ChatMessage, Reading } from "@/core/reading/domain/types";
 
 export const metadata: Metadata = {
-    title: "Lectura de ejemplo · Astramia AI",
+    title: "Lectura de ejemplo · Astramia",
     robots: { index: false },
 };
 

@@ -5,7 +5,7 @@
  */
 
 export const BUSINESS = {
-    brand: "Astramia AI",
+    brand: "Astramia",
     /**
      * Individual: full legal name. Company: razón social.
      * TODO(legal): required by the gateway's account review — set before submitting.
