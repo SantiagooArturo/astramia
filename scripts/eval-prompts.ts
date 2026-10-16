@@ -23,7 +23,12 @@ import { natalChart, venusOutlook } from "@/core/reading/domain/chart";
 import { cluesFor } from "@/core/reading/domain/clues";
 import { LOVE_PLAN, sceneText } from "@/core/reading/domain/plan";
 import * as currentPrompts from "@/core/reading/domain/prompts";
-import { describeAnswer, tratoOf } from "@/core/reading/domain/quiz";
+import {
+    describeAnswer,
+    LOVE_QUIZ,
+    questionsFor,
+    tratoOf,
+} from "@/core/reading/domain/quiz";
 import {
     freeAsText,
     hookShown,
@@ -35,10 +40,14 @@ import type { QuizAnswer, ReadingProfile } from "@/core/reading/domain/types";
 
 type Profile = ReadingProfile & { name: string; chatQuestion: string };
 
-const answers = (...ids: string[]): QuizAnswer[] =>
-    ["trato", "situacion", "patron", "necesidad", "herida", "pregunta"].map(
-        (questionId, i) => ({ questionId, optionId: ids[i] }),
-    );
+/** One option per question asked, in order: the follow-up comes third. */
+const answers = (...ids: string[]): QuizAnswer[] => {
+    const path: QuizAnswer[] = [];
+    for (const q of LOVE_QUIZ)
+        if (questionsFor(path).includes(q))
+            path.push({ questionId: q.id, optionId: ids[path.length] });
+    return path;
+};
 
 const PROFILES: Profile[] = [
     {
@@ -50,8 +59,9 @@ const PROFILES: Profile[] = [
         answers: answers(
             "femenino",
             "ruptura",
+            "meses",
             "doy_demasiado",
-            "seguridad",
+            "que_hice",
             "abandono",
             "por_que",
         ),
@@ -66,8 +76,9 @@ const PROFILES: Profile[] = [
         answers: answers(
             "masculino",
             "alguien",
+            "no_se_que_siente",
             "me_alejo",
-            "libertad",
+            "como_si_nada",
             "control",
             "cuando",
         ),
@@ -82,8 +93,9 @@ const PROFILES: Profile[] = [
         answers: answers(
             "neutro",
             "relacion",
+            "dudas",
             "celos",
-            "admiracion",
+            "reviso",
             "engano",
             "quedarme",
         ),
@@ -99,8 +111,9 @@ const PROFILES: Profile[] = [
         answers: answers(
             "femenino",
             "soltera",
+            "anos",
             "indisponibles",
-            "pasion",
+            "sigo",
             "indiferencia",
             "quien",
         ),
@@ -115,8 +128,9 @@ const PROFILES: Profile[] = [
         answers: answers(
             "neutro",
             "complicado",
+            "idas_y_vueltas",
             "no_se",
-            "complicidad",
+            "escribo",
             "perder_me",
             "volvera",
         ),
@@ -131,8 +145,9 @@ const PROFILES: Profile[] = [
         answers: answers(
             "masculino",
             "ruptura",
+            "reciente_hablan",
             "celos",
-            "seguridad",
+            "reviso",
             "engano",
             "volvera",
         ),
@@ -240,7 +255,7 @@ const verdictSchema = z.object({
             "5: alguien sin ningún conocimiento de astrología entiende cada frase; 1: lleno de jerga sin explicar",
         ),
         uso_de_datos: score.describe(
-            "cruza carta y las cinco respuestas, reinterpretadas, no citadas",
+            "cruza carta y sus respuestas, reinterpretadas, no citadas",
         ),
         rigor: score.describe(
             "5: nada inventado (casas, ascendente, otros planetas, tránsitos o fechas fuera de los datos)",
@@ -444,11 +459,11 @@ function shingles(text: string, size = 6): string[] {
     );
 }
 
-/** Clues pasted instead of rewritten: six words in a row from one. */
+/** Clues pasted instead of rewritten: five words in a row from one (they're short). */
 function copiedClues(profile: Profile, text: string): string[] {
-    const said = new Set(shingles(text));
+    const said = new Set(shingles(text, 5));
     return cluesFor(profile.answers).filter((clue) =>
-        shingles(clue).some((run) => said.has(run)),
+        shingles(clue, 5).some((run) => said.has(run)),
     );
 }
 

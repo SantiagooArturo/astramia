@@ -9,8 +9,10 @@ import { GoldButton } from "@/core/landing/client/effects";
 import { MONTHS_ES } from "@/core/landing/domain/zodiac";
 import { natalChart } from "@/core/reading/domain/chart";
 import {
-    type LOVE_QUIZ,
     optionLabel,
+    type QuizQuestion,
+    questionsFor,
+    quizLength,
     tratoOf,
 } from "@/core/reading/domain/quiz";
 import {
@@ -74,7 +76,7 @@ export function QuizFlow({
     knownBirthDay,
 }: {
     topic: ReadingTopic;
-    questions: typeof LOVE_QUIZ;
+    questions: readonly QuizQuestion[];
     /** Day and month they gave on the landing: pre-filled, still editable. */
     knownBirthDay?: { day: number; month: number };
 }) {
@@ -97,8 +99,10 @@ export function QuizFlow({
         birthDate: string;
     } | null>(null);
 
-    const total = questions.length + 1;
-    const question = questions[step];
+    // Follow-ups join the list once the answer they follow is in.
+    const asked = questionsFor(answers, questions);
+    const total = quizLength(questions) + 1;
+    const question = asked[step];
     const trato = tratoOf(answers);
     const onBirthStep = !question;
 
@@ -112,7 +116,11 @@ export function QuizFlow({
             ...answers.filter((a) => a.questionId !== question.id),
             { questionId: question.id, optionId },
         ];
-        setAnswers(next);
+        // Back and changed: the follow-up of the old answer goes with it.
+        const stillAsked = new Set(
+            questionsFor(next, questions).map((q) => q.id),
+        );
+        setAnswers(next.filter((a) => stillAsked.has(a.questionId)));
         setStep(step + 1);
     }
 

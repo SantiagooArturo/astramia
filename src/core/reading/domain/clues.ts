@@ -36,6 +36,45 @@ const CLUES: Record<string, Record<string, readonly string[]>> = {
             "un gesto bonito alcanza para esperar un poco más",
         ],
     },
+    ultimo_amor: {
+        hace_poco: ["lo reciente todavía marca lo que busca y lo que evita"],
+        mas_de_un_ano: ["sabe estar sin nadie; ya no se conforma con poco"],
+        anos: ["hace tiempo que nadie le mueve por dentro: pide más que antes"],
+        nunca: ["ha querido, pero no así: espera algo que todavía no conoce"],
+    },
+    sabe: {
+        mutuo: ["las señales dicen que sí, y aun así duda"],
+        no_se_que_siente: ["lee cada respuesta buscando qué siente"],
+        sospecha: ["deja que se note sin decirlo del todo"],
+        no_sabe: ["guarda el secreto; ensaya cómo sería decirlo"],
+    },
+    como_estan: {
+        muy_bien: ["cuida lo que tiene; teme que la rutina lo gaste"],
+        algo_falta: ["quiere algo concreto y no sabe cómo pedirlo"],
+        rutina: ["días iguales; extraña cómo era al principio"],
+        peleas: ["peleas por cosas pequeñas que esconden otra más grande"],
+        dudas: ["piensa en irse y en quedarse el mismo día"],
+    },
+    termino: {
+        reciente_hablan: ["cada mensaje vuelve a abrir la puerta"],
+        reciente_sin: ["el silencio pesa más de noche"],
+        meses: ["ya hace su vida, pero algo sigue sin cerrar"],
+        mas_de_un_ano: ["lo superó en lo grande; queda una pregunta pequeña"],
+    },
+    complica: {
+        sin_nombre: ["vive lo que hay hoy, sin ponerle nombre"],
+        otra_persona: ["espera, y compara aunque no quiera"],
+        idas_y_vueltas: ["cada regreso parece distinto y termina igual"],
+        distancia: ["la pantalla sostiene lo que la distancia pone a prueba"],
+        entorno: ["defiende a esa persona ante otros; a solas, duda"],
+    },
+    espera: {
+        reviso: ["mira la última conexión; la espera le inquieta"],
+        escribo: ["prefiere preguntar a quedarse con la duda"],
+        como_si_nada: ["esconde cuánto le importa"],
+        que_hice: ["busca la falla en sí antes que en la otra persona"],
+        sigo: ["no deja que una respuesta le marque el día"],
+    },
     patron: {
         indisponibles: [
             "las historias que más recuerda nunca terminaron de empezar",
@@ -58,10 +97,11 @@ const CLUES: Record<string, Record<string, readonly string[]>> = {
             "amigos que ya le señalaron algo que se repite",
         ],
     },
+    // No longer asked: readings made before still carry it.
     necesidad: {
         seguridad: [
             "un plan cumplido le calma más que una frase bonita",
-            "se fija en la puntualidad del otro",
+            "se fija en si la otra persona llega a la hora",
         ],
         pasion: [
             "sabe en la primera cita si hay química",
@@ -73,7 +113,7 @@ const CLUES: Record<string, Record<string, readonly string[]>> = {
         ],
         admiracion: [
             "se enamora oyendo a alguien hablar de lo que le apasiona",
-            "el interés se va cuando el otro deja de sorprenderle",
+            "el interés se va cuando la otra persona deja de sorprenderle",
         ],
         complicidad: [
             "sus mejores recuerdos en pareja: reírse por tonterías",

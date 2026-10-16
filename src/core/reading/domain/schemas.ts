@@ -3,7 +3,7 @@ import type { MoonPhaseName } from "@/core/landing/domain/ephemeris";
 import type { Element } from "@/core/landing/domain/zodiac";
 import { PRIVACY_COMMITMENTS } from "@/core/legal/domain/policies";
 import { isTimeZone } from "./chart";
-import { describeAnswer, LOVE_QUIZ } from "./quiz";
+import { isCompleteQuiz, QUIZ_LENGTH } from "./quiz";
 
 export const readingTopicSchema = z.enum(["amor"]);
 
@@ -62,14 +62,8 @@ export const createReadingSchema = z.object({
     birthPlace: z.string().trim().min(2).max(120).optional(),
     answers: z
         .array(quizAnswerSchema)
-        .length(LOVE_QUIZ.length)
-        .refine(
-            (answers) =>
-                new Set(answers.map((a) => a.questionId)).size ===
-                    LOVE_QUIZ.length &&
-                answers.every((a) => describeAnswer(a.questionId, a.optionId)),
-            "Respuestas inválidas",
-        ),
+        .max(QUIZ_LENGTH)
+        .refine(isCompleteQuiz, "Respuestas inválidas"),
 });
 
 /*

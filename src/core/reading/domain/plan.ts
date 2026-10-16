@@ -81,7 +81,7 @@ const born = () => "El día que naciste";
 export const LOVE_PLAN: ReadingPlan = {
     of: "de amor",
     about: "su vida amorosa",
-    example: `Para alguien con Venus en Acuario y Marte en Tauro (le gusta alguien, se aleja cuando se pone serio, necesita libertad):
+    example: `Para alguien con Venus en Acuario y Marte en Tauro (le gusta alguien que aún no lo sabe, se aleja cuando se pone serio, si tardan en responderle hace como si nada):
 venus: Venus habla de cómo te enamoras. La tuya está en Acuario: quieres querer con la puerta abierta. Por eso respondes rápido, con chistes y audios largos. Hasta el día en que te preguntan qué son. Ahí tardas horas en contestar.
 mars: Marte es cómo deseas. El tuyo está en Tauro: vas lento, pero cuando quieres, no sueltas. Te enciende lo que se toca, como un abrazo largo. Te apaga la prisa.
 venusMars: Juntos, tu Venus y tu Marte hacen algo curioso. Empiezas con todo, y justo cuando la otra persona se acerca, algo en ti frena. Y frena por algo que casi nadie ve: tu Venus [corte] pide aire y tu Marte pide quedarse, y esa noche gana el que llegó primero.`,
@@ -183,7 +183,7 @@ venusMars: Juntos, tu Venus y tu Marte hacen algo curioso. Empiezas con todo, y 
             label: "Tu pregunta",
             beside: "bajo su pregunta",
             words: [60, 85],
-            brief: "respóndela con honestidad y matices: qué muestra su carta, qué señales mirar, qué depende de su decisión. Nunca una predicción cerrada.",
+            brief: 'respóndela con honestidad y matices: qué muestra su carta, qué señales mirar, qué depende de su decisión. Nunca una predicción cerrada, ni lo que la otra persona hará o sentirá (ni siquiera "es probable que te escriba"): eso no está en su carta.',
             hint: "4-6 frases: responde lo que quiere saber primero",
         },
         {

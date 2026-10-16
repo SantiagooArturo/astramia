@@ -5,7 +5,7 @@ import {
     PRODUCTS,
     priceParts,
 } from "@/core/payment/domain/catalog";
-import { LOVE_QUIZ } from "@/core/reading/domain/quiz";
+import { QUIZ_LENGTH } from "@/core/reading/domain/quiz";
 import { CHAT_LIMITS } from "@/core/reading/domain/schemas";
 
 /**
@@ -21,7 +21,7 @@ export const OFFER = {
     priceAmount: UNLOCK_PRICE.amountCents / 100,
     currency: UNLOCK_PRICE.currency,
     chatHours: CHAT_LIMITS.hours,
-    questions: LOVE_QUIZ.length,
+    questions: QUIZ_LENGTH,
 } as const;
 
 /** Entry point of the purchase flow (cuestionario → pago → lectura). */

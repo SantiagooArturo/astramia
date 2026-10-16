@@ -2,13 +2,29 @@ import { describe, expect, it } from "vitest";
 import { natalPlacements, sunSignOf } from "../chart";
 import { cluesFor } from "../clues";
 import { ageOn, describeProfile, describeSky } from "../prompts";
-import { describeAnswer, LOVE_QUIZ, optionLabel, tratoOf } from "../quiz";
+import {
+    describeAnswer,
+    isCompleteQuiz,
+    LOVE_QUIZ,
+    optionLabel,
+    QUIZ_LENGTH,
+    questionsFor,
+    tratoOf,
+} from "../quiz";
 import { createReadingSchema, knownBirthDaySchema } from "../schemas";
 
-const answers = LOVE_QUIZ.map((q) => ({
-    questionId: q.id,
-    optionId: q.options[0].id,
-}));
+import type { QuizAnswer } from "../types";
+
+/** Each question's first option, along the path those answers lead to. */
+function firstOptions(): QuizAnswer[] {
+    const path: QuizAnswer[] = [];
+    for (const q of LOVE_QUIZ)
+        if (questionsFor(path).includes(q))
+            path.push({ questionId: q.id, optionId: q.options[0].id });
+    return path;
+}
+
+const answers = firstOptions();
 
 describe("createReadingSchema", () => {
     it("accepts a complete questionnaire", () => {
@@ -44,6 +60,20 @@ describe("createReadingSchema", () => {
         expect(r.success).toBe(false);
     });
 
+    it("rejects a follow-up left from an answer they changed", () => {
+        // They said "single", then went back to "someone I like".
+        const changed = answers.map((a) =>
+            a.questionId === "situacion" ? { ...a, optionId: "alguien" } : a,
+        );
+        expect(isCompleteQuiz(changed)).toBe(false);
+        const r = createReadingSchema.safeParse({
+            topic: "amor",
+            birthDate: "1995-08-14",
+            answers: changed,
+        });
+        expect(r.success).toBe(false);
+    });
+
     it("rejects a repeated question", () => {
         const r = createReadingSchema.safeParse({
             topic: "amor",
@@ -51,6 +81,41 @@ describe("createReadingSchema", () => {
             answers: [...answers.slice(1), answers[1]],
         });
         expect(r.success).toBe(false);
+    });
+});
+
+describe("the questionnaire", () => {
+    it("asks one follow-up, the one for where their heart is", () => {
+        expect(questionsFor([]).map((q) => q.id)).not.toContain("ultimo_amor");
+        const single = questionsFor([
+            { questionId: "situacion", optionId: "soltera" },
+        ]).map((q) => q.id);
+        expect(single).toEqual([
+            "trato",
+            "situacion",
+            "ultimo_amor",
+            "patron",
+            "espera",
+            "herida",
+            "pregunta",
+        ]);
+        expect(QUIZ_LENGTH).toBe(7);
+    });
+
+    it("has a follow-up for every answer about where their heart is", () => {
+        const situacion = LOVE_QUIZ.find((q) => q.id === "situacion");
+        for (const option of situacion?.options ?? [])
+            expect(
+                questionsFor([
+                    { questionId: "situacion", optionId: option.id },
+                ]),
+            ).toHaveLength(QUIZ_LENGTH);
+    });
+
+    it("still reads what older readings answered", () => {
+        expect(describeAnswer("necesidad", "libertad")?.answer).toBe(
+            "Espacio y libertad",
+        );
     });
 });
 
