@@ -6,6 +6,7 @@ import { getLogger } from "@logtape/logtape";
 import { Elysia } from "elysia";
 import { z } from "zod";
 import { ServerConfig } from "@/config/server-config";
+import { analyticsRouter } from "@/core/analytics/server/api/router";
 import { paymentRouter } from "@/core/payment/server/api/router";
 import { projectRouter } from "@/core/project/server/api/router";
 import { readingRouter } from "@/core/reading/server/api/router";
@@ -72,7 +73,8 @@ const app = new Elysia({ prefix: "/api/v1" })
     })
     .use(projectRouter)
     .use(readingRouter)
-    .use(paymentRouter);
+    .use(paymentRouter)
+    .use(analyticsRouter);
 
 export default app;
 export type AppRouter = typeof app;

@@ -1,8 +1,10 @@
 import { notFound, redirect } from "next/navigation";
+import { after } from "next/server";
 import {
     SaveAccountCard,
     SaveAccountNotice,
 } from "@/core/account/client/save-account-card";
+import { recordEvent } from "@/core/analytics/server/repository/events";
 import { payerEmailService } from "@/core/payment/server/services/payer-email-service";
 import { syncCheckoutReturnService } from "@/core/payment/server/services/sync-checkout-return-service";
 import {
@@ -46,6 +48,20 @@ export default async function ReadingPage({
     let payment: PaymentState = "none";
     const query = flatten(await searchParams);
     const returned = await syncCheckoutReturnService(query);
+    if (query.checkout) {
+        // How the gateway sent them back: paid, failed, pending, or left.
+        const outcome = !returned.ok
+            ? returned.error.code === "CONFLICT"
+                ? "review"
+                : "error"
+            : (returned.data?.order?.status ?? "left");
+        after(() =>
+            recordEvent("checkout_return", {
+                readingId: id,
+                props: { provider: query.checkout ?? null, outcome },
+            }),
+        );
+    }
     if (!returned.ok) {
         // Never offer to pay again for a payment we couldn't apply: a mismatch
         // needs a person, anything else (gateway down) retries on refresh.

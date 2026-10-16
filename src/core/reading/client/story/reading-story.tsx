@@ -9,6 +9,7 @@ import {
 } from "motion/react";
 import Link from "next/link";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { track } from "@/core/analytics/client/track";
 import { Starfield } from "@/core/landing/client/effects";
 import { AstramiaLogo } from "@/core/landing/client/sections/astramia-logo";
 import { longDate, shortDate } from "@/core/reading/domain/chart";
@@ -451,6 +452,29 @@ export function ReadingStory({
             phone.removeEventListener("change", later);
         };
     }, [story]);
+
+    // How far they read: each step reached for the first time, the door
+    // (where the free part stops) and, once paid, the end.
+    const paid = Boolean(content);
+    const furthest = useRef(COVER_STEP);
+    useEffect(() => {
+        furthest.current = COVER_STEP;
+        track("reading_view", { paid, steps: story.steps.length }, reading.id);
+    }, [story, paid, reading.id]);
+    useEffect(() => {
+        if (active <= furthest.current) return;
+        furthest.current = active;
+        const reached = story.steps[active];
+        const props = { step: active + 1, of: story.steps.length, paid };
+        track(
+            "story_step",
+            { ...props, kind: reached?.kind ?? null },
+            reading.id,
+        );
+        if (reached?.kind === "door") track("paywall_view", props, reading.id);
+        if (paid && active === story.steps.length - 1)
+            track("story_end", props, reading.id);
+    }, [active, story, paid, reading.id]);
 
     const step = story.steps[active] ?? COVER;
     const chapter = step.chapter === null ? null : story.chapters[step.chapter];

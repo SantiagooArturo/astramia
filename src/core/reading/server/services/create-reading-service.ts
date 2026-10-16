@@ -1,9 +1,11 @@
 import "server-only";
 import { ServerConfig } from "@/config/server-config";
 import { generateObject } from "@/core/ai/server/repository/llm";
+import { recordEvent } from "@/core/analytics/server/repository/events";
 import { sunSignOf } from "@/core/reading/domain/chart";
 import { planFor } from "@/core/reading/domain/plan";
 import { AI_TASKS, freePrompt } from "@/core/reading/domain/prompts";
+import { chosen } from "@/core/reading/domain/quiz";
 import { keepCutMark, keptFree } from "@/core/reading/domain/reading-content";
 import { DAILY_READING_LIMIT } from "@/core/reading/domain/schemas";
 import type { CreateReading } from "@/core/reading/domain/types";
@@ -41,6 +43,7 @@ export async function createReadingService(
         const id = crypto.randomUUID();
         const plan = planFor(input.topic);
         const prompt = freePrompt(plan);
+        const started = Date.now();
         const written = await generateObject({
             model: ServerConfig.ai.models.teaser,
             system: prompt.system,
@@ -49,6 +52,7 @@ export async function createReadingService(
             ...AI_TASKS.teaser,
             usage: { purpose: "teaser", userId, referenceId: id },
         });
+        const wrote = Date.now();
         // A second look: nothing about their life their answers don't say.
         const free = await reviewTexts({
             schema: prompt.schema,
@@ -66,6 +70,17 @@ export async function createReadingService(
             teaser: JSON.stringify(
                 keptFree(keepCutMark(written, free, plan), plan),
             ),
+        });
+        await recordEvent("reading_created", {
+            userId,
+            readingId: row.id,
+            props: {
+                topic: input.topic,
+                question: chosen(input.answers, "pregunta") ?? null,
+                ms: Date.now() - started,
+                writeMs: wrote - started,
+                reviewMs: Date.now() - wrote,
+            },
         });
         return ok({ id: row.id });
     } catch (cause) {

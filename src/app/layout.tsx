@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import type { PropsWithChildren } from "react";
+import { SiteAnalytics } from "@/core/analytics/client/site-analytics";
 import { OFFER } from "@/core/landing/domain/content";
 import { Providers } from "@/frontend/providers/providers";
 import "./globals.css";
@@ -36,6 +37,7 @@ export default function RootLayout({ children }: PropsWithChildren) {
         >
             <body className="min-h-svh antialiased">
                 <Providers>{children}</Providers>
+                <SiteAnalytics />
             </body>
         </html>
     );

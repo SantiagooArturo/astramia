@@ -3,6 +3,7 @@
 import { Lock } from "lucide-react";
 import { useEffect } from "react";
 import { toast } from "sonner";
+import { flush, track } from "@/core/analytics/client/track";
 import { GoldButton } from "@/core/landing/client/effects";
 import { Spinner } from "@/frontend/components/ui/spinner";
 import { useReadings } from "../hooks";
@@ -30,6 +31,7 @@ export function UnlockButton({
     }, [reset]);
 
     async function start() {
+        track("checkout_click", { label }, readingId);
         try {
             const result = await checkout.mutateAsync(undefined);
             const target = new URL(
@@ -43,12 +45,16 @@ export function UnlockButton({
                 target.pathname === window.location.pathname &&
                 target.search === window.location.search
             ) {
+                flush();
                 window.location.hash = target.hash;
                 window.location.reload();
                 return;
             }
+            track("checkout_open", { provider: target.host }, readingId);
+            flush();
             window.location.assign(target.href);
         } catch {
+            track("checkout_error", {}, readingId);
             toast.error("No pudimos abrir el pago. Inténtalo de nuevo.");
         }
     }

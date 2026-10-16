@@ -5,6 +5,7 @@ import { DefaultChatTransport, type UIMessage } from "ai";
 import { ArrowUp } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { track } from "@/core/analytics/client/track";
 import { CHAT_LIMITS } from "@/core/reading/domain/schemas";
 import type { ChatMessage } from "@/core/reading/domain/types";
 import { Button } from "@/frontend/components/ui/button";
@@ -265,6 +266,22 @@ export function ReadingChat({
         observer.observe(room);
         return () => observer.disconnect();
     }, []);
+    // Seen once a visit: how many reach the Sun, against how many ask it.
+    const seen = useRef(false);
+    useEffect(() => {
+        if (!inRoom || seen.current) return;
+        seen.current = true;
+        track("chat_view", { asked, open: !closed }, readingId);
+    }, [inRoom, asked, closed, readingId]);
+    useEffect(() => {
+        if (error)
+            track(
+                "chat_error",
+                { message: error.message.slice(0, 200) },
+                readingId,
+            );
+    }, [error, readingId]);
+
     // Once they ask, the list follows the answer as it's written, until
     // they scroll back up to reread something.
     const following = useRef(false);
@@ -301,6 +318,7 @@ export function ReadingChat({
             );
         following.current = true;
         roomRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+        track("chat_send", { chars: text.length, turn: asked + 1 }, readingId);
         sendMessage({ text });
         setInput("");
     }

@@ -181,3 +181,11 @@
         animation: none;
     }
 }
+
+/* The panel's one data color (dataviz reference blue), stepped per theme. */
+:root {
+    --viz: #2a78d6;
+}
+.dark {
+    --viz: #3987e5;
+}

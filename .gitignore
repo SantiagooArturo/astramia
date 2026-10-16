@@ -29,3 +29,6 @@ drizzle/**/*.sql.bak
 
 # SDD / port scratch (agents)
 .superpowers/
+
+# Analytics dumps (pnpm analytics:export): real people's data, never committed.
+.analytics/

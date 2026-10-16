@@ -2,6 +2,7 @@ import "server-only";
 import { getLogger } from "@logtape/logtape";
 import { ServerConfig } from "@/config/server-config";
 import { generateObject } from "@/core/ai/server/repository/llm";
+import { recordEvent } from "@/core/analytics/server/repository/events";
 import { planFor } from "@/core/reading/domain/plan";
 import { AI_TASKS, paidPrompt } from "@/core/reading/domain/prompts";
 import type { Reading } from "@/core/reading/domain/types";
@@ -37,6 +38,7 @@ async function writeReadingContent(row: ReadingRow): Promise<string | null> {
     if (!claimed) return null;
 
     try {
+        const started = Date.now();
         // One text per scene after the free ones, stored as JSON (see plan.ts).
         const prompt = paidPrompt(planFor(row.topic));
         const profile = toProfile(row);
@@ -65,6 +67,11 @@ async function writeReadingContent(row: ReadingRow): Promise<string | null> {
         });
         const content = JSON.stringify(scenes);
         await saveReadingContent(row.id, content);
+        await recordEvent("content_written", {
+            userId: row.userId,
+            readingId: row.id,
+            props: { ms: Date.now() - started, paid: row.unlockedAt !== null },
+        });
         return content;
     } catch (cause) {
         // Release the claim so the next open retries right away.

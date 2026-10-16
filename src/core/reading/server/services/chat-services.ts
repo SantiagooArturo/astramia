@@ -1,6 +1,7 @@
 import "server-only";
 import { ServerConfig } from "@/config/server-config";
 import { stream } from "@/core/ai/server/repository/llm";
+import { recordEvent } from "@/core/analytics/server/repository/events";
 import { planFor } from "@/core/reading/domain/plan";
 import { AI_TASKS, chatSystemPrompt } from "@/core/reading/domain/prompts";
 import { CHAT_LIMITS } from "@/core/reading/domain/schemas";
@@ -85,8 +86,23 @@ export async function sendChatMessageService(
                 ],
                 ...AI_TASKS.chat,
                 usage: { purpose: "chat", userId, referenceId: readingId },
-                onText: (reply) =>
-                    addChatTurn(readingId, { content: text, askedAt }, reply),
+                onText: async (reply) => {
+                    await addChatTurn(
+                        readingId,
+                        { content: text, askedAt },
+                        reply,
+                    );
+                    await recordEvent("chat_reply", {
+                        userId,
+                        readingId,
+                        props: {
+                            ms: Date.now() - askedAt.getTime(),
+                            turn: asked + 1,
+                            asked: text.length,
+                            answered: reply.length,
+                        },
+                    });
+                },
             }),
         );
     } catch (cause) {

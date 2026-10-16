@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { track } from "@/core/analytics/client/track";
 import { GoldButton } from "@/core/landing/client/effects";
 import { MONTHS_ES } from "@/core/landing/domain/zodiac";
 import { natalChart } from "@/core/reading/domain/chart";
@@ -115,12 +116,30 @@ export function QuizFlow({
     const question = asked[step];
     const onBirthStep = !question;
 
+    // When each question showed up: how long it took them is part of the answer.
+    const shownAt = useRef(Date.now());
+    const started = useRef(false);
+    useEffect(() => {
+        if (started.current) return;
+        started.current = true;
+        track("quiz_start", { topic, knownDay: Boolean(knownBirthDay) });
+    }, [topic, knownBirthDay]);
+
     // Only the year is missing: go straight to it.
     useEffect(() => {
         if (onBirthStep && knownBirthDay) yearRef.current?.focus();
     }, [onBirthStep, knownBirthDay]);
 
     function answer(given: QuizAnswer) {
+        track("quiz_answer", {
+            question: given.questionId,
+            answer:
+                "optionId" in given ? given.optionId : given.ranking.join(">"),
+            step: step + 1,
+            ms: Date.now() - shownAt.current,
+            changed: answers.some((a) => a.questionId === given.questionId),
+        });
+        shownAt.current = Date.now();
         const next = [
             ...answers.filter((a) => a.questionId !== question.id),
             given,
@@ -137,6 +156,7 @@ export function QuizFlow({
         event.preventDefault();
         const birthDate = toBirthDate(birth);
         if ("error" in birthDate) {
+            track("quiz_error", { message: birthDate.error });
             toast.error(birthDate.error);
             return;
         }
@@ -149,12 +169,20 @@ export function QuizFlow({
             answers,
         });
         if (!parsed.success) {
+            track("quiz_error", {
+                message: parsed.error.issues[0]?.message ?? "invalid",
+            });
             toast.error(
                 parsed.error.issues[0]?.message ??
                     "Revisa tus datos de nacimiento",
             );
             return;
         }
+        track("quiz_submit", {
+            time: Boolean(birth.time),
+            place: Boolean(birth.place.trim()),
+            ms: Date.now() - shownAt.current,
+        });
         setSubmitting(true);
         setRevealing({
             chart: natalChart(
@@ -172,6 +200,7 @@ export function QuizFlow({
                 .parse(await create.mutateAsync(parsed.data));
             router.push(`/lectura/r/${response.id}`);
         } catch {
+            track("quiz_fail");
             toast.error(
                 "No pudimos preparar tu lectura. Inténtalo de nuevo en un momento.",
             );
@@ -197,7 +226,14 @@ export function QuizFlow({
                         variant="ghost"
                         size="icon"
                         aria-label="Pregunta anterior"
-                        onClick={() => setStep(step - 1)}
+                        onClick={() => {
+                            track("quiz_back", {
+                                from: question?.id ?? "nacimiento",
+                                step: step + 1,
+                            });
+                            shownAt.current = Date.now();
+                            setStep(step - 1);
+                        }}
                     >
                         <ArrowLeft />
                     </Button>
