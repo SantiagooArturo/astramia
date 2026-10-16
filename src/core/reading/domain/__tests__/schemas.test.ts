@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { natalPlacements, sunSignOf } from "../chart";
-import { describeProfile, describeSky } from "../prompts";
+import { cluesFor } from "../clues";
+import { ageOn, describeProfile, describeSky } from "../prompts";
 import { describeAnswer, LOVE_QUIZ, optionLabel, tratoOf } from "../quiz";
 import { createReadingSchema, knownBirthDaySchema } from "../schemas";
 
@@ -53,6 +54,9 @@ describe("createReadingSchema", () => {
     });
 });
 
+/** A fixed "today", so ages in the prompt don't drift with the calendar. */
+const TODAY = new Date("2026-10-16T12:00:00Z");
+
 describe("chart", () => {
     it("finds the sun sign", () => {
         expect(sunSignOf("1995-08-14")).toBe("Leo");
@@ -64,13 +68,16 @@ describe("chart", () => {
     });
 
     it("describes the profile with the chosen answers", () => {
-        const text = describeProfile({
-            birthDate: "1995-08-14",
-            birthTime: null,
-            birthTimeZone: null,
-            birthPlace: "Lima",
-            answers,
-        });
+        const text = describeProfile(
+            {
+                birthDate: "1995-08-14",
+                birthTime: null,
+                birthTimeZone: null,
+                birthPlace: "Lima",
+                answers,
+            },
+            TODAY,
+        );
         expect(text).toContain("Lima");
         // The form of address is an instruction, not one of the answers.
         expect(text).toContain("<trato>\nHáblale en femenino");
@@ -84,19 +91,41 @@ describe("chart", () => {
             a.questionId === "trato" ? { ...a, optionId: "masculino" } : a,
         );
         expect(tratoOf(asMan)).toBe("masculino");
-        const text = describeProfile({
-            birthDate: "1995-08-14",
-            birthTime: null,
-            birthTimeZone: null,
-            birthPlace: null,
-            answers: asMan,
-        });
+        const text = describeProfile(
+            {
+                birthDate: "1995-08-14",
+                birthTime: null,
+                birthTimeZone: null,
+                birthPlace: null,
+                answers: asMan,
+            },
+            TODAY,
+        );
         expect(text).toContain("<trato>\nHáblale en masculino");
         expect(text).toContain("Solo, y sin nadie en mente");
         expect(text).not.toMatch(/\bSola\b|segura|controlada/);
         expect(describeAnswer("necesidad", "seguridad", "neutro")?.answer).toBe(
             "Sentir seguridad",
         );
+    });
+
+    it("gives the model their age and what usually comes with their answers", () => {
+        const text = describeProfile(
+            {
+                birthDate: "1995-10-20",
+                birthTime: null,
+                birthTimeZone: null,
+                birthPlace: null,
+                answers,
+            },
+            TODAY,
+        );
+        // Their birthday is still to come this year.
+        expect(text).toContain("Tiene 30 años.");
+        expect(ageOn("1995-10-16", TODAY)).toBe(31);
+        expect(text).toMatch(/<pistas>\n[^<]*\n- /);
+        // One step beyond each answer, never the answer itself.
+        for (const clue of cluesFor(answers)) expect(text).toContain(clue);
     });
 
     it("never offers a mixed-gender option label", () => {
@@ -109,13 +138,16 @@ describe("chart", () => {
     });
 
     it("tells the model when the Moon sign is a guess", () => {
-        const text = describeProfile({
-            birthDate: "1992-05-08",
-            birthTime: null,
-            birthTimeZone: null,
-            birthPlace: null,
-            answers,
-        });
+        const text = describeProfile(
+            {
+                birthDate: "1992-05-08",
+                birthTime: null,
+                birthTimeZone: null,
+                birthPlace: null,
+                answers,
+            },
+            TODAY,
+        );
         expect(text).toContain("Luna en Cáncer o en Leo: incierta");
     });
 

@@ -43,7 +43,7 @@ export async function createReadingService(
         const free = await generateObject({
             model: ServerConfig.ai.models.teaser,
             system: prompt.system,
-            prompt: prompt.prompt(profile),
+            prompt: prompt.prompt(profile, new Date()),
             schema: prompt.schema,
             ...AI_TASKS.teaser,
             usage: { purpose: "teaser", userId, referenceId: id },

@@ -20,6 +20,7 @@ import { aiReasoningSchema } from "@/core/ai/domain/schemas";
 import type { AiPurpose } from "@/core/ai/domain/types";
 import { toAiUsage } from "@/core/ai/domain/usage";
 import { natalChart, venusOutlook } from "@/core/reading/domain/chart";
+import { cluesFor } from "@/core/reading/domain/clues";
 import { LOVE_PLAN, sceneText } from "@/core/reading/domain/plan";
 import * as currentPrompts from "@/core/reading/domain/prompts";
 import { describeAnswer, tratoOf } from "@/core/reading/domain/quiz";
@@ -254,6 +255,9 @@ const verdictSchema = z.object({
             "acción concreta, pequeña, hecha para esta persona",
         ),
         magia: score.describe("¿se siente mágica, increíble, digna de pagar?"),
+        inferencia: score.describe(
+            "5: dice cosas que la persona no contó pero que se siguen de sus respuestas y de su carta, y se siente vista; 1: repite lo que respondió con otras palabras o lo presenta como si la carta lo hubiera descubierto",
+        ),
         escenas: score.describe(
             "si viene por escenas (## Venus, ## Marte…): 5 si cada una habla solo de su astro y ninguna repite a otra; si es un texto corrido, 3",
         ),
@@ -408,10 +412,64 @@ function crossTalk(teaser: string, content: string): string[] {
     );
 }
 
+const normal = (text: string) =>
+    text
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zñ0-9 ]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+/** Their answers, said back word for word: an echo they'll notice. */
+function echoes(profile: Profile, text: string): string[] {
+    const trato = tratoOf(profile.answers);
+    const said = normal(text);
+    return profile.answers
+        .filter((a) => a.questionId !== "trato")
+        .map((a) => describeAnswer(a.questionId, a.optionId, trato)?.answer)
+        .filter((answer): answer is string => Boolean(answer))
+        .filter((answer) => said.includes(normal(answer)));
+}
+
+/** Runs of six words, to compare texts without caring about punctuation. */
+function shingles(text: string, size = 6): string[] {
+    const words = normal(text).split(" ");
+    return Array.from(
+        new Set(
+            words
+                .slice(0, Math.max(words.length - size + 1, 0))
+                .map((_, i) => words.slice(i, i + size).join(" ")),
+        ),
+    );
+}
+
+/** Clues pasted instead of rewritten: six words in a row from one. */
+function copiedClues(profile: Profile, text: string): string[] {
+    const said = new Set(shingles(text));
+    return cluesFor(profile.answers).filter((clue) =>
+        shingles(clue).some((run) => said.has(run)),
+    );
+}
+
+/**
+ * Six-word runs that show up for more than one profile: the lines readers
+ * would find in each other's screenshots.
+ */
+function sharedAcrossProfiles(
+    results: readonly { profile: string; checks: { shingles: string[] } }[],
+): number {
+    const seen = new Map<string, Set<string>>();
+    for (const r of results)
+        for (const run of r.checks.shingles)
+            seen.set(run, (seen.get(run) ?? new Set()).add(r.profile));
+    return [...seen.values()].filter((profiles) => profiles.size > 1).length;
+}
+
 async function runProfile(prompts: PromptModule, profile: Profile) {
     const teaser = await call("teaser", prompts, {
         system: prompts.TEASER_PROMPT.system,
-        prompt: prompts.TEASER_PROMPT.prompt(profile),
+        prompt: prompts.TEASER_PROMPT.prompt(profile, TODAY),
         schema:
             "schema" in prompts.TEASER_PROMPT
                 ? prompts.TEASER_PROMPT.schema
@@ -476,6 +534,9 @@ async function runProfile(prompts: PromptModule, profile: Profile) {
                 (c) => c.finishReason === "length",
             ),
             banned: all.match(BANNED) ?? [],
+            echoes: echoes(profile, `${teaserText}\n${readingText}`),
+            copiedClues: copiedClues(profile, `${teaserText}\n${readingText}`),
+            shingles: shingles(`${teaserText}\n${readingText}`),
             voseo: all.match(VOSEO) ?? [],
             otherGender: all.match(OTHER_GENDER) ?? [],
             jargon: all.match(JARGON) ?? [],
@@ -533,6 +594,13 @@ const summary = {
     "lectura.gesto": rubric((v) => v.lectura.gesto_final),
     "lectura.magia": rubric((v) => v.lectura.magia),
     "lectura.escenas": rubric((v) => v.lectura.escenas),
+    "lectura.inferencia": rubric((v) => v.lectura.inferencia),
+    ecos: results.reduce((n, r) => n + r.checks.echoes.length, 0),
+    pistasCopiadas: results.reduce(
+        (n, r) => n + r.checks.copiedClues.length,
+        0,
+    ),
+    repetidasEntrePerfiles: sharedAcrossProfiles(results),
     astroAjeno: results.reduce((n, r) => n + r.checks.crossTalk.length, 0),
     "chat.utilidad": rubric((v) => v.chat.utilidad),
     "chat.anclaje": rubric((v) => v.chat.anclaje),
