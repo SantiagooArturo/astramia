@@ -153,6 +153,17 @@ const CLUES: Record<string, Record<string, readonly string[]>> = {
             "en una relación sintió que dejaba de ser quien es; qué cedió (tiempo, gente, planes, sueños), no lo sabes: no lo elijas",
             "quiere que querer a alguien no le cueste lo que quiere para su vida",
         ],
+        no_correspondido: [
+            "sabe lo que es querer más que la otra persona; ahora mide antes de entregarse",
+            "le cuesta creer que alguien le elija sin dudar",
+        ],
+        ilusion: [
+            "se ilusiona rápido y después se cuida de hacerlo",
+            "imagina mucho lo que podría ser antes de que empiece",
+        ],
+        nada: [
+            "no ha dejado que nadie llegue tan hondo; le da curiosidad y algo de miedo cómo sería",
+        ],
     },
     pregunta: {
         volvera: ["además de si vuelve: si lo vivido fue real"],
@@ -162,6 +173,9 @@ const CLUES: Record<string, Record<string, readonly string[]>> = {
         ],
         quedarme: ["ya intuye la respuesta; busca claridad para decidir"],
         quien: ["dejar de elegir lo que luego le hace daño"],
+        pasara: ["además de si pasa algo: si vale la pena dar el paso"],
+        futuro: ["el cariño está; quiere saber si van hacia el mismo lado"],
+        cuidar: ["lo que tiene le importa; teme que la costumbre lo apague"],
     },
 };
 
@@ -180,6 +194,15 @@ const RANKED: Record<
     prioridades: {
         first: {
             amor: ["hoy lo que pase en el amor le mueve todo lo demás"],
+            gente: [
+                "su gente es su base: quiere un amor que quepa con su familia y sus amigos, no que le aleje de ellos",
+            ],
+            proyectos: [
+                "está construyendo algo propio: quiere un amor que acompañe sus planes, no que los frene",
+            ],
+            libertad: [
+                "cuida su espacio: quiere a alguien con quien estar sin dejar de ser quien es",
+            ],
             familia: [
                 "su familia es su base: lo que elija en el amor tiene que poder convivir con ella",
             ],
@@ -191,6 +214,15 @@ const RANKED: Record<
             ],
         },
         last: {
+            gente: [
+                "su familia y sus amigos van al final de lo que hoy le importa: si ninguna otra respuesta los nombra, no los pongas en escena",
+            ],
+            proyectos: [
+                "el trabajo y los estudios van al final de lo que hoy le importa: no los pongas en escena",
+            ],
+            libertad: [
+                "no le pesa compartir su espacio: no le pintes como alguien que necesita escapar",
+            ],
             amor: [
                 "hoy pone otras cosas antes que el amor: no le pintes una vida que gira alrededor de alguien",
             ],

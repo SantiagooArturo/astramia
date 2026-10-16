@@ -33,6 +33,7 @@ import { LOVE_PLAN, sceneText } from "@/core/reading/domain/plan";
 import * as currentPrompts from "@/core/reading/domain/prompts";
 import {
     describeAnswer,
+    isCompleteQuiz,
     LOVE_QUIZ,
     questionsFor,
 } from "@/core/reading/domain/quiz";
@@ -80,7 +81,7 @@ const PROFILES: Profile[] = [
             "doy_demasiado",
             "que_hice",
             "abandono",
-            ["amor", "amigos", "familia", "dinero"],
+            ["amor", "gente", "libertad", "proyectos"],
             "por_que",
         ),
         chatQuestion: "¿Por qué siempre termino con el mismo tipo de persona?",
@@ -97,9 +98,9 @@ const PROFILES: Profile[] = [
             "no_se_que_siente",
             "me_alejo",
             "como_si_nada",
-            "control",
-            ["dinero", "amor", "familia", "amigos"],
-            "cuando",
+            "no_correspondido",
+            ["proyectos", "amor", "gente", "libertad"],
+            "pasara",
         ),
         chatQuestion: "¿Cuándo voy a conocer a alguien que valga la pena?",
     },
@@ -116,7 +117,7 @@ const PROFILES: Profile[] = [
             "celos",
             "reviso",
             "engano",
-            ["familia", "amor", "dinero", "amigos"],
+            ["gente", "amor", "proyectos", "libertad"],
             "quedarme",
         ),
         chatQuestion:
@@ -135,7 +136,7 @@ const PROFILES: Profile[] = [
             "indisponibles",
             "sigo",
             "indiferencia",
-            ["dinero", "familia", "amigos", "amor"],
+            ["proyectos", "gente", "libertad", "amor"],
             "quien",
         ),
         chatQuestion: "¿Qué tipo de persona me conviene de verdad?",
@@ -153,7 +154,7 @@ const PROFILES: Profile[] = [
             "no_se",
             "escribo",
             "perder_me",
-            ["amor", "familia", "dinero", "amigos"],
+            ["amor", "gente", "proyectos", "libertad"],
             "volvera",
         ),
         chatQuestion: "Me escribió anoche después de dos meses. ¿Va a volver?",
@@ -171,7 +172,7 @@ const PROFILES: Profile[] = [
             "celos",
             "reviso",
             "engano",
-            ["amigos", "amor", "familia", "dinero"],
+            ["gente", "amor", "libertad", "proyectos"],
             "volvera",
         ),
         chatQuestion: "¿Le escribo o espero a que me busque?",
@@ -191,7 +192,7 @@ const PROFILES: Profile[] = [
             "no_se",
             "sigo",
             "perder_me",
-            ["familia", "dinero", "amor", "amigos"],
+            ["gente", "proyectos", "amor", "libertad"],
             "quedarme",
         ),
         chatQuestion:
@@ -211,7 +212,7 @@ const PROFILES: Profile[] = [
             "celos",
             "reviso",
             "engano",
-            ["amor", "dinero", "amigos", "familia"],
+            ["amor", "proyectos", "libertad", "gente"],
             "quedarme",
         ),
         chatQuestion: "¿Cómo sé si de verdad me va a elegir?",
@@ -229,8 +230,8 @@ const PROFILES: Profile[] = [
             "nunca",
             "indisponibles",
             "sigo",
-            "perder_me",
-            ["dinero", "amigos", "familia", "amor"],
+            "ilusion",
+            ["proyectos", "libertad", "gente", "amor"],
             "cuando",
         ),
         chatQuestion: "¿Por qué nunca me he enamorado de verdad?",
@@ -249,8 +250,8 @@ const PROFILES: Profile[] = [
             "doy_demasiado",
             "que_hice",
             "control",
-            ["amor", "dinero", "amigos", "familia"],
-            "volvera",
+            ["amor", "proyectos", "libertad", "gente"],
+            "futuro",
         ),
         chatQuestion: "¿Debo hacer caso a lo que me dicen o a lo que siento?",
     },
@@ -759,6 +760,12 @@ const prompts = (
         : currentPrompts
 ) as PromptModule;
 const only = args.only?.split(",");
+// A profile the quiz couldn't produce would test answers nobody can give.
+const impossible = PROFILES.filter((p) => !isCompleteQuiz(p.answers));
+if (impossible.length)
+    throw new Error(
+        `Profiles with answers their path doesn't offer: ${impossible.map((p) => p.name).join(", ")}`,
+    );
 const profiles = PROFILES.slice(0, Number(args.profiles ?? PROFILES.length))
     .filter((p) => !only || only.includes(p.name))
     .flatMap((p) => Array.from({ length: Number(args.repeat ?? 1) }, () => p));

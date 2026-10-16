@@ -4,7 +4,12 @@ import { GripVertical } from "lucide-react";
 import { LayoutGroup, motion, Reorder } from "motion/react";
 import { useRef, useState } from "react";
 import { GoldButton } from "@/core/landing/client/effects";
-import { labelFor, type QuizQuestion } from "@/core/reading/domain/quiz";
+import {
+    labelFor,
+    optionsFor,
+    type QuizQuestion,
+    questionFor,
+} from "@/core/reading/domain/quiz";
 import type { QuizAnswer } from "@/core/reading/domain/types";
 import { Button } from "@/frontend/components/ui/button";
 
@@ -41,7 +46,9 @@ export function RankQuestion({
     onRank: (ranking: string[]) => void;
 }) {
     const [offered] = useState(() =>
-        ranking ? [...ranking] : shuffled(question.options.map((o) => o.id)),
+        ranking
+            ? [...ranking]
+            : shuffled(optionsFor(question, answers).map((o) => o.id)),
     );
     const [ranked, setRanked] = useState<string[]>(() =>
         ranking ? [...ranking] : [],
@@ -49,7 +56,7 @@ export function RankQuestion({
     // A drag ends in a click on the card it moved: that one isn't a tap.
     const dragged = useRef(false);
     const labels = new Map(
-        question.options.map((o) => [o.id, labelFor(o, answers)]),
+        optionsFor(question, answers).map((o) => [o.id, labelFor(o, answers)]),
     );
     const rest = offered.filter((id) => !ranked.includes(id));
 
@@ -67,7 +74,7 @@ export function RankQuestion({
     return (
         <fieldset className="flex flex-col gap-5">
             <legend className="mb-2 text-pretty font-display text-3xl sm:text-4xl">
-                {question.question}
+                {questionFor(question, answers)}
             </legend>
             {question.hint && (
                 <p className="mb-1 text-muted-foreground text-sm">

@@ -12,7 +12,10 @@ import { natalChart } from "@/core/reading/domain/chart";
 import {
     chosen,
     labelFor,
+    optionsFor,
+    pruneAnswers,
     type QuizQuestion,
+    questionFor,
     questionsFor,
     quizLength,
 } from "@/core/reading/domain/quiz";
@@ -144,11 +147,9 @@ export function QuizFlow({
             ...answers.filter((a) => a.questionId !== question.id),
             given,
         ];
-        // Back and changed: the follow-up of the old answer goes with it.
-        const stillAsked = new Set(
-            questionsFor(next, questions).map((q) => q.id),
-        );
-        setAnswers(next.filter((a) => stillAsked.has(a.questionId)));
+        // Back and changed: what only the old answer asked or offered
+        // (its follow-up, an option that assumed it) goes with it.
+        setAnswers(pruneAnswers(next, questions));
         setStep(step + 1);
     }
 
@@ -268,10 +269,10 @@ export function QuizFlow({
             ) : question ? (
                 <fieldset className="flex flex-col gap-5">
                     <legend className="mb-5 text-pretty font-display text-3xl sm:text-4xl">
-                        {question.question}
+                        {questionFor(question, answers)}
                     </legend>
                     <div className="flex flex-col gap-3">
-                        {question.options.map((option) => {
+                        {optionsFor(question, answers).map((option) => {
                             const selected =
                                 chosen(answers, question.id) === option.id;
                             return (

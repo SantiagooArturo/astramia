@@ -77,7 +77,12 @@ export async function dashboardService(range: RangeKey) {
                 id: q.id,
                 question: q.question,
                 total,
+                // Retired options only while some reading still has them.
                 options: q.options
+                    .filter(
+                        (o) =>
+                            !o.retired || counts.some((c) => c.option === o.id),
+                    )
                     .map((o) => {
                         const count =
                             counts.find((c) => c.option === o.id)?.count ?? 0;
@@ -103,6 +108,9 @@ export async function dashboardService(range: RangeKey) {
             question: q.question,
             total,
             options: q.options
+                .filter(
+                    (o) => !o.retired || counts.some((r) => r.option === o.id),
+                )
                 .map((o) => {
                     const mine = counts.filter((r) => r.option === o.id);
                     const answers = mine.reduce((n, r) => n + r.count, 0);

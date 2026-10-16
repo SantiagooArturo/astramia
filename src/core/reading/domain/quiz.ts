@@ -5,20 +5,31 @@ export type Trato = "femenino" | "masculino" | "neutro";
 /** One text, or one per trato when it describes the reader. */
 export type QuizLabel = string | Readonly<Record<Trato, string>>;
 
-/** An earlier answer, as a question's or a label's condition. */
+/** An earlier answer, as a follow-up's condition. */
 interface AnsweredWith {
     questionId: string;
     optionId: string;
 }
 
+/**
+ * Earlier answers something depends on: for each question named, one of
+ * its listed options. Plain data, so a quiz crosses from server to client.
+ */
+export type When = Readonly<Record<string, readonly string[]>>;
+
 export interface QuizOption {
     id: string;
     label: QuizLabel;
     /**
-     * Its label after one of these answers, where that answer changes what
-     * it names ("Mi relación" for whoever is in one). The first one wins.
+     * Offered only after one of these sets of answers; to everyone without
+     * it. An option that assumes a past (a relationship, an ex) is offered
+     * only to whoever said they had one.
      */
-    relabel?: readonly (AnsweredWith & { label: QuizLabel })[];
+    showIf?: readonly When[];
+    /** Its label after these answers ("Mi relación" for whoever is in one). */
+    relabel?: readonly { when: When; label: QuizLabel }[];
+    /** No longer offered; still described for the readings that chose it. */
+    retired?: true;
 }
 
 export interface QuizQuestion {
@@ -33,9 +44,22 @@ export interface QuizQuestion {
     /** A line under the question, for one that isn't a single tap. */
     hint?: string;
     options: readonly QuizOption[];
+    /** Its wording after these answers, where the default would assume. */
+    reword?: readonly { when: When; question: string }[];
     /** A follow-up: asked only right after this answer. */
     after?: AnsweredWith;
 }
+
+/** Whoever said they've been in a relationship (now, past, or unclear). */
+const HAD_ONE: readonly When[] = [
+    { situacion: ["relacion", "ruptura", "complicado"] },
+    {
+        situacion: ["soltera"],
+        ultimo_amor: ["hace_poco", "mas_de_un_ano", "anos"],
+    },
+];
+/** Single and never really in love. */
+const NEVER: When = { situacion: ["soltera"], ultimo_amor: ["nunca"] };
 
 /** A follow-up on "where's your heart": what that answer leaves open. */
 const followUp = (
@@ -61,6 +85,13 @@ const followUp = (
  * down where their heart is, and "what do you do when they're slow to
  * answer" replaced "what do you need most", whose options all sounded
  * equally good and told little.
+ *
+ * Nothing may assume what they didn't say: whoever has nobody in mind is
+ * never asked about "that person", whoever never fell in love isn't
+ * offered what a relationship did to them, whoever is happy together
+ * isn't asked whether to leave. Wording (`reword`), labels (`relabel`)
+ * and which options appear (`showIf`) follow the earlier answers, and the
+ * tests walk every path through the quiz to keep it that way.
  */
 export const LOVE_QUIZ: readonly QuizQuestion[] = [
     {
@@ -145,7 +176,8 @@ export const LOVE_QUIZ: readonly QuizQuestion[] = [
     }),
     {
         id: "patron",
-        question: "¿Qué se repite en tus relaciones?",
+        // Not "in your relationships": some have never had one.
+        question: "En el amor, ¿qué se repite contigo?",
         options: [
             {
                 id: "indisponibles",
@@ -159,7 +191,35 @@ export const LOVE_QUIZ: readonly QuizQuestion[] = [
     },
     {
         id: "espera",
-        question: "Cuando alguien que te gusta tarda en responder, tú…",
+        // In general by default: some have nobody in mind, or never talk
+        // to the one they like; "that person" only where they're in touch.
+        question: "Cuando alguien te gusta y tarda en responder, tú…",
+        reword: [
+            {
+                when: { situacion: ["relacion"] },
+                question: "Cuando tu pareja tarda en responder, tú…",
+            },
+            {
+                when: {
+                    situacion: ["alguien"],
+                    sabe: ["mutuo", "no_se_que_siente", "sospecha"],
+                },
+                question: "Cuando esa persona tarda en responder, tú…",
+            },
+            {
+                // Not with a third one in the story: "that person" is unclear.
+                when: {
+                    situacion: ["complicado"],
+                    complica: [
+                        "sin_nombre",
+                        "idas_y_vueltas",
+                        "distancia",
+                        "entorno",
+                    ],
+                },
+                question: "Cuando esa persona tarda en responder, tú…",
+            },
+        ],
         options: [
             { id: "reviso", label: "Reviso si se conectó" },
             { id: "escribo", label: "Le escribo otra vez" },
@@ -170,9 +230,21 @@ export const LOVE_QUIZ: readonly QuizQuestion[] = [
     },
     {
         id: "herida",
-        question: "¿Qué es lo que más te ha dolido?",
+        question: "¿Qué es lo que más te ha dolido en el amor?",
+        // What a relationship can do only to whoever had one; the hurts of
+        // wanting without it happening, to who hasn't (or has someone in
+        // mind, maybe for the first time).
         options: [
-            { id: "abandono", label: "Que se fueran sin explicación" },
+            {
+                id: "abandono",
+                label: "Que se fueran sin explicación",
+                relabel: [
+                    {
+                        when: NEVER,
+                        label: "Que dejaran de hablarme sin explicación",
+                    },
+                ],
+            },
             { id: "engano", label: "Un engaño" },
             { id: "indiferencia", label: "La indiferencia" },
             {
@@ -182,8 +254,28 @@ export const LOVE_QUIZ: readonly QuizQuestion[] = [
                     masculino: "Sentirme controlado",
                     neutro: "Que intentaran controlarme",
                 },
+                showIf: HAD_ONE,
             },
-            { id: "perder_me", label: "Perderme a mí en la relación" },
+            {
+                id: "perder_me",
+                label: "Perderme a mí en la relación",
+                showIf: HAD_ONE,
+            },
+            {
+                id: "no_correspondido",
+                label: "Querer a alguien que no me quería igual",
+                showIf: [{ situacion: ["soltera", "alguien"] }],
+            },
+            {
+                id: "ilusion",
+                label: "Ilusionarme y que no pasara nada",
+                showIf: [{ situacion: ["alguien"] }, NEVER],
+            },
+            {
+                id: "nada",
+                label: "Todavía nada me ha dolido de verdad",
+                showIf: [NEVER],
+            },
         ],
     },
     {
@@ -199,27 +291,101 @@ export const LOVE_QUIZ: readonly QuizQuestion[] = [
                 id: "amor",
                 label: "Amor",
                 relabel: [
-                    {
-                        questionId: "situacion",
-                        optionId: "relacion",
-                        label: "Mi relación",
-                    },
+                    { when: { situacion: ["relacion"] }, label: "Mi relación" },
                 ],
             },
-            { id: "familia", label: "Familia" },
-            { id: "amigos", label: "Amigos" },
-            { id: "dinero", label: "Éxito financiero" },
+            { id: "gente", label: "Familia y amigos" },
+            // What they're building, without sounding like money only; and
+            // not "my goals", which love can be.
+            { id: "proyectos", label: "Mi carrera y mis proyectos" },
+            { id: "libertad", label: "Mi libertad" },
+            // The first version's, for the readings that ranked them.
+            { id: "familia", label: "Familia", retired: true },
+            { id: "amigos", label: "Amigos", retired: true },
+            { id: "dinero", label: "Éxito financiero", retired: true },
         ],
     },
     {
         id: "pregunta",
         question: "¿Qué quieres saber primero?",
+        // Each question only where it means something. "That person"
+        // exists only for who named one ("no one in mind" rules it out),
+        // and whoever is happy together isn't asked whether to leave.
         options: [
-            { id: "volvera", label: "Si esa persona va a volver" },
-            { id: "cuando", label: "Cuándo llega alguien para mí" },
-            { id: "por_que", label: "Por qué me pasa siempre lo mismo" },
-            { id: "quedarme", label: "Si debo quedarme o irme" },
-            { id: "quien", label: "Qué tipo de persona me conviene" },
+            {
+                id: "volvera",
+                label: "Si esa persona va a volver",
+                showIf: [
+                    { situacion: ["ruptura"] },
+                    { situacion: ["complicado"], complica: ["idas_y_vueltas"] },
+                ],
+            },
+            {
+                id: "pasara",
+                label: "Si va a pasar algo con esa persona",
+                // Not where they're already together (or a third one makes
+                // "that person" unclear): only a crush, or "we're nothing yet".
+                showIf: [
+                    { situacion: ["alguien"] },
+                    { situacion: ["complicado"], complica: ["sin_nombre"] },
+                ],
+            },
+            {
+                id: "futuro",
+                label: "Hacia dónde va lo nuestro",
+                showIf: [{ situacion: ["relacion", "complicado"] }],
+            },
+            {
+                id: "cuidar",
+                label: "Cómo cuidar lo que tenemos",
+                showIf: [
+                    {
+                        situacion: ["relacion"],
+                        como_estan: ["muy_bien", "algo_falta", "rutina"],
+                    },
+                ],
+            },
+            {
+                id: "quedarme",
+                label: "Si debo quedarme o irme",
+                showIf: [
+                    {
+                        situacion: ["relacion"],
+                        como_estan: [
+                            "algo_falta",
+                            "rutina",
+                            "peleas",
+                            "caminos",
+                            "dudas",
+                        ],
+                    },
+                    { situacion: ["complicado"] },
+                ],
+            },
+            {
+                id: "cuando",
+                label: "Cuándo llega alguien para mí",
+                showIf: [{ situacion: ["soltera", "ruptura"] }],
+            },
+            {
+                id: "por_que",
+                label: "Por qué me pasa siempre lo mismo",
+                relabel: [{ when: NEVER, label: "Por qué todavía no me pasa" }],
+            },
+            {
+                id: "quien",
+                label: "Qué tipo de persona me conviene",
+                showIf: [
+                    {
+                        situacion: [
+                            "soltera",
+                            "alguien",
+                            "ruptura",
+                            "complicado",
+                        ],
+                    },
+                ],
+            },
         ],
     },
 ];
@@ -261,6 +427,36 @@ export function chosen(
 const answeredWith = (answers: readonly QuizAnswer[], on: AnsweredWith) =>
     chosen(answers, on.questionId) === on.optionId;
 
+/** Whether these answers meet a condition. */
+export function holds(answers: readonly QuizAnswer[], when: When): boolean {
+    return Object.entries(when).every(([questionId, options]) =>
+        options.includes(chosen(answers, questionId) ?? ""),
+    );
+}
+
+/** The options this reader is offered, after their earlier answers. */
+export function optionsFor(
+    question: QuizQuestion,
+    answers: readonly QuizAnswer[],
+): QuizOption[] {
+    return question.options.filter(
+        (o) =>
+            !o.retired &&
+            (!o.showIf || o.showIf.some((when) => holds(answers, when))),
+    );
+}
+
+/** The question as this reader is asked it. */
+export function questionFor(
+    question: QuizQuestion,
+    answers: readonly QuizAnswer[],
+): string {
+    return (
+        question.reword?.find((r) => holds(answers, r.when))?.question ??
+        question.question
+    );
+}
+
 /** The questions these answers lead to, in order: follow-ups only after theirs. */
 export function questionsFor(
     answers: readonly QuizAnswer[],
@@ -269,9 +465,16 @@ export function questionsFor(
     return quiz.filter((q) => !q.after || answeredWith(answers, q.after));
 }
 
-/** Whether an answer is one this question takes: its own option, or all of them in order. */
-function fits(question: QuizQuestion, answer: QuizAnswer): boolean {
-    const ids = question.options.map((o) => o.id);
+/**
+ * Whether an answer is one this question takes, as it was offered after
+ * the others: one of its options, or all of them in order.
+ */
+function fits(
+    question: QuizQuestion,
+    answer: QuizAnswer,
+    answers: readonly QuizAnswer[],
+): boolean {
+    const ids = optionsFor(question, answers).map((o) => o.id);
     if ((question.kind ?? "choice") === "choice")
         return "optionId" in answer && ids.includes(answer.optionId);
     // As many as there are options and every one in: each once.
@@ -304,9 +507,25 @@ export function isCompleteQuiz(answers: readonly QuizAnswer[]): boolean {
     return (
         answers.length === asked.length &&
         asked.every((q) =>
-            answers.some((a) => a.questionId === q.id && fits(q, a)),
+            answers.some((a) => a.questionId === q.id && fits(q, a, answers)),
         )
     );
+}
+
+/**
+ * The answers still standing after a change: those to questions still
+ * asked, with options still offered (back on "where's your heart", a new
+ * path drops what only the old one asked or offered).
+ */
+export function pruneAnswers(
+    answers: readonly QuizAnswer[],
+    quiz: readonly QuizQuestion[] = LOVE_QUIZ,
+): QuizAnswer[] {
+    const asked = questionsFor(answers, quiz);
+    return answers.filter((a) => {
+        const question = asked.find((q) => q.id === a.questionId);
+        return question !== undefined && fits(question, a, answers);
+    });
 }
 
 /** How the reader asked to be addressed; "neutro" until they say. */
@@ -326,7 +545,7 @@ export function labelFor(
     answers: readonly QuizAnswer[],
 ): string {
     const label =
-        option.relabel?.find((r) => answeredWith(answers, r))?.label ??
+        option.relabel?.find((r) => holds(answers, r.when))?.label ??
         option.label;
     return optionLabel(label, tratoOf(answers));
 }
@@ -350,7 +569,7 @@ export function describeAnswer(
         "optionId" in answer ? [say(answer.optionId)] : answer.ranking.map(say);
     if (!question || said.some((s) => s === undefined)) return undefined;
     return {
-        question: question.question,
+        question: questionFor(question, all),
         answer:
             "optionId" in answer
                 ? (said[0] as string)

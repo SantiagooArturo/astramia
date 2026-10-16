@@ -133,10 +133,16 @@ const QUESTIONS: Record<string, string> = {
     por_que: "¿Por qué me pasa siempre lo mismo?",
     quedarme: "¿Me quedo o me voy?",
     quien: "¿Qué tipo de persona me conviene?",
+    pasara: "¿Va a pasar algo con esa persona?",
+    futuro: "¿Hacia dónde va lo nuestro?",
+    cuidar: "¿Cómo cuido lo que tenemos?",
 };
 
 export function storyQuestion(answers: readonly QuizAnswer[]): string | null {
     const id = chosen(answers, "pregunta");
+    // Never really in love: "always the same" is that it hasn't happened.
+    if (id === "por_que" && chosen(answers, "ultimo_amor") === "nunca")
+        return "¿Por qué todavía no me pasa?";
     return (id && QUESTIONS[id]) ?? null;
 }
 

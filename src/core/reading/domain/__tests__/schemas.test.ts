@@ -6,8 +6,12 @@ import {
     describeAnswer,
     isCompleteQuiz,
     LOVE_QUIZ,
+    labelFor,
     optionLabel,
+    optionsFor,
+    pruneAnswers,
     QUIZ_LENGTH,
+    questionFor,
     questionsFor,
     tratoOf,
 } from "../quiz";
@@ -22,8 +26,11 @@ function firstOptions(): QuizAnswer[] {
         if (questionsFor(path).includes(q))
             path.push(
                 q.kind === "rank"
-                    ? { questionId: q.id, ranking: q.options.map((o) => o.id) }
-                    : { questionId: q.id, optionId: q.options[0].id },
+                    ? {
+                          questionId: q.id,
+                          ranking: optionsFor(q, path).map((o) => o.id),
+                      }
+                    : { questionId: q.id, optionId: optionsFor(q, path)[0].id },
             );
     return path;
 }
@@ -126,7 +133,7 @@ describe("the questionnaire", () => {
 });
 
 describe("a ranking", () => {
-    const order = ["dinero", "familia", "amor", "amigos"];
+    const order = ["proyectos", "gente", "amor", "libertad"];
     const ranked = (ranking: string[]) =>
         answers.map((a) =>
             a.questionId === "prioridades"
@@ -138,11 +145,15 @@ describe("a ranking", () => {
         expect(isCompleteQuiz(ranked(order))).toBe(true);
         expect(isCompleteQuiz(ranked(order.slice(0, 3)))).toBe(false);
         expect(
-            isCompleteQuiz(ranked(["dinero", "dinero", "amor", "amigos"])),
+            isCompleteQuiz(ranked(["proyectos", "proyectos", "amor", "gente"])),
         ).toBe(false);
         expect(isCompleteQuiz(ranked([...order.slice(0, 3), "nope"]))).toBe(
             false,
         );
+        // The first version's options are read, never taken anew.
+        expect(
+            isCompleteQuiz(ranked(["dinero", "familia", "amor", "amigos"])),
+        ).toBe(false);
     });
 
     it("never takes one picked option, nor a ranking for a one-tap question", () => {
@@ -172,23 +183,161 @@ describe("a ranking", () => {
         );
         const prioridades = inLove.find((a) => a.questionId === "prioridades");
         expect(prioridades && describeAnswer(prioridades, inLove)?.answer).toBe(
-            "Éxito financiero > Familia > Mi relación > Amigos (de más a menos importante)",
+            "Mi carrera y mis proyectos > Familia y amigos > Mi relación > Mi libertad (de más a menos importante)",
         );
-        const single = ranked(order);
         expect(
             describeAnswer(
                 { questionId: "prioridades", ranking: order },
-                single,
+                ranked(order),
             )?.answer,
         ).toContain("> Amor >");
+        // A reading made with the first version still reads.
+        expect(
+            describeAnswer({
+                questionId: "prioridades",
+                ranking: ["dinero", "familia", "amor", "amigos"],
+            })?.answer,
+        ).toContain("Éxito financiero > Familia > Amor > Amigos");
     });
 
     it("tells the reading what weighs most and keeps it off what's last", () => {
         const clues = cluesFor([
             { questionId: "prioridades", ranking: order },
         ]).join(" | ");
-        expect(clues).toContain("sus planes y su estabilidad");
-        expect(clues).toContain("sus amigos van al final");
+        expect(clues).toContain("está construyendo algo propio");
+        expect(clues).toContain("necesita escapar");
+    });
+});
+
+/** Every way through the quiz: each answer to "where's your heart" and its follow-up. */
+function everyPath(): QuizAnswer[][] {
+    const situacion = LOVE_QUIZ.find((q) => q.id === "situacion");
+    return (situacion?.options ?? []).flatMap((s) => {
+        const start: QuizAnswer[] = [
+            { questionId: "trato", optionId: "femenino" },
+            { questionId: "situacion", optionId: s.id },
+        ];
+        const follow = questionsFor(start).find((q) => q.after);
+        return (follow?.options ?? []).map((f) => [
+            ...start,
+            { questionId: follow?.id ?? "", optionId: f.id },
+        ]);
+    });
+}
+
+/** Everything a path shows after its follow-up, as text. */
+function shown(path: QuizAnswer[]) {
+    return questionsFor(path)
+        .filter((q) => !path.some((a) => a.questionId === q.id))
+        .map((q) => ({
+            id: q.id,
+            question: questionFor(q, path),
+            options: optionsFor(q, path).map((o) => ({
+                id: o.id,
+                label: labelFor(o, path),
+            })),
+        }));
+}
+
+const has = (path: QuizAnswer[], questionId: string, optionId: string) =>
+    path.some(
+        (a) =>
+            "optionId" in a &&
+            a.questionId === questionId &&
+            a.optionId === optionId,
+    );
+
+describe("every way through the quiz makes sense", () => {
+    const paths = everyPath();
+
+    it("covers all 23 of them, each question with options to choose from", () => {
+        expect(paths).toHaveLength(23);
+        for (const path of paths)
+            for (const q of shown(path))
+                expect(
+                    q.options.length,
+                    `${q.id} on ${JSON.stringify(path)}`,
+                ).toBeGreaterThanOrEqual(3);
+    });
+
+    it("never asks about «that person» before they named one", () => {
+        for (const path of paths) {
+            // Only "single, nobody in mind" has named nobody: a partner, a crush,
+            // an ex and a complicated someone are all "that person".
+            const named = !has(path, "situacion", "soltera");
+            if (named) continue;
+            for (const q of shown(path)) {
+                expect(q.question).not.toMatch(
+                    /esa persona|tu pareja|lo nuestro/,
+                );
+                for (const o of q.options)
+                    expect(o.label, q.id).not.toMatch(
+                        /esa persona|lo nuestro|lo que tenemos|quedarme o irme/,
+                    );
+            }
+        }
+    });
+
+    it("offers what a relationship does only to whoever had one", () => {
+        for (const path of paths.filter((p) =>
+            has(p, "ultimo_amor", "nunca"),
+        )) {
+            const herida = shown(path).find((q) => q.id === "herida");
+            const ids = herida?.options.map((o) => o.id) ?? [];
+            expect(ids).not.toContain("control");
+            expect(ids).not.toContain("perder_me");
+            expect(ids).toContain("nada");
+        }
+        for (const path of paths.filter((p) =>
+            has(p, "situacion", "alguien"),
+        )) {
+            const ids =
+                shown(path)
+                    .find((q) => q.id === "herida")
+                    ?.options.map((o) => o.id) ?? [];
+            expect(ids).not.toContain("perder_me");
+        }
+    });
+
+    it("asks whoever is happy together how to care for it, not whether to leave", () => {
+        const happy = paths.find((p) => has(p, "como_estan", "muy_bien")) ?? [];
+        const ids =
+            shown(happy)
+                .find((q) => q.id === "pregunta")
+                ?.options.map((o) => o.id) ?? [];
+        expect(ids).toContain("cuidar");
+        expect(ids).not.toContain("quedarme");
+        expect(ids).not.toContain("cuando");
+    });
+
+    it("drops answers a changed path no longer offers", () => {
+        const inLove: QuizAnswer[] = [
+            { questionId: "trato", optionId: "femenino" },
+            { questionId: "situacion", optionId: "relacion" },
+            { questionId: "como_estan", optionId: "dudas" },
+            { questionId: "herida", optionId: "perder_me" },
+            { questionId: "pregunta", optionId: "quedarme" },
+        ];
+        const nowSingle = pruneAnswers([
+            ...inLove.filter(
+                (a) =>
+                    a.questionId !== "situacion" &&
+                    a.questionId !== "como_estan",
+            ),
+            { questionId: "situacion", optionId: "soltera" },
+            { questionId: "ultimo_amor", optionId: "nunca" },
+        ]);
+        expect(nowSingle.map((a) => a.questionId).sort()).toEqual([
+            "situacion",
+            "trato",
+            "ultimo_amor",
+        ]);
+        expect(
+            isCompleteQuiz([
+                ...answers.filter((a) => a.questionId !== "pregunta"),
+                { questionId: "pregunta", optionId: "quedarme" },
+            ]),
+        ).toBe(false);
     });
 });
 
