@@ -3,16 +3,18 @@
  * varied synthetic profiles and has a Gemini judge score each with a rubric,
  * next to mechanical checks (length, cuts, voseo, clichés, cost, latency).
  *
- *   pnpm eval:prompts                       # current prompts, the cheap model
+ *   pnpm eval:prompts                       # current prompts, the cheap models
  *   pnpm eval:prompts --produccion --max-usd=2   # production's models
  *   pnpm eval:prompts --model=google/gemini-3.8-flash --reasoning=low
  *   pnpm eval:prompts --prompts=./other-prompts.ts --profiles=3 --rpm=5
  *   pnpm eval:prompts --only=cancer-sin-hora,libra-joven --repeat=3
  *
- * It spends real money. Every call (judge included) runs on the cheapest
- * model unless told otherwise, and the run stops at `--max-usd` (0.30 by
- * default): production's models cost twenty times as much, and a careless
- * afternoon of runs on them once burned the account's credit.
+ * It spends real money. Drafts are written on Gemini 3.8 Flash, production's
+ * family, reasoning little (at "medium" it thinks 9k tokens a reading and
+ * costs more than Argon), and judged by Claude Haiku 5.5 (a twentieth of
+ * Argon's price, and not judging its own family's writing), unless told
+ * otherwise; the run stops at `--max-usd` (0.30 by default). An afternoon
+ * of runs on Argon once burned the account's credit.
  *
  * Needs AI_GATEWAY_API_KEY. Writes JSON + Markdown to `.eval/`.
  */
@@ -194,8 +196,8 @@ const args = Object.fromEntries(
         .map(([key, ...value]) => [key, value.join("=") || "true"]),
 );
 
-/** The cheapest model on the gateway: drafts of a prompt get judged on it. */
-const CHEAP = "google/gemini-2.5-flash-lite";
+/** Drafts of a prompt are written on the cheapest of production's family. */
+const CHEAP = "google/gemini-3.8-flash";
 /** `--produccion`: the models buyers get, at their price. */
 const BASE = "produccion" in args ? DEFAULT_AI_MODELS : null;
 const MODELS = {
@@ -203,7 +205,7 @@ const MODELS = {
     reading: args["reading-model"] ?? args.model ?? BASE?.reading ?? CHEAP,
     chat: args["chat-model"] ?? args.model ?? BASE?.chat ?? CHEAP,
 };
-const JUDGE = args.judge ?? CHEAP;
+const JUDGE = args.judge ?? "anthropic/claude-haiku-5.5";
 
 /** What the run may spend, judge included; past it, no call starts. */
 const BUDGET = Number(args["max-usd"] ?? 0.3);
@@ -243,7 +245,9 @@ async function call(
 ): Promise<Call> {
     const settings = prompts.AI_TASKS?.[task];
     const reasoning =
-        aiReasoningSchema.optional().parse(args.reasoning) ??
+        aiReasoningSchema
+            .optional()
+            .parse(args.reasoning ?? (BASE ? undefined : "low")) ??
         settings?.reasoning ??
         "none";
     const maxOutputTokens = Number(

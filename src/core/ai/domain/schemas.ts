@@ -38,7 +38,13 @@ export const gatewayRoutingMetadataSchema = z.object({
     }),
 });
 
-/** AI Gateway reports cost per generation under `providerMetadata.gateway`. */
+/**
+ * AI Gateway reports cost per generation under `providerMetadata.gateway`:
+ * what it bills (`cost`) and the provider's price (`marketCost`).
+ */
 export const gatewayCostMetadataSchema = z.object({
-    gateway: z.object({ cost: z.coerce.number().nonnegative() }),
+    gateway: z.object({
+        cost: z.coerce.number().nonnegative(),
+        marketCost: z.coerce.number().nonnegative().optional(),
+    }),
 });

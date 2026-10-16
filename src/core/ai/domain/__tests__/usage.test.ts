@@ -18,6 +18,17 @@ describe("toAiUsage", () => {
         });
     });
 
+    it("counts the provider's price when the call ran on our own key", () => {
+        expect(
+            toAiUsage("google/gemini-3.8-flash", {
+                usage: { inputTokens: 7, outputTokens: 196 },
+                providerMetadata: {
+                    gateway: { cost: "0", marketCost: "0.00074025" },
+                },
+            }).costUsd,
+        ).toBe(0.00074025);
+    });
+
     it("keeps the call with a null cost when the gateway reports none", () => {
         expect(
             toAiUsage("m", {
