@@ -3,10 +3,16 @@
  * varied synthetic profiles and has a Gemini judge score each with a rubric,
  * next to mechanical checks (length, cuts, voseo, clichés, cost, latency).
  *
- *   pnpm eval:prompts                       # current prompts, AI_TASKS and models
+ *   pnpm eval:prompts                       # current prompts, the cheap model
+ *   pnpm eval:prompts --produccion --max-usd=2   # production's models
  *   pnpm eval:prompts --model=google/gemini-3.8-flash --reasoning=low
  *   pnpm eval:prompts --prompts=./other-prompts.ts --profiles=3 --rpm=5
  *   pnpm eval:prompts --only=cancer-sin-hora,libra-joven --repeat=3
+ *
+ * It spends real money. Every call (judge included) runs on the cheapest
+ * model unless told otherwise, and the run stops at `--max-usd` (0.30 by
+ * default): production's models cost twenty times as much, and a careless
+ * afternoon of runs on them once burned the account's credit.
  *
  * Needs AI_GATEWAY_API_KEY. Writes JSON + Markdown to `.eval/`.
  */
@@ -188,12 +194,28 @@ const args = Object.fromEntries(
         .map(([key, ...value]) => [key, value.join("=") || "true"]),
 );
 
+/** The cheapest model on the gateway: drafts of a prompt get judged on it. */
+const CHEAP = "google/gemini-2.5-flash-lite";
+/** `--produccion`: the models buyers get, at their price. */
+const BASE = "produccion" in args ? DEFAULT_AI_MODELS : null;
 const MODELS = {
-    teaser: args["teaser-model"] ?? args.model ?? DEFAULT_AI_MODELS.teaser,
-    reading: args["reading-model"] ?? args.model ?? DEFAULT_AI_MODELS.reading,
-    chat: args["chat-model"] ?? args.model ?? DEFAULT_AI_MODELS.chat,
+    teaser: args["teaser-model"] ?? args.model ?? BASE?.teaser ?? CHEAP,
+    reading: args["reading-model"] ?? args.model ?? BASE?.reading ?? CHEAP,
+    chat: args["chat-model"] ?? args.model ?? BASE?.chat ?? CHEAP,
 };
-const JUDGE = args.judge ?? "google/gemini-4-argon";
+const JUDGE = args.judge ?? CHEAP;
+
+/** What the run may spend, judge included; past it, no call starts. */
+const BUDGET = Number(args["max-usd"] ?? 0.3);
+let spent = 0;
+class OverBudget extends Error {}
+function afford(): void {
+    if (spent >= BUDGET) throw new OverBudget();
+}
+function spend(costUsd: number): number {
+    spent += costUsd;
+    return costUsd;
+}
 
 /** `--rpm=5` spaces call starts for rate-limited plans (Vercel's free tier: 5/min per model). */
 const gapMs = args.rpm ? 60_000 / Number(args.rpm) : 0;
@@ -230,6 +252,7 @@ async function call(
             { teaser: 300, reading: 2500, chat: 800 }[task],
     );
     await slot();
+    afford();
     const started = Date.now();
     const result = await generateText({
         model: MODELS[task],
@@ -248,7 +271,7 @@ async function call(
         finishReason: result.finishReason,
         outputTokens: result.usage.outputTokens,
         reasoningTokens: result.usage.outputTokenDetails?.reasoningTokens,
-        costUsd: toAiUsage(MODELS[task], result).costUsd ?? 0,
+        costUsd: spend(toAiUsage(MODELS[task], result).costUsd ?? 0),
         seconds: (Date.now() - started) / 1000,
     };
 }
@@ -382,6 +405,7 @@ async function judge(
     chat: string,
 ): Promise<{ verdict: Verdict; costUsd: number }> {
     await slot();
+    afford();
     const result = await generateText({
         model: JUDGE,
         maxRetries: 5,
@@ -394,7 +418,7 @@ Así se lee: una historia en el celular, una escena por pantalla junto a su imag
     });
     return {
         verdict: result.output as Verdict,
-        costUsd: toAiUsage(JUDGE, result).costUsd ?? 0,
+        costUsd: spend(toAiUsage(JUDGE, result).costUsd ?? 0),
     };
 }
 
@@ -603,9 +627,36 @@ const profiles = PROFILES.slice(0, Number(args.profiles ?? PROFILES.length))
 const label = args.label ?? (promptsPath ? "custom" : "current");
 
 console.log(
-    `eval "${label}" · ${profiles.length} profiles · models ${JSON.stringify(MODELS)} · judge ${JUDGE}`,
+    `eval "${label}" · ${profiles.length} profiles · models ${JSON.stringify(MODELS)} · judge ${JUDGE} · max $${BUDGET}`,
 );
-const results = await Promise.all(profiles.map((p) => runProfile(prompts, p)));
+/**
+ * A few profiles at a time (`--parallel`), so reaching the budget leaves
+ * only those calls running; the profiles it cut short are left out.
+ */
+const queue = [...profiles];
+const done: Awaited<ReturnType<typeof runProfile>>[] = [];
+await Promise.all(
+    Array.from({ length: Number(args.parallel ?? 4) }, async () => {
+        for (let p = queue.shift(); p; p = queue.shift()) {
+            try {
+                done.push(await runProfile(prompts, p));
+            } catch (error) {
+                if (!(error instanceof OverBudget)) throw error;
+                queue.length = 0;
+            }
+        }
+    }),
+);
+const order = (r: (typeof done)[number]) =>
+    PROFILES.findIndex((p) => p.name === r.profile);
+const results = done.sort((a, b) => order(a) - order(b));
+console.log(
+    `$${spent.toFixed(2)} spent` +
+        (results.length < profiles.length
+            ? ` · budget reached: ${results.length} of ${profiles.length} profiles`
+            : ""),
+);
+if (results.length === 0) process.exit(1);
 
 const mean = (values: number[]) =>
     Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10;
