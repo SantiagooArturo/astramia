@@ -160,9 +160,10 @@ pnpm eval:prompts --rpm=5                            # free Gateway tier: 5 req/
 ```
 
 Models live in `src/core/ai/domain/models.ts` (overridable with `AI_MODEL_*`):
-Gemini 4 Argon for the hook and the reading, Gemini 3.8 Flash for the chat and
-as the Gateway fallback when a call's model fails; `ai_usage` records the
-model that actually answered.
+Gemini 3.8 Flash for the free hook (written for everyone, buyer or not), the
+chat, the review and as the Gateway fallback when a call's model fails; Gemini
+4 Argon only for the paid reading. `ai_usage` records the model that actually
+answered.
 
 The eval runs teaser → reading → chat over six varied profiles, a Gemini judge
 scores them with a rubric (specificity, hook, rigor, voice, form of address…)
