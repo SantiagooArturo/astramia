@@ -73,13 +73,19 @@ const NIGHT = Array.from({ length: 25 }, (_, i) => {
     return { offset, opacity: Math.min(Math.max(1 - shade / drawn, 0), 0.95) };
 });
 
-/** A body's night side, for its sprite: `turn` faces it to the Sun. */
+/**
+ * A body's night side, for its sprite: `turn` faces it to the Sun. `depth`
+ * scales its darkness: a whole one matches the globe that takes over; where
+ * none does, a full night reads as half a ball lost in the black.
+ */
 export function NightShade({
     id,
     turn,
+    depth = 1,
 }: {
     id: string;
     turn: string | MotionValue<string>;
+    depth?: number;
 }) {
     return (
         <motion.linearGradient id={id} gradientTransform={turn}>
@@ -88,7 +94,7 @@ export function NightShade({
                     key={offset}
                     offset={offset}
                     stopColor="#03030a"
-                    stopOpacity={opacity}
+                    stopOpacity={opacity * depth}
                 />
             ))}
         </motion.linearGradient>

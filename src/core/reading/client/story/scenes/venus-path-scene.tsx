@@ -48,6 +48,8 @@ const ROOM = 1.3;
 const PER_DAY = 0.045;
 const LEG = 0.9;
 const CLOSE_IN = { duration: 1.6, ease: [0.45, 0, 0.15, 1] } as const;
+/** No globe takes over here: the night side only dims, the ball stays whole. */
+const NIGHT_DEPTH = 0.4;
 /** How far past Venus its line of sight runs, to the sign it's seen in. */
 const SIGHT = 0.12;
 
@@ -262,11 +264,20 @@ function Route({
                     className="absolute inset-0 size-full overflow-visible"
                 >
                     <defs>
-                        <NightShade id={`${id}-venus`} turn={venusShade} />
-                        <NightShade id={`${id}-earth`} turn={earthShade} />
+                        <NightShade
+                            id={`${id}-venus`}
+                            turn={venusShade}
+                            depth={NIGHT_DEPTH}
+                        />
+                        <NightShade
+                            id={`${id}-earth`}
+                            turn={earthShade}
+                            depth={NIGHT_DEPTH}
+                        />
                         <NightShade
                             id={`${id}-mars`}
                             turn={facingTheSun(route.today.mars)}
+                            depth={NIGHT_DEPTH}
                         />
                     </defs>
 
