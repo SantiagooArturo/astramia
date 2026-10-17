@@ -19,7 +19,8 @@
             "text": "Y pueden estar en otro signo.",
             "pause": 0.08
         },
-        { "id": "aries", "text": "Puedes ser Aries y amar como Piscis." },
+        { "id": "aries", "text": "Puedes ser Aries", "pause": 0.12 },
+        { "id": "piscis", "text": "y amar como Piscis." },
         {
             "id": "astramia",
             "text": "Astramia lee el cielo del día que naciste.",

@@ -103,11 +103,12 @@ start({
     },
     // Sun in Aries, Venus in Pisces: the same person.
     (t, l, a) => {
-      const w = P.aries.words.map((x) => x.start);
+      // A beat between the two: "Puedes ser Aries… y amar como Piscis."
+      const [aries, piscis] = [P.aries.words[2].start, P.piscis.words[3].start];
       line("Y pueden estar en otro signo.", 210, { size: 76, alpha: a, scale: punch(l) });
       line("Puedes ser Aries", 360, { size: 112, alpha: a * shown(t, P.aries.start) });
-      goldLine("y amar como Piscis", 490, pops(t, w[6]), a, { size: 120 });
-      for (const [symbol, label, x, at] of [["♈", "tu Sol", 340, w[2]], ["♓", "tu Venus", 740, w[6]]]) {
+      goldLine("y amar como Piscis", 490, pops(t, piscis), a, { size: 120 });
+      for (const [symbol, label, x, at] of [["♈", "tu Sol", 340, aries], ["♓", "tu Venus", 740, piscis]]) {
         const pop = clamp(pops(t, at));
         glyph(t, 0.9 * a * pop, { symbol, x, y: 720, size: 150 * lerp(0.6, 1, pop) });
         line(label, 840, { x, family: "Geist", size: 38, weight: 600, spacing: 6, color: MUTED, alpha: a * pop });
