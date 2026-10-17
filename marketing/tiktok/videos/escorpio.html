@@ -14,11 +14,12 @@
 <body>
 <canvas id="c" width="1080" height="1920"></canvas>
 <script>
-// "Si eres Escorpio, no pases este video" — 15 s, 1080×1920, split screen.
+// "Si eres Escorpio, no pases este video" — 17 s, 1080×1920, split screen.
 // Top: the hook and the words, over the sky. Bottom: a star hopping from
 // planet to planet, landing on Scorpio's glyph when the call to action
 // comes. Everything is a function of t, so any frame renders alike.
-const W = 1080, H = 1920, HALF = 960, DURATION = 15;
+const W = 1080, H = 1920, HALF = 960, DURATION = 17.4;
+window.DURATION = DURATION; // render.mjs reads it
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 
@@ -204,13 +205,18 @@ function planet(name, x, y, r, { shade = true, alpha = 1 } = {}) {
 
 // ---------- the top half ----------
 // Scene boundaries; the star below lands on each of them.
-const CUTS = [0, 2.2, 5.0, 8.0, 9.4, 10.8, 14.0, 15.0];
+const CUTS = [0, 2.2, 4.6, 7.4, 9.9, 13.3, 16.4, 17.4];
+// Venus leaves Scorpio on 24 Oct 2026 (13:00 in Lima); after that this
+// video is out of date, not just this line.
+const UNTIL = "hasta el 24 de octubre";
 
 /** A scene leaving: a hard cut, the words stay until the next ones land. */
 function out(t, end) { return 1 - prog(t, end - 0.04, end); }
 /** A scene coming in: never from nothing (the top is never empty), with a punch. */
 function enter(l) { return 0.4 + 0.6 * ease.out(prog(l, 0, 0.18)); }
 function punch(l) { return 1 + 0.07 * (1 - ease.out(prog(l, 0, 0.3))); }
+/** 0→1 from `at`, for things that land after the scene's first words. */
+const after = (l, at, len = 0.25) => ease.out(prog(l, at, at + len));
 
 function hook(t, local) {
   // On screen from the very first frame: the feed shows frame 0.
@@ -224,6 +230,129 @@ function hook(t, local) {
   line("no pases este video", 590, { size: 96, italic: true, alpha: leave, scale: punch, dy: (1 - leave) * -30 });
 }
 
+/** A small outlined label, like a tag. */
+function chip(text, y, alpha, { size = 40, dot = null } = {}) {
+  if (alpha <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.font = font("Geist", size, { weight: 600 });
+  const tw = ctx.measureText(text).width;
+  const pad = dot ? 70 : 36, h = size * 1.75, w = tw + pad + 36;
+  ctx.translate(540 - w / 2, y);
+  ctx.fillStyle = dot ? "rgba(255,255,255,0.08)" : "rgba(233,196,106,0.12)";
+  ctx.strokeStyle = dot ? "rgba(255,255,255,0.18)" : "rgba(233,196,106,0.7)";
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(0, -h / 2, w, h, h / 2); ctx.fill(); ctx.stroke();
+  if (dot) {
+    ctx.fillStyle = dot; ctx.shadowColor = dot; ctx.shadowBlur = 16;
+    ctx.beginPath(); ctx.arc(42, 0, 10, 0, 6.283); ctx.fill();
+    ctx.shadowBlur = 0;
+  }
+  ctx.fillStyle = dot ? MUTED : GOLD;
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, pad, 2);
+  ctx.restore();
+}
+
+/** The gold button, with a sheen passing over it. */
+function button(text, y, alpha, pop, l) {
+  if (pop <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = alpha * clamp(pop * 1.3);
+  ctx.translate(540, y);
+  const s = lerp(0.6, 1, clamp(pop)) * (1 + 0.025 * Math.sin(l * 6));
+  ctx.scale(s, s);
+  const bw = 560, bh = 112;
+  ctx.shadowColor = "rgba(233,196,106,0.8)"; ctx.shadowBlur = 50;
+  const bg = ctx.createLinearGradient(-bw / 2, 0, bw / 2, 0);
+  bg.addColorStop(0, "#f7dc95"); bg.addColorStop(1, GOLD_DEEP);
+  ctx.fillStyle = bg;
+  ctx.beginPath(); ctx.roundRect(-bw / 2, -bh / 2, bw, bh, bh / 2); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.save();
+  ctx.beginPath(); ctx.roundRect(-bw / 2, -bh / 2, bw, bh, bh / 2); ctx.clip();
+  const sx = lerp(-bw, bw, (l * 0.7) % 1);
+  const sh = ctx.createLinearGradient(sx - 80, 0, sx + 80, 0);
+  sh.addColorStop(0, "rgba(255,255,255,0)"); sh.addColorStop(0.5, "rgba(255,255,255,0.55)"); sh.addColorStop(1, "rgba(255,255,255,0)");
+  ctx.fillStyle = sh; ctx.fillRect(-bw / 2, -bh / 2, bw, bh);
+  ctx.restore();
+  ctx.font = font("Geist", 46, { weight: 650 });
+  ctx.fillStyle = "#1a1030"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(text, 0, 3);
+  ctx.restore();
+}
+
+// A reading as the app shows it before paying: written word by word, the
+// rest of the sentence blurred.
+const READING = [
+  { text: "No es que no puedas soltar. Es que contigo nada fue a medias, y esa persona tocó justo" },
+  { text: "lo que no le muestras a nadie.", blur: true },
+];
+const CARD = { x: 100, y: 360, w: 880, h: 490, pad: 56, size: 62, lead: 80 };
+let readingLines = null;
+function layoutReading() {
+  ctx.save();
+  ctx.font = font("Instrument", CARD.size);
+  const space = ctx.measureText(" ").width;
+  const lines = [[]];
+  let x = 0, i = 0;
+  for (const part of READING) for (const text of part.text.split(" ")) {
+    const w = ctx.measureText(text).width;
+    if (x > 0 && x + w > CARD.w - CARD.pad * 2) { lines.push([]); x = 0; }
+    lines[lines.length - 1].push({ text, x, w, blur: !!part.blur, i: part.blur ? -1 : i++ });
+    x += w + space;
+  }
+  ctx.restore();
+  return { lines, count: i };
+}
+
+function readingCard(l, a) {
+  readingLines ??= layoutReading();
+  const pop = ease.back(prog(l, 0.3, 0.65));
+  if (pop <= 0) return;
+  ctx.save();
+  ctx.globalAlpha = a * clamp(pop * 1.4);
+  const s = lerp(0.88, 1, clamp(pop));
+  ctx.translate(540, CARD.y + CARD.h / 2); ctx.scale(s, s); ctx.translate(-540, -(CARD.y + CARD.h / 2));
+  ctx.shadowColor = "rgba(122,72,200,0.6)"; ctx.shadowBlur = 60;
+  ctx.fillStyle = "rgba(22,15,48,0.92)";
+  ctx.beginPath(); ctx.roundRect(CARD.x, CARD.y, CARD.w, CARD.h, 40); ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = "rgba(233,196,106,0.35)"; ctx.lineWidth = 2; ctx.stroke();
+  // Header: whose Venus, and the planet.
+  const left = CARD.x + CARD.pad;
+  ctx.font = font("Geist", 30, { weight: 600 }); ctx.letterSpacing = "6px";
+  ctx.fillStyle = GOLD; ctx.textBaseline = "middle";
+  ctx.fillText("TU VENUS · CÓMO AMAS", left, CARD.y + 64);
+  ctx.letterSpacing = "0px";
+  planet("venus", CARD.x + CARD.w - CARD.pad - 22, CARD.y + 64, 26);
+  ctx.fillStyle = "rgba(233,196,106,0.25)"; ctx.fillRect(left, CARD.y + 110, CARD.w - CARD.pad * 2, 2);
+  // Body, word by word; the hidden part comes in already blurred.
+  const { lines, count } = readingLines;
+  const written = lerp(0, count, prog(l, 0.7, 2.3));
+  const hidden = after(l, 2.35, 0.35);
+  ctx.font = font("Instrument", CARD.size);
+  let caret = null;
+  lines.forEach((words, row) => {
+    const y = CARD.y + 180 + row * CARD.lead;
+    for (const w of words) {
+      const shown = w.blur ? hidden : clamp(written - w.i);
+      if (shown <= 0) continue;
+      ctx.save();
+      ctx.globalAlpha *= shown;
+      if (w.blur) ctx.filter = "blur(11px)";
+      ctx.fillStyle = INK;
+      ctx.fillText(w.text, left + w.x, y + (1 - shown) * 10);
+      ctx.restore();
+      if (!w.blur) caret = { x: left + w.x + w.w + 8, y };
+    }
+  });
+  if (caret && l < 2.35 && Math.sin(l * 18) > -0.3) {
+    ctx.fillStyle = GOLD; ctx.fillRect(caret.x, caret.y - 32, 4, 62);
+  }
+  ctx.restore();
+}
+
 function drawTop(t) {
   // Sky.
   const g = ctx.createLinearGradient(0, 0, 0, HALF);
@@ -234,7 +363,6 @@ function drawTop(t) {
   drawStars(topStars, t);
   scorpius(t, 0.9);
 
-  // Frame 0 flash: a burst of gold that stops the thumb.
   // A burst of gold behind the title on the first frames: it stops the
   // thumb without washing out the words.
   const flash = 1 - ease.out(prog(t, 0, 0.6));
@@ -242,25 +370,25 @@ function drawTop(t) {
 
   if (t < CUTS[1]) hook(t, t);
   else if (t < CUTS[2]) {
+    // Why now: Venus is retrograde in their sign, for a few more days.
     const l = t - CUTS[1];
     const a = enter(l) * out(t, CUTS[2]);
     glyph(t, 0.12 * a);
-    line("Venus está", 330, { family: "Geist", size: 60, weight: 600, alpha: a, scale: punch(l) });
+    line("Venus está", 300, { family: "Geist", size: 60, weight: 600, alpha: a, scale: punch(l) });
     const pop = ease.back(prog(l, 0.1, 0.5));
-    line("retrógrada", 470, { size: 190, italic: true, gradient: true, glowColor: "rgba(233,196,106,0.5)", alpha: a * clamp(pop * 1.3), scale: lerp(0.7, 1, clamp(pop)) });
-    line("justo en tu signo", 600, { size: 84, alpha: a * ease.out(prog(l, 0.7, 1.0)) });
+    line("retrógrada", 440, { size: 190, italic: true, gradient: true, glowColor: "rgba(233,196,106,0.5)", alpha: a * clamp(pop * 1.3), scale: lerp(0.7, 1, clamp(pop)) });
+    line("justo en tu signo", 570, { size: 84, alpha: a * after(l, 0.6) });
+    chip(UNTIL, 680, a * after(l, 1.1));
     // Venus walking backwards over Scorpio, a little loop in its path.
-    const u = ease.inOut(prog(l, 0.2, 2.6));
-    const vx = lerp(820, 300, u) + Math.sin(u * Math.PI * 2) * 60;
-    const vy = 760 - Math.sin(u * Math.PI) * 40 - Math.sin(u * Math.PI * 2) * 30;
+    const path = (u) => [lerp(820, 300, u) + Math.sin(u * Math.PI * 2) * 60, 830 - Math.sin(u * Math.PI) * 30 - Math.sin(u * Math.PI * 2) * 24];
+    const u = ease.inOut(prog(l, 0.2, 2.4));
     for (let k = 1; k <= 14; k++) {
-      const uk = clamp(u - k * 0.02);
-      const tx = lerp(820, 300, uk) + Math.sin(uk * Math.PI * 2) * 60;
-      const ty = 760 - Math.sin(uk * Math.PI) * 40 - Math.sin(uk * Math.PI * 2) * 30;
+      const [tx, ty] = path(clamp(u - k * 0.02));
       ctx.globalAlpha = a * (1 - k / 15) * 0.5;
       ctx.fillStyle = GOLD; ctx.beginPath(); ctx.arc(tx, ty, 7 - k * 0.35, 0, 6.283); ctx.fill();
     }
     ctx.globalAlpha = 1;
+    const [vx, vy] = path(u);
     glow(vx, vy, 120, "rgba(255,230,170,ALPHA)", 0.5 * a);
     planet("venus", vx, vy, 48, { alpha: a });
   } else if (t < CUTS[3]) {
@@ -268,55 +396,34 @@ function drawTop(t) {
     const a = enter(l) * out(t, CUTS[3]);
     glyph(t, 0.1 * a);
     words(["por", "eso", "alguien"], 330, -0.2, 0.1, { size: 104, alpha: a }, l);
-    words([{ text: "que", gold: false }, { text: "ya", gold: true }, { text: "se", gold: true }, { text: "fue", gold: true }], 460, 0.55, 0.16, { size: 104, italic: true, alpha: a }, l);
-    words(["sigue", "en", "tu", { text: "cabeza", gold: true, blurUntil: 1.95 }], 600, 1.15, 0.16, { size: 104, alpha: a }, l);
+    words([{ text: "que", gold: false }, { text: "ya", gold: true }, { text: "se", gold: true }, { text: "fue", gold: true }], 460, 0.5, 0.14, { size: 104, italic: true, alpha: a }, l);
+    words(["sigue", "en", "tu", { text: "cabeza", gold: true, blurUntil: 1.8 }], 600, 1.05, 0.14, { size: 104, alpha: a }, l);
   } else if (t < CUTS[4]) {
+    // What that looks like at 2 a.m.: things they do, not things they are.
     const l = t - CUTS[3];
     const a = enter(l) * out(t, CUTS[4]);
-    line("Pero eso", 400, { size: 130, alpha: a, scale: punch(l) });
-    line("es tu signo.", 540, { size: 130, alpha: a * ease.out(prog(l, 0.2, 0.45)) });
+    chip("últ. vez hoy a las 2:14 a. m.", 250, a, { size: 34, dot: "#3ddc84" });
+    line("Revisas si se conectó.", 400, { size: 92, alpha: a, scale: punch(l) });
+    const second = after(l, 0.65, 0.2);
+    line("Relees el chat.", 530, { size: 92, alpha: a * second, dy: (1 - second) * 30 });
+    const pop = ease.back(prog(l, 1.3, 1.65));
+    line("Te preguntas si vuelve.", 675, { size: 100, italic: true, gradient: true, glowColor: "rgba(233,196,106,0.5)", alpha: a * clamp(pop * 1.3), scale: lerp(0.75, 1, clamp(pop)) });
   } else if (t < CUTS[5]) {
+    // The product: their birth sky, and a reading written for them.
     const l = t - CUTS[4];
     const a = enter(l) * out(t, CUTS[5]);
-    line("Cómo amas", 360, { family: "Geist", size: 62, weight: 600, alpha: a, scale: punch(l) });
-    const pop = ease.back(prog(l, 0.15, 0.55));
-    line("lo dice tu Venus", 500, { size: 150, italic: true, gradient: true, glowColor: "rgba(233,196,106,0.5)", alpha: a * clamp(pop * 1.3), scale: lerp(0.75, 1, clamp(pop)), max: 960 });
-    glow(540, 700, 160, "rgba(255,230,170,ALPHA)", 0.45 * a);
-    planet("venus", 540, 700, 62, { alpha: a * ease.out(prog(l, 0.3, 0.7)) });
+    line("Astramia lee el cielo", 180, { family: "Geist", size: 54, weight: 600, alpha: a, scale: punch(l) });
+    line("del día que naciste", 275, { size: 96, italic: true, gradient: true, glowColor: "rgba(233,196,106,0.45)", alpha: a * after(l, 0.15) });
+    readingCard(l, a);
   } else if (t < CUTS[6]) {
     const l = t - CUTS[5];
     const a = enter(l) * out(t, CUTS[6]);
     glyph(t, 0.1 * a);
-    line("¿En qué signo", 330, { size: 120, alpha: a, scale: punch(l) });
-    line("está la tuya?", 460, { size: 120, italic: true, alpha: a * ease.out(prog(l, 0.2, 0.45)) });
-    // The button: gold pill with a sheen passing over it.
-    const pop = ease.back(prog(l, 0.6, 1.0));
-    if (pop > 0) {
-      ctx.save();
-      ctx.globalAlpha = a * clamp(pop * 1.3);
-      ctx.translate(540, 630);
-      const s = lerp(0.6, 1, clamp(pop)) * (1 + 0.025 * Math.sin(l * 6));
-      ctx.scale(s, s);
-      const bw = 560, bh = 112;
-      ctx.shadowColor = "rgba(233,196,106,0.8)"; ctx.shadowBlur = 50;
-      const bg = ctx.createLinearGradient(-bw / 2, 0, bw / 2, 0);
-      bg.addColorStop(0, "#f7dc95"); bg.addColorStop(1, GOLD_DEEP);
-      ctx.fillStyle = bg;
-      ctx.beginPath(); ctx.roundRect(-bw / 2, -bh / 2, bw, bh, bh / 2); ctx.fill();
-      ctx.shadowBlur = 0;
-      ctx.save();
-      ctx.beginPath(); ctx.roundRect(-bw / 2, -bh / 2, bw, bh, bh / 2); ctx.clip();
-      const sx = lerp(-bw, bw, (l * 0.7) % 1);
-      const sh = ctx.createLinearGradient(sx - 80, 0, sx + 80, 0);
-      sh.addColorStop(0, "rgba(255,255,255,0)"); sh.addColorStop(0.5, "rgba(255,255,255,0.55)"); sh.addColorStop(1, "rgba(255,255,255,0)");
-      ctx.fillStyle = sh; ctx.fillRect(-bw / 2, -bh / 2, bw, bh);
-      ctx.restore();
-      ctx.font = font("Geist", 46, { weight: 650 });
-      ctx.fillStyle = "#1a1030"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText("Descúbrela gratis", 0, 3);
-      ctx.restore();
-    }
-    line("astramia.app", 760, { family: "Geist", size: 44, weight: 500, spacing: 4, color: MUTED, alpha: a * ease.out(prog(l, 1.0, 1.3)) });
+    line("Pregúntale a tu carta", 280, { size: 104, alpha: a, scale: punch(l) });
+    const pop = ease.back(prog(l, 0.15, 0.55));
+    line("si va a volver", 420, { size: 150, italic: true, gradient: true, glowColor: "rgba(233,196,106,0.5)", alpha: a * clamp(pop * 1.3), scale: lerp(0.75, 1, clamp(pop)) });
+    button("Empieza gratis", 600, a, ease.back(prog(l, 0.6, 1.0)), l);
+    line("astramia.app", 730, { family: "Geist", size: 44, weight: 500, spacing: 4, color: MUTED, alpha: a * after(l, 1.0, 0.3) });
   } else {
     // Back to the hook, so the loop runs on without a seam.
     const l = prog(t, CUTS[6], CUTS[7]);

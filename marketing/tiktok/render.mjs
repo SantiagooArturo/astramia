@@ -20,7 +20,6 @@ const args = Object.fromEntries(
     process.argv.slice(3).map((arg) => arg.replace(/^--/, "").split("=")),
 );
 const fps = Number(args.fps ?? 30);
-const duration = Number(args.duration ?? 15);
 const stills = args.stills?.split(",").map(Number);
 
 /** Where a page's URL is served from: its own assets, or the app's public/. */
@@ -63,6 +62,10 @@ await page.route("http://video.local/**", (route) => {
 });
 await page.goto(`http://video.local/${name}.html`);
 await page.evaluate(() => window.ready);
+// How long the video runs: the page says (window.DURATION), or --duration.
+const duration = Number(
+    args.duration ?? (await page.evaluate(() => window.DURATION)) ?? 15,
+);
 
 const out = resolve(here, "out");
 mkdirSync(out, { recursive: true });
