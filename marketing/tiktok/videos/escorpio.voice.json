@@ -3,43 +3,80 @@
     "rate": 6.8,
     "maxTempo": 1.35,
     "phrases": [
-        { "id": "eres", "text": "Si eres Escorpio,", "maxTempo": 1.15 },
+        {
+            "id": "eres",
+            "text": "Si eres Escorpio,",
+            "maxTempo": 1.15
+        },
         {
             "id": "pases",
             "text": "no pases este video.",
             "maxTempo": 1.15,
             "pause": 0.22
         },
-        { "id": "venus", "text": "Venus está retrógrada", "pause": 0.08 },
-        { "id": "signo", "text": "justo en tu signo," },
-        { "id": "fecha", "text": "hasta el veinticuatro de octubre." },
+        {
+            "id": "venus",
+            "text": "Venus está retrógrada",
+            "pause": 0.08
+        },
+        {
+            "id": "signo",
+            "text": "justo en tu signo,"
+        },
+        {
+            "id": "fecha",
+            "text": "hasta el veinticuatro de octubre."
+        },
         {
             "id": "alguien",
             "text": "Por eso alguien que ya se fue",
             "pause": 0.06
         },
-        { "id": "cabeza", "text": "sigue en tu cabeza." },
-        { "id": "revisas", "text": "Revisas si se conectó," },
-        { "id": "relees", "text": "relees el chat," },
-        { "id": "preguntas", "text": "te preguntas si vuelve." },
+        {
+            "id": "cabeza",
+            "text": "sigue en tu cabeza."
+        },
+        {
+            "id": "revisas",
+            "text": "Revisas si se conectó,"
+        },
+        {
+            "id": "relees",
+            "text": "relees el chat,"
+        },
+        {
+            "id": "preguntas",
+            "text": "te preguntas si vuelve."
+        },
         {
             "id": "astramia",
-            "text": "Astramia lee el cielo del día que naciste."
+            "text": "Astramia lee el cielo del día que naciste.",
+            "pause": 0.6
         },
-        { "id": "soltar", "text": "No es que no puedas soltar," },
         {
-            "id": "medias",
+            "text": "No es que no puedas soltar,",
+            "drop": true
+        },
+        {
             "text": "es que contigo nada fue a medias",
-            "pause": 0.08
+            "drop": true
         },
         {
-            "id": "persona",
             "text": "y esa persona tocó justo",
-            "until": 25.93,
-            "pause": 0.7
+            "drop": true
         },
-        { "id": "carta", "text": "Pregúntale a tu carta", "pause": 0.06 },
-        { "id": "volver", "text": "si va a volver." },
-        { "id": "empieza", "text": "Empieza gratis en astramia.app." }
+        {
+            "id": "carta",
+            "text": "Pregúntale a tu carta",
+            "pause": 0.06
+        },
+        {
+            "id": "volver",
+            "text": "si va a volver."
+        },
+        {
+            "id": "empieza",
+            "text": "Empieza gratis en astramia.app."
+        }
     ]
 }

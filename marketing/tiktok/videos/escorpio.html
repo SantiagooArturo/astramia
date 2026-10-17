@@ -301,10 +301,10 @@ function button(text, y, alpha, pop, l) {
 // A reading as the app shows it before paying: written word by word, the
 // rest of the sentence blurred.
 const READING = [
-  { text: "No es que no puedas soltar. Es que contigo nada fue a medias, y esa persona tocó justo" },
+  { text: "No es que no puedas soltar. Es que esa persona tocó justo" },
   { text: "lo que no le muestras a nadie.", blur: true },
 ];
-const CARD = { x: 100, y: 360, w: 880, h: 490, pad: 56, size: 62, lead: 80 };
+const CARD = { x: 100, y: 360, w: 880, h: 420, pad: 56, size: 62, lead: 80 };
 let readingLines = null;
 function layoutReading() {
   ctx.save();
@@ -324,10 +324,12 @@ function layoutReading() {
 
 function readingCard(t, a) {
   readingLines ??= layoutReading();
-  // The voice reads the card: its words, in order, are these phrases'.
-  const said = [...P.soltar.words, ...P.medias.words, ...P.persona.words];
-  if (said.length !== readingLines.count) throw new Error("the card and the voice don't match");
-  const pop = ease.back(prog(t, P.soltar.start - 0.5, P.soltar.start - 0.15));
+  // It writes itself while the voice says what Astramia does: a sentence
+  // that stops halfway sounds wrong read out loud, not seen. The rest
+  // blurs as the voice ends.
+  const { lines, count } = readingLines;
+  const from = P.astramia.start + 0.45, to = P.astramia.end - 0.15;
+  const pop = ease.back(prog(t, P.astramia.start + 0.1, P.astramia.start + 0.45));
   if (pop <= 0) return;
   ctx.save();
   ctx.globalAlpha = a * clamp(pop * 1.4);
@@ -347,14 +349,13 @@ function readingCard(t, a) {
   planet("venus", CARD.x + CARD.w - CARD.pad - 22, CARD.y + 64, 26);
   ctx.fillStyle = "rgba(233,196,106,0.25)"; ctx.fillRect(left, CARD.y + 110, CARD.w - CARD.pad * 2, 2);
   // Body, word by word; the hidden part comes in already blurred.
-  const { lines } = readingLines;
-  const hidden = ease.out(prog(t, P.persona.end, P.persona.end + 0.3));
+  const hidden = ease.out(prog(t, P.astramia.end, P.astramia.end + 0.3));
   ctx.font = font("Instrument", CARD.size);
   let caret = null;
   lines.forEach((words, row) => {
     const y = CARD.y + 180 + row * CARD.lead;
     for (const w of words) {
-      const shown = w.blur ? hidden : clamp((t - said[w.i].start + 0.05) / 0.12);
+      const shown = w.blur ? hidden : clamp((t - lerp(from, to, w.i / count)) / 0.12);
       if (shown <= 0) continue;
       ctx.save();
       ctx.globalAlpha *= shown;
@@ -365,7 +366,7 @@ function readingCard(t, a) {
       if (!w.blur) caret = { x: left + w.x + w.w + 8, y };
     }
   });
-  if (caret && t < P.persona.end && Math.sin(t * 18) > -0.3) {
+  if (caret && t < P.astramia.end && Math.sin(t * 18) > -0.3) {
     ctx.fillStyle = GOLD; ctx.fillRect(caret.x, caret.y - 32, 4, 62);
   }
   ctx.restore();

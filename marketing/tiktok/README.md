@@ -22,8 +22,10 @@ and list its phrases, in order, in `videos/<name>.voice.json`: one per
 stretch of speech between pauses, with the `id` the page uses. The render
 shortens the pauses, speeds up only the phrases said too slowly (to about
 6.8 syllables a second, never more than ×1.35, the pitch untouched), and
-lands each word on screen as it's said. `until` cuts a phrase short (the
-"tocó justo…" that stops where the blur starts), `drop` leaves one out.
+lands each word on screen as it's said. `until` cuts a phrase short
+(seconds into the take), `drop` leaves one out: Escorpio's take reads the
+reading card aloud, which sounds odd cut off, so the card stays on screen
+and out of the voice.
 `node marketing/tiktok/voice.mjs <name>` prints the fit.
 
 Without a voice the video is silent. Music, if any, comes from TikTok's
