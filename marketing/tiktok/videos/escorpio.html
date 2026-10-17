@@ -14,11 +14,14 @@
 <body>
 <canvas id="c" width="1080" height="1920"></canvas>
 <script>
-// "Si eres Escorpio, no pases este video" — 17 s, 1080×1920, split screen.
+// "Si eres Escorpio, no pases este video" — ~25 s, 1080×1920, split screen.
 // Top: the hook and the words, over the sky. Bottom: a star hopping from
 // planet to planet, landing on Scorpio's glyph when the call to action
 // comes. Everything is a function of t, so any frame renders alike.
-const W = 1080, H = 1920, HALF = 960, DURATION = 17.4;
+// When each phrase and word is said: render.mjs fits the voice-over
+// (escorpio.voice.json) and hands it in. Words land as they're heard.
+const P = window.VOICE.phrases;
+const W = 1080, H = 1920, HALF = 960, DURATION = window.VOICE.duration;
 window.DURATION = DURATION; // render.mjs reads it
 const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
@@ -108,8 +111,8 @@ function line(text, y, { family = "Instrument", size = 100, italic = false, weig
   ctx.restore();
   return w * fit;
 }
-/** Words that land one after another, centered as a line. */
-function words(list, y, start, gap, style, t) {
+/** Words centered as a line, each landing at its time in `times`. */
+function words(list, y, times, style, t) {
   ctx.save();
   ctx.font = font(style.family ?? "Instrument", style.size, style);
   const space = ctx.measureText(" ").width;
@@ -119,7 +122,7 @@ function words(list, y, start, gap, style, t) {
   let x = 540 - total / 2;
   list.forEach((w, i) => {
     const word = w.text ?? w;
-    const u = prog(t, start + i * gap, start + i * gap + 0.28);
+    const u = prog(t, times[i] - 0.08, times[i] + 0.2);
     const a = ease.out(u);
     ctx.save();
     ctx.font = font(style.family ?? "Instrument", style.size, style);
@@ -204,8 +207,19 @@ function planet(name, x, y, r, { shade = true, alpha = 1 } = {}) {
 }
 
 // ---------- the top half ----------
-// Scene boundaries; the star below lands on each of them.
-const CUTS = [0, 2.2, 4.6, 7.4, 9.9, 13.3, 16.4, 17.4];
+// Scenes start a beat before their first word is said; the star below
+// lands on each cut.
+const LEAD = 0.12;
+const CUTS = [
+  0,
+  P.venus.start - LEAD,
+  P.alguien.start - LEAD,
+  P.revisas.start - LEAD,
+  P.astramia.start - LEAD,
+  P.carta.start - LEAD,
+  P.empieza.end + 0.25,
+  DURATION,
+];
 // Venus leaves Scorpio on 24 Oct 2026 (13:00 in Lima); after that this
 // video is out of date, not just this line.
 const UNTIL = "hasta el 24 de octubre";
@@ -215,12 +229,14 @@ function out(t, end) { return 1 - prog(t, end - 0.04, end); }
 /** A scene coming in: never from nothing (the top is never empty), with a punch. */
 function enter(l) { return 0.4 + 0.6 * ease.out(prog(l, 0, 0.18)); }
 function punch(l) { return 1 + 0.07 * (1 - ease.out(prog(l, 0, 0.3))); }
-/** 0→1 from `at`, for things that land after the scene's first words. */
-const after = (l, at, len = 0.25) => ease.out(prog(l, at, at + len));
+/** 0→1 as a word is said: on screen a hair before it's heard. */
+const shown = (t, at, len = 0.22) => ease.out(prog(t, at - 0.08, at - 0.08 + len));
+/** The same, overshooting a little: for the word that matters. */
+const pops = (t, at) => ease.back(prog(t, at - 0.1, at + 0.3));
 
 function hook(t, local) {
   // On screen from the very first frame: the feed shows frame 0.
-  const leave = local === undefined ? 1 : out(local, 2.2);
+  const leave = local === undefined ? 1 : out(local, CUTS[1]);
   const flash = 1 - ease.out(prog(t % DURATION, 0, 0.5));
   glyph(t, 0.16 * leave);
   line("SI ERES", 330, { family: "Geist", size: 54, weight: 600, spacing: 16, color: GOLD, alpha: leave, dy: (1 - leave) * -30 });
@@ -306,9 +322,12 @@ function layoutReading() {
   return { lines, count: i };
 }
 
-function readingCard(l, a) {
+function readingCard(t, a) {
   readingLines ??= layoutReading();
-  const pop = ease.back(prog(l, 0.3, 0.65));
+  // The voice reads the card: its words, in order, are these phrases'.
+  const said = [...P.soltar.words, ...P.medias.words, ...P.persona.words];
+  if (said.length !== readingLines.count) throw new Error("the card and the voice don't match");
+  const pop = ease.back(prog(t, P.soltar.start - 0.5, P.soltar.start - 0.15));
   if (pop <= 0) return;
   ctx.save();
   ctx.globalAlpha = a * clamp(pop * 1.4);
@@ -328,15 +347,14 @@ function readingCard(l, a) {
   planet("venus", CARD.x + CARD.w - CARD.pad - 22, CARD.y + 64, 26);
   ctx.fillStyle = "rgba(233,196,106,0.25)"; ctx.fillRect(left, CARD.y + 110, CARD.w - CARD.pad * 2, 2);
   // Body, word by word; the hidden part comes in already blurred.
-  const { lines, count } = readingLines;
-  const written = lerp(0, count, prog(l, 0.7, 2.3));
-  const hidden = after(l, 2.35, 0.35);
+  const { lines } = readingLines;
+  const hidden = ease.out(prog(t, P.persona.end, P.persona.end + 0.3));
   ctx.font = font("Instrument", CARD.size);
   let caret = null;
   lines.forEach((words, row) => {
     const y = CARD.y + 180 + row * CARD.lead;
     for (const w of words) {
-      const shown = w.blur ? hidden : clamp(written - w.i);
+      const shown = w.blur ? hidden : clamp((t - said[w.i].start + 0.05) / 0.12);
       if (shown <= 0) continue;
       ctx.save();
       ctx.globalAlpha *= shown;
@@ -347,7 +365,7 @@ function readingCard(l, a) {
       if (!w.blur) caret = { x: left + w.x + w.w + 8, y };
     }
   });
-  if (caret && l < 2.35 && Math.sin(l * 18) > -0.3) {
+  if (caret && t < P.persona.end && Math.sin(t * 18) > -0.3) {
     ctx.fillStyle = GOLD; ctx.fillRect(caret.x, caret.y - 32, 4, 62);
   }
   ctx.restore();
@@ -375,13 +393,13 @@ function drawTop(t) {
     const a = enter(l) * out(t, CUTS[2]);
     glyph(t, 0.12 * a);
     line("Venus está", 300, { family: "Geist", size: 60, weight: 600, alpha: a, scale: punch(l) });
-    const pop = ease.back(prog(l, 0.1, 0.5));
+    const pop = pops(t, P.venus.words[2].start);
     line("retrógrada", 440, { size: 190, italic: true, gradient: true, glowColor: "rgba(233,196,106,0.5)", alpha: a * clamp(pop * 1.3), scale: lerp(0.7, 1, clamp(pop)) });
-    line("justo en tu signo", 570, { size: 84, alpha: a * after(l, 0.6) });
-    chip(UNTIL, 680, a * after(l, 1.1));
+    line("justo en tu signo", 570, { size: 84, alpha: a * shown(t, P.signo.start) });
+    chip(UNTIL, 680, a * shown(t, P.fecha.start));
     // Venus walking backwards over Scorpio, a little loop in its path.
     const path = (u) => [lerp(820, 300, u) + Math.sin(u * Math.PI * 2) * 60, 830 - Math.sin(u * Math.PI) * 30 - Math.sin(u * Math.PI * 2) * 24];
-    const u = ease.inOut(prog(l, 0.2, 2.4));
+    const u = ease.inOut(prog(t, CUTS[1] + 0.2, CUTS[2]));
     for (let k = 1; k <= 14; k++) {
       const [tx, ty] = path(clamp(u - k * 0.02));
       ctx.globalAlpha = a * (1 - k / 15) * 0.5;
@@ -395,35 +413,37 @@ function drawTop(t) {
     const l = t - CUTS[2];
     const a = enter(l) * out(t, CUTS[3]);
     glyph(t, 0.1 * a);
-    words(["por", "eso", "alguien"], 330, -0.2, 0.1, { size: 104, alpha: a }, l);
-    words([{ text: "que", gold: false }, { text: "ya", gold: true }, { text: "se", gold: true }, { text: "fue", gold: true }], 460, 0.5, 0.14, { size: 104, italic: true, alpha: a }, l);
-    words(["sigue", "en", "tu", { text: "cabeza", gold: true, blurUntil: 1.8 }], 600, 1.05, 0.14, { size: 104, alpha: a }, l);
+    // The first word is up with the cut; "cabeza" waits, blurred, until it's said.
+    const [w1, w2] = [P.alguien.words.map((w) => w.start), P.cabeza.words.map((w) => w.start)];
+    words(["por", "eso", "alguien"], 330, [CUTS[2], w1[1], w1[2]], { size: 104, alpha: a }, t);
+    words([{ text: "que", gold: false }, { text: "ya", gold: true }, { text: "se", gold: true }, { text: "fue", gold: true }], 460, w1.slice(3), { size: 104, italic: true, alpha: a }, t);
+    words(["sigue", "en", "tu", { text: "cabeza", gold: true, blurUntil: w2[3] - 0.1 }], 600, [w2[0], w2[1], w2[2], w2[0]], { size: 104, alpha: a }, t);
   } else if (t < CUTS[4]) {
     // What that looks like at 2 a.m.: things they do, not things they are.
     const l = t - CUTS[3];
     const a = enter(l) * out(t, CUTS[4]);
     chip("últ. vez hoy a las 2:14 a. m.", 250, a, { size: 34, dot: "#3ddc84" });
     line("Revisas si se conectó.", 400, { size: 92, alpha: a, scale: punch(l) });
-    const second = after(l, 0.65, 0.2);
+    const second = shown(t, P.relees.start, 0.2);
     line("Relees el chat.", 530, { size: 92, alpha: a * second, dy: (1 - second) * 30 });
-    const pop = ease.back(prog(l, 1.3, 1.65));
+    const pop = pops(t, P.preguntas.start);
     line("Te preguntas si vuelve.", 675, { size: 100, italic: true, gradient: true, glowColor: "rgba(233,196,106,0.5)", alpha: a * clamp(pop * 1.3), scale: lerp(0.75, 1, clamp(pop)) });
   } else if (t < CUTS[5]) {
     // The product: their birth sky, and a reading written for them.
     const l = t - CUTS[4];
     const a = enter(l) * out(t, CUTS[5]);
     line("Astramia lee el cielo", 180, { family: "Geist", size: 54, weight: 600, alpha: a, scale: punch(l) });
-    line("del día que naciste", 275, { size: 96, italic: true, gradient: true, glowColor: "rgba(233,196,106,0.45)", alpha: a * after(l, 0.15) });
-    readingCard(l, a);
+    line("del día que naciste", 275, { size: 96, italic: true, gradient: true, glowColor: "rgba(233,196,106,0.45)", alpha: a * shown(t, P.astramia.words[4].start) });
+    readingCard(t, a);
   } else if (t < CUTS[6]) {
     const l = t - CUTS[5];
     const a = enter(l) * out(t, CUTS[6]);
     glyph(t, 0.1 * a);
     line("Pregúntale a tu carta", 280, { size: 104, alpha: a, scale: punch(l) });
-    const pop = ease.back(prog(l, 0.15, 0.55));
+    const pop = pops(t, P.volver.start);
     line("si va a volver", 420, { size: 150, italic: true, gradient: true, glowColor: "rgba(233,196,106,0.5)", alpha: a * clamp(pop * 1.3), scale: lerp(0.75, 1, clamp(pop)) });
-    button("Empieza gratis", 600, a, ease.back(prog(l, 0.6, 1.0)), l);
-    line("astramia.app", 730, { family: "Geist", size: 44, weight: 500, spacing: 4, color: MUTED, alpha: a * after(l, 1.0, 0.3) });
+    button("Empieza gratis", 600, a, pops(t, P.empieza.start), l);
+    line("astramia.app", 730, { family: "Geist", size: 44, weight: 500, spacing: 4, color: MUTED, alpha: a * shown(t, P.empieza.words[3].start, 0.3) });
   } else {
     // Back to the hook, so the loop runs on without a seam.
     const l = prog(t, CUTS[6], CUTS[7]);

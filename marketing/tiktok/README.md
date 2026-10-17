@@ -17,5 +17,15 @@ with the sound off; bottom, a star hopping planet to planet that keeps the
 eye moving. The first frame already says the whole hook (it's the cover),
 and the last one runs back into the first, so the video loops.
 
-Videos are silent: whoever posts adds a sound from TikTok's Commercial
-Music Library (business accounts and ads can't use the rest).
+Voice-over: drop the take (ElevenLabs, say) in `videos/<name>.voice.mp3`
+and list its phrases, in order, in `videos/<name>.voice.json`: one per
+stretch of speech between pauses, with the `id` the page uses. The render
+shortens the pauses, speeds up only the phrases said too slowly (to about
+6.8 syllables a second, never more than ×1.35, the pitch untouched), and
+lands each word on screen as it's said. `until` cuts a phrase short (the
+"tocó justo…" that stops where the blur starts), `drop` leaves one out.
+`node marketing/tiktok/voice.mjs <name>` prints the fit.
+
+Without a voice the video is silent. Music, if any, comes from TikTok's
+Commercial Music Library (business accounts and ads can't use the rest),
+under the voice.
