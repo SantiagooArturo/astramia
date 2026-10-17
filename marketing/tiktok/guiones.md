@@ -17,6 +17,11 @@ Usan lo que documenta ElevenLabs para Eleven v4
   v4 no funciona `<break time="…"/>`: ese era el de los modelos viejos.
 - **Énfasis:** una palabra en MAYÚSCULAS se dice con más fuerza.
 
+La energía va de más a menos y vuelve a subir: el gancho, directo y con
+urgencia (compite con todo lo que suena en el feed); el medio, íntimo, como
+quien cuenta un secreto; el cierre, cálido y firme. Esa caída es lo que
+retiene: si el gancho ya empieza bajo, no hay a dónde bajar.
+
 Las pausas están justo donde el video cambia de frase. El ajuste las usa
 para encontrar cada frase, así que no hay que agregar pausas en medio de
 una frase.
@@ -47,8 +52,8 @@ directa el 13 de noviembre (8 p. m. en Lima). Fuera de esas fechas el video
 dice algo falso.
 
 ```
-[hushed, mysterious] Si eres Libra... no pases este video.
-[intrigued] Venus es tu planeta. [pause] Y entró RETRÓGRADA a tu signo... hasta el trece de noviembre.
+[urgent, direct] Si eres Libra... NO pases este video.
+[confiding] Venus es tu planeta. [pause] Y entró RETRÓGRADA a tu signo... hasta el trece de noviembre.
 [knowingly] Por eso estás dudando de lo que dabas por seguro.
 [softly] Le das mil vueltas a un mensaje. Cedes para no pelear. [pause] [vulnerable] Y no sabes qué quieres tú.
 [warm, confident] Astramia lee el cielo del día que naciste.
@@ -62,7 +67,7 @@ Para todos los signos. Es la idea de Astramia en 20 segundos: el horóscopo
 mira tu Sol, el amor lo mandan Venus y Marte.
 
 ```
-[intrigued] ¿Por qué tu horóscopo NUNCA te acierta?
+[incredulous, direct] ¿Por qué tu horóscopo NUNCA te acierta?
 [matter-of-fact] Porque le habla a más de seiscientos millones de personas a la vez. [pause] Y solo mira tu Sol.
 [leaning in, confiding] Pero en el amor mandan Venus y Marte.
 Venus dice cómo amas. Marte dice qué te atrae.
@@ -77,7 +82,7 @@ Una cuenta regresiva que la gente discute en los comentarios ("¿y Leo?"), y
 el giro: no manda tu signo, manda tu Venus.
 
 ```
-[mischievously] Los tres signos que siempre vuelven con su ex.
+[excited, gossipy] Los tres signos que SIEMPRE vuelven con su ex.
 Número tres... [playful] Tauro. No vuelve por amor. [pause] Vuelve por costumbre.
 Número dos... [softly] Cáncer. Guarda todos los recuerdos... y un día los vuelve a abrir.
 [building suspense] Y el número uno... [pause] Escorpio. [knowingly] Dice que ya lo superó. [pause] [sarcastic] No es cierto.
