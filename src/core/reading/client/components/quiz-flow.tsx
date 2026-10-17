@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
-import { metaEvent } from "@/core/analytics/client/meta-pixel";
+import { metaCustomEvent, metaEvent } from "@/core/analytics/client/meta-pixel";
 import { track } from "@/core/analytics/client/track";
 import { GoldButton } from "@/core/landing/client/effects";
 import { MONTHS_ES } from "@/core/landing/domain/zodiac";
@@ -127,6 +127,7 @@ export function QuizFlow({
         if (started.current) return;
         started.current = true;
         track("quiz_start", { topic, knownDay: Boolean(knownBirthDay) });
+        metaCustomEvent("InicioCuestionario", { tema: topic });
     }, [topic, knownBirthDay]);
 
     // Only the year is missing: go straight to it.
@@ -185,22 +186,29 @@ export function QuizFlow({
             place: Boolean(birth.place.trim()),
             ms: Date.now() - shownAt.current,
         });
+        const chart = natalChart(
+            parsed.data.birthDate,
+            parsed.data.birthTime ?? null,
+            parsed.data.birthTimeZone,
+        );
+        // Their Sun sign, for the ads (a sign isn't sensitive; answers are).
+        const signo =
+            chart.placements.find((p) => p.body === "Sol")?.sign ?? null;
+        metaCustomEvent("FechaIngresada", { signo });
         setSubmitting(true);
-        setRevealing({
-            chart: natalChart(
-                parsed.data.birthDate,
-                parsed.data.birthTime ?? null,
-                parsed.data.birthTimeZone,
-            ),
-            birthDate: parsed.data.birthDate,
-        });
+        setRevealing({ chart, birthDate: parsed.data.birthDate });
         try {
             await ensureSession();
             // Eden only infers 200 bodies; the 201 envelope is parsed here.
             const { response } = z
                 .object({ response: createdReadingSchema })
                 .parse(await create.mutateAsync(parsed.data));
-            // A reading started: the lead the ads are after.
+            // Quiz done and a reading started: what the ads are after.
+            metaEvent(
+                "CompleteRegistration",
+                { content_name: topic, status: true, signo },
+                `registro-${response.id}`,
+            );
             metaEvent("Lead", { content_name: topic }, `lead-${response.id}`);
             router.push(`/lectura/r/${response.id}`);
         } catch {

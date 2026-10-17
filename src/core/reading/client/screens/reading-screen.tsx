@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { MetaEventOnce } from "@/core/analytics/client/meta-pixel";
 import { Starfield } from "@/core/landing/client/effects";
 import { OFFER } from "@/core/landing/domain/content";
 import { BUSINESS } from "@/core/legal/domain/business";
@@ -25,9 +26,15 @@ function UnlockBox({
     reading: Reading;
     payment: PaymentState;
 }) {
+    // Back from the gateway with a payment, pending or turned down: they
+    // gave their payment details. (Paid goes straight to the story.)
+    const tried = payment !== "none" && (
+        <MetaEventOnce name="AddPaymentInfo" readingId={reading.id} />
+    );
     if (payment === "confirming")
         return (
             <div className={BOX}>
+                {tried}
                 <RefreshWhile />
                 <p className="font-display text-2xl">
                     Estamos confirmando tu pago…
@@ -40,6 +47,7 @@ function UnlockBox({
     if (payment === "review")
         return (
             <div className={BOX}>
+                {tried}
                 <p className="font-display text-2xl">
                     Estamos revisando tu pago
                 </p>
@@ -58,6 +66,7 @@ function UnlockBox({
         );
     return (
         <div className={BOX}>
+            {tried}
             {payment === "failed" && (
                 <p role="alert" className="text-destructive text-sm">
                     El pago no se completó. No se te cobró nada; puedes

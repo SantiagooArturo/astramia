@@ -9,7 +9,10 @@ import {
 } from "motion/react";
 import Link from "next/link";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { metaEvent, READING_VALUE } from "@/core/analytics/client/meta-pixel";
+import {
+    metaEventOnce,
+    READING_VALUE,
+} from "@/core/analytics/client/meta-pixel";
 import { track } from "@/core/analytics/client/track";
 import { Starfield } from "@/core/landing/client/effects";
 import { AstramiaLogo } from "@/core/landing/client/sections/astramia-logo";
@@ -352,22 +355,9 @@ export function ReadingStory({
     useEffect(() => {
         if (content && window.location.hash === `#${CONTINUE_ANCHOR}`) {
             document.getElementById(CONTINUE_ANCHOR)?.scrollIntoView();
-            // Back from paying: the purchase, once per reading even on
-            // reloads, and only on a real reading (not the example's page).
-            const key = `astramia:purchase:${reading.id}`;
-            if (!window.location.pathname.startsWith("/lectura/r/")) return;
-            try {
-                if (!localStorage.getItem(key)) {
-                    metaEvent(
-                        "Purchase",
-                        READING_VALUE,
-                        `purchase-${reading.id}`,
-                    );
-                    localStorage.setItem(key, "1");
-                }
-            } catch {
-                metaEvent("Purchase", READING_VALUE, `purchase-${reading.id}`);
-            }
+            // Back from paying: they gave their payment details, and paid.
+            metaEventOnce("AddPaymentInfo", READING_VALUE, reading.id);
+            metaEventOnce("Purchase", READING_VALUE, reading.id);
         }
     }, [content, reading.id]);
 
@@ -489,7 +479,11 @@ export function ReadingStory({
             { ...props, kind: reached?.kind ?? null },
             reading.id,
         );
-        if (reached?.kind === "door") track("paywall_view", props, reading.id);
+        if (reached?.kind === "door") {
+            track("paywall_view", props, reading.id);
+            // The price, seen: where the free part stops.
+            if (!paid) metaEventOnce("ViewContent", READING_VALUE, reading.id);
+        }
         if (paid && active === story.steps.length - 1)
             track("story_end", props, reading.id);
     }, [active, story, paid, reading.id]);

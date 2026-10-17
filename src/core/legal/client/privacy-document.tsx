@@ -206,14 +206,15 @@ const SECTIONS: LegalSection[] = [
                 <p>
                     Usamos el <strong>píxel de Meta</strong> (Meta Platforms)
                     para medir nuestros anuncios: registra las páginas que
-                    visitas en el sitio y acciones como empezar una lectura,
-                    iniciar un pago o completarlo, y Meta las trata según su
-                    propia política de privacidad. No le enviamos tus
-                    respuestas, tus datos de nacimiento ni tus conversaciones.
-                    Si incorporamos otra herramienta, actualizaremos esta
-                    política indicándola y te pediremos consentimiento cuando
-                    corresponda. Puedes gestionar las cookies desde la
-                    configuración de tu navegador.
+                    visitas en el sitio y acciones como empezar una lectura, ver
+                    el precio, iniciar un pago o completarlo, junto con tu signo
+                    solar, y Meta las trata según su propia política de
+                    privacidad. No le enviamos tus respuestas, tu fecha ni tu
+                    hora de nacimiento, ni tus conversaciones. Si incorporamos
+                    otra herramienta, actualizaremos esta política indicándola y
+                    te pediremos consentimiento cuando corresponda. Puedes
+                    gestionar las cookies desde la configuración de tu
+                    navegador.
                 </p>
             </>
         ),
@@ -257,10 +258,10 @@ const SECTIONS: LegalSection[] = [
                         </>,
                         <>
                             <strong>Publicidad:</strong> Meta Platforms recibe,
-                            mediante su píxel, las páginas que visitas y si
-                            empiezas una lectura o un pago, para medir nuestros
-                            anuncios. Nunca tus respuestas, datos de nacimiento
-                            ni conversaciones.
+                            mediante su píxel, las páginas que visitas, si
+                            empiezas una lectura o un pago y tu signo solar,
+                            para medir nuestros anuncios. Nunca tus respuestas,
+                            tu fecha u hora de nacimiento ni conversaciones.
                         </>,
                         <>
                             <strong>Requerimientos legales:</strong> cuando lo

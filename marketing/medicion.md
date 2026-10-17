@@ -1,0 +1,61 @@
+# Plan de medición
+
+Qué se mide, con qué nombre y en qué momento. Los nombres no cambian: si
+cambian, se rompen los embudos.
+
+## Meta (Pixel 1653247253123702)
+
+| Evento | Tipo | Cuándo se dispara | Parámetros | eventID |
+|---|---|---|---|---|
+| `PageView` | estándar | Cada página, también al pasar de una a otra | — | — |
+| `InicioCuestionario` | personalizado | Abre el cuestionario | `tema` | — |
+| `FechaIngresada` | personalizado | Envía su fecha de nacimiento | `signo` | — |
+| `CompleteRegistration` | estándar | Se crea su lectura: cuestionario terminado | `content_name`, `status`, `signo` | `registro-<lectura>` |
+| `Lead` | estándar | El mismo momento (se queda por si alguna campaña ya lo usa) | `content_name` | `lead-<lectura>` |
+| `ViewContent` | estándar | Llega a donde se corta lo gratis y ve el precio | `value: 19.9`, `currency: 'PEN'` | `viewcontent-<lectura>` |
+| `InitiateCheckout` | estándar | Toca "Desbloquear por S/ 19.90" | `value`, `currency` | — |
+| `AddPaymentInfo` | estándar | Vuelve de Mercado Pago habiendo intentado pagar (aprobado, pendiente o rechazado) | `value`, `currency` | `addpaymentinfo-<lectura>` |
+| `Purchase` | estándar | Vuelve con el pago aprobado | `value: 19.9`, `currency: 'PEN'` | `purchase-<lectura>` |
+
+- **Una vez por lectura.** ViewContent, AddPaymentInfo y Purchase se mandan
+  una sola vez por lectura, aunque recargue o vuelva otro día.
+- **eventID.** Es el id de la lectura, porque una lectura se paga una sola
+  vez. Si luego agregamos la API de Conversiones (eventos desde el
+  servidor), el servidor manda el mismo id y Meta no cuenta doble.
+- **AddPaymentInfo.** El pago es en la página de Mercado Pago y desde ahí no
+  vemos cuándo escribe la tarjeta. Por eso se cuenta al volver con un pago
+  intentado; quien cierra Mercado Pago sin intentar no lo dispara.
+- **Datos sensibles.** Nunca se mandan las respuestas del cuestionario
+  (situación, lo que le dolió) ni la fecha u hora de nacimiento. Solo el
+  tema de la lectura y el signo solar, como dice la política de privacidad.
+- **Conversiones personalizadas.** Para optimizar con InicioCuestionario o
+  FechaIngresada, primero hay que crearlas como "Conversión personalizada"
+  en el Administrador de eventos.
+- **Probar.** En Administrador de eventos → Probar eventos, se hace una
+  lectura real y se ven llegar en vivo.
+
+## Enlaces de los anuncios: utm
+
+El panel (`/panel`, tabla "Del anuncio a la compra") cruza cada anuncio con
+lo que la gente hace después: si empieza el cuestionario, da su fecha, ve el
+precio, va a pagar y paga. Para eso, cada enlace de anuncio necesita sus utm:
+
+- Meta: `?utm_source=facebook&utm_medium=paid&utm_campaign={{campaign.name}}&utm_content={{ad.name}}`
+- TikTok: `?utm_source=tiktok&utm_medium=paid&utm_campaign=__CAMPAIGN_NAME__&utm_content=__CID_NAME__`
+
+Cada persona cuenta para el primer anuncio por el que llegó.
+
+## Nuestra analítica (panel)
+
+Nombres en minúsculas, `objeto_accion`:
+
+- **Visita:** `page_view` (con los utm y el sitio de origen), `page_time`,
+  `click`, `client_error`.
+- **Cuestionario:** `quiz_start`, `quiz_answer` (pregunta, respuesta, paso,
+  tiempo), `quiz_back`, `quiz_submit`, `quiz_error`, `quiz_fail`.
+- **Lectura:** `reading_created` (servidor, cuánto tardó), `reading_view`,
+  `story_step`, `paywall_view`, `story_end`.
+- **Pago:** `checkout_click`, `checkout_open`, `checkout_error`,
+  `checkout_return` (servidor: pagó, falló, pendiente o se fue).
+- **Después de pagar:** `content_written` (servidor), `chat_view`,
+  `chat_send`, `chat_reply` (servidor).

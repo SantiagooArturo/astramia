@@ -17,21 +17,81 @@ declare global {
 /** The team's own panel isn't anyone's visit. */
 const isPanel = (path: string) => path.startsWith("/panel");
 
-type MetaEvent = "Lead" | "InitiateCheckout" | "Purchase";
+/**
+ * Meta's standard events, the ones ads optimize for, by their exact names:
+ * CompleteRegistration (quiz done, reading created; Lead too, which the
+ * first campaigns used), ViewContent (saw the price), InitiateCheckout (the
+ * pay button), AddPaymentInfo (back from the gateway having tried to pay),
+ * Purchase (paid).
+ */
+type MetaEvent =
+    | "Lead"
+    | "CompleteRegistration"
+    | "ViewContent"
+    | "InitiateCheckout"
+    | "AddPaymentInfo"
+    | "Purchase";
+
+/** Ours, for steps Meta has no name for: letters only, no accents. */
+type MetaCustomEvent = "InicioCuestionario" | "FechaIngresada";
+
+const live = () =>
+    typeof window !== "undefined" && !isPanel(window.location.pathname);
 
 /**
- * A Meta standard event, the ones ads optimize for: Lead (a reading
- * started), InitiateCheckout (the pay button), Purchase (paid). `id` lets
- * Meta drop a repeat of the same event.
+ * A standard event. `id` (the eventID) lets Meta drop a repeat, and is what
+ * a server-side copy (Conversions API) would send to match it. Params never
+ * carry what someone told us about their love life: a sign is fine, their
+ * situation isn't.
  */
 export function metaEvent(
     name: MetaEvent,
     params: Record<string, unknown> = {},
     id?: string,
 ): void {
-    if (typeof window === "undefined" || isPanel(window.location.pathname))
-        return;
+    if (!live()) return;
     window.fbq?.("track", name, params, id ? { eventID: id } : undefined);
+}
+
+export function metaCustomEvent(
+    name: MetaCustomEvent,
+    params: Record<string, unknown> = {},
+): void {
+    if (!live()) return;
+    window.fbq?.("trackCustom", name, params);
+}
+
+/**
+ * A standard event once per reading, even across reloads and visits; only
+ * on a real reading (not the example's page).
+ */
+export function metaEventOnce(
+    name: MetaEvent,
+    params: Record<string, unknown>,
+    readingId: string,
+): void {
+    if (!live() || !window.location.pathname.startsWith("/lectura/r/")) return;
+    const key = `astramia:${name.toLowerCase()}:${readingId}`;
+    const id = `${name.toLowerCase()}-${readingId}`;
+    try {
+        if (localStorage.getItem(key)) return;
+        localStorage.setItem(key, "1");
+    } catch {}
+    metaEvent(name, params, id);
+}
+
+/** metaEventOnce from a server-rendered page: fires when it shows. */
+export function MetaEventOnce({
+    name,
+    readingId,
+}: {
+    name: MetaEvent;
+    readingId: string;
+}) {
+    useEffect(() => {
+        metaEventOnce(name, READING_VALUE, readingId);
+    }, [name, readingId]);
+    return null;
 }
 
 /** What one reading costs, as Meta wants it: a number and a currency. */

@@ -431,6 +431,69 @@ export async function sources(
     }));
 }
 
+export interface CampaignFunnel {
+    source: string;
+    campaign: string;
+    ad: string;
+    visitors: number;
+    started: number;
+    dated: number;
+    priced: number;
+    checkout: number;
+    paid: number;
+}
+
+/**
+ * The funnel per ad, from the links' UTMs (utm_source, utm_campaign,
+ * utm_content): each visitor counts for the first one they came by, and for
+ * every step they reached afterwards, in this range.
+ */
+export async function campaigns(since: Date): Promise<CampaignFunnel[]> {
+    const found = await rows(sql`
+        with touch as (
+            select distinct on (visitor_id) visitor_id,
+                coalesce(props ->> 'utm_source', '') as source,
+                coalesce(props ->> 'utm_campaign', '') as campaign,
+                coalesce(props ->> 'utm_content', '') as ad
+            from events
+            where name = 'page_view' and at >= ${since}
+                and coalesce(props ->> 'utm_source', props ->> 'utm_campaign') is not null
+            order by visitor_id, at
+        ),
+        reached as (
+            select e.visitor_id,
+                bool_or(e.name = 'quiz_start') as started,
+                bool_or(e.name = 'quiz_submit') as dated,
+                bool_or(e.name = 'paywall_view') as priced,
+                bool_or(e.name = 'checkout_click') as checkout,
+                bool_or(r.unlocked_at is not null) as paid
+            from events e
+            left join readings r on r.id = e.reading_id
+            where e.at >= ${since} and e.visitor_id in (select visitor_id from touch)
+            group by e.visitor_id
+        )
+        select t.source, t.campaign, t.ad, count(*) as visitors,
+            count(*) filter (where r.started) as started,
+            count(*) filter (where r.dated) as dated,
+            count(*) filter (where r.priced) as priced,
+            count(*) filter (where r.checkout) as checkout,
+            count(*) filter (where r.paid) as paid
+        from touch t join reached r using (visitor_id)
+        group by 1, 2, 3 order by visitors desc limit 20
+    `);
+    return found.map((r) => ({
+        source: String(r.source),
+        campaign: String(r.campaign),
+        ad: String(r.ad),
+        visitors: num(r.visitors),
+        started: num(r.started),
+        dated: num(r.dated),
+        priced: num(r.priced),
+        checkout: num(r.checkout),
+        paid: num(r.paid),
+    }));
+}
+
 /** Visitors on a touch screen (phones, tablets) against the rest. */
 export async function devices(
     since: Date,

@@ -351,6 +351,40 @@ export function DashboardView({ data }: { data: Dashboard }) {
                     />
                 </Card>
             </div>
+
+            <Card
+                title="Del anuncio a la compra"
+                note="Por los utm de cada enlace (utm_source, utm_campaign, utm_content). Cada persona cuenta para el primer anuncio por el que llegó; el % es sobre sus visitas."
+            >
+                <Table
+                    head={[
+                        "Origen · campaña · anuncio",
+                        "Visitas",
+                        "Cuestionario",
+                        "Dieron fecha",
+                        "Vieron precio",
+                        "Fueron a pagar",
+                        "Pagaron",
+                    ]}
+                    rows={data.campaigns.map((c) => [
+                        [c.source, c.campaign, c.ad]
+                            .filter(Boolean)
+                            .join(" · "),
+                        formatCount(c.visitors),
+                        ...[
+                            c.started,
+                            c.dated,
+                            c.priced,
+                            c.checkout,
+                            c.paid,
+                        ].map(
+                            (n) =>
+                                `${formatCount(n)} · ${formatShare(n, c.visitors)}`,
+                        ),
+                    ])}
+                    empty="Ninguna visita con utm todavía: los enlaces de los anuncios necesitan utm_source, utm_campaign y utm_content."
+                />
+            </Card>
         </div>
     );
 }
