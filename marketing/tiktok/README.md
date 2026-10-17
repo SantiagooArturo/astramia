@@ -2,8 +2,11 @@
 
 Short vertical videos (1080×1920) drawn with code: each page in `videos/`
 draws one frame for a given time, and `render.mjs` steps through the frames
-and encodes them with ffmpeg. No AI voice and no stock footage: the sky,
-the planets (the app's own sprites) and the words are ours.
+and encodes them with ffmpeg. No stock footage: the sky, the planets (the
+app's own sprites) and the words are ours. `videos/kit.js` holds what they
+share (the sky, the words, the reading card, the button, the hopping star,
+the scene clock); a page only says when its scenes cut and what each draws.
+The scripts to record are in `guiones.md`.
 
 ```sh
 pnpm video escorpio                      # → marketing/tiktok/out/escorpio.mp4
@@ -26,7 +29,10 @@ lands each word on screen as it's said. `until` cuts a phrase short
 (seconds into the take), `drop` leaves one out: Escorpio's take reads the
 reading card aloud, which sounds odd cut off, so the card stays on screen
 and out of the voice.
-`node marketing/tiktok/voice.mjs <name>` prints the fit.
+`node marketing/tiktok/voice.mjs <name>` prints the fit. Before there's a
+take (no `source`), the timing is estimated from the text: the render is a
+silent preview, and when the take comes in, its `source` goes in the
+config and the words follow the voice instead.
 
 Without a voice the video is silent. Music, if any, comes from TikTok's
 Commercial Music Library (business accounts and ads can't use the rest),

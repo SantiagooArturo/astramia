@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8" />
+<style>html, body { margin: 0; background: #000; } canvas { display: block; }</style>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script type="module">
+// "¿Por qué tu horóscopo nunca te acierta?" — ~21 s, for every sign, any
+// date. A horoscope is the Sun's sign, written for a twelfth of the world;
+// love is Venus and Mars, which can sit in other signs. Venus is never more
+// than two signs from the Sun, so "Aries who loves like Pisces" can happen.
+import { astramiaReads, clamp, cta, ctx, DURATION, ease, GOLD, glow, glyph, goldLine, LEAD, lerp, line, MUTED, P, planet, pops, prog, punch, SIGNS, shown, start } from "./kit.js";
+
+const cuts = [0, P.millones.start - LEAD, P.sol.start - LEAD, P.mandan.start - LEAD, P.venus.start - LEAD, P.distintos.start - LEAD, P.astramia.start - LEAD, P.descubre.start - LEAD, P.empieza.end + 0.25, DURATION];
+
+const ZODIAC = ["aries", "tauro", "geminis", "cancer", "leo", "virgo", "libra", "escorpio", "sagitario", "capricornio", "acuario", "piscis"];
+
+/** The twelve signs on a ring, turning slowly behind everything. */
+function zodiac(t) {
+  const cx = 540, cy = 470, r = 390, turn = t * 0.06;
+  ctx.save();
+  ctx.strokeStyle = "rgba(233,196,106,0.14)"; ctx.lineWidth = 2;
+  for (const rr of [r - 70, r + 50]) { ctx.beginPath(); ctx.arc(cx, cy, rr, 0, 6.283); ctx.stroke(); }
+  ctx.font = "64px Glyphs"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillStyle = GOLD; ctx.globalAlpha = 0.2;
+  ZODIAC.forEach((sign, k) => {
+    const ang = turn + (k * Math.PI) / 6;
+    ctx.fillText(`${SIGNS[sign]}︎`, cx + Math.cos(ang) * r, cy + Math.sin(ang) * r);
+  });
+  ctx.restore();
+}
+
+function hook(t, leave) {
+  const flash = 1 - ease.out(prog(t % DURATION, 0, 0.5));
+  const punch = 1 + 0.08 * Math.max(0, Math.sin(Math.min((t % DURATION) / 0.5, 1) * Math.PI));
+  line("¿Por qué tu horóscopo", 285, { size: 96, alpha: leave });
+  line("NUNCA", 455, { size: 230, gradient: true, glowColor: "rgba(233,196,106,0.55)", alpha: leave, scale: 1 + 0.06 * flash });
+  line("te acierta?", 620, { size: 110, italic: true, alpha: leave, scale: punch });
+}
+
+/** A crowd of little people filling in: everyone with your sign. */
+function crowd(t, a, fill) {
+  const cols = 27, rows = 5;
+  ctx.save();
+  for (let k = 0; k < cols * rows; k++) {
+    if (k / (cols * rows) > fill) break;
+    const x = 110 + (k % cols) * 33, y = 740 + Math.floor(k / cols) * 40;
+    ctx.globalAlpha = a * 0.75;
+    ctx.fillStyle = k % 9 === 4 ? GOLD : MUTED;
+    ctx.beginPath(); ctx.arc(x, y - 9, 6, 0, 6.283); ctx.fill();
+    ctx.beginPath(); ctx.arc(x, y + 8, 10, Math.PI, 0); ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** A planet popping in on the word that names it. */
+function popPlanet(name, x, y, r, pop, a) {
+  if (pop <= 0) return;
+  glow(x, y, r * 2.2, "rgba(255,220,160,ALPHA)", 0.35 * a * clamp(pop));
+  planet(name, x, y, r * lerp(0.6, 1, clamp(pop)), { alpha: a * clamp(pop * 1.3), shade: name !== "sol" });
+}
+
+start({
+  symbol: "♀",
+  backdrop: zodiac,
+  cuts,
+  goal: 7,
+  hook,
+  scenes: [
+    // A twelfth of the world: 8,200 million / 12 ≈ 680 million.
+    (t, l, a) => {
+      const w = P.millones.words.map((x) => x.start);
+      line("Le habla a", 250, { family: "Geist", size: 60, weight: 600, alpha: a, scale: punch(l) });
+      const n = Math.round(600 * ease.out(prog(t, w[4], w[7] + 0.1)));
+      line(`+${n}`, 400, { size: 220, gradient: true, glowColor: "rgba(233,196,106,0.5)", alpha: a * shown(t, w[4]) });
+      line("millones de personas", 545, { size: 84, alpha: a * shown(t, w[7]) });
+      line("a la vez", 640, { size: 84, italic: true, alpha: a * shown(t, w[10]) });
+      crowd(t, a, prog(t, w[4], w[9]));
+    },
+    (t, l, a) => {
+      const w = P.sol.words.map((x) => x.start);
+      line("Y solo mira", 250, { size: 100, alpha: a, scale: punch(l) });
+      goldLine("tu Sol", 390, pops(t, w[3]), a, { size: 170 });
+      popPlanet("sol", 540, 700, 120, pops(t, w[4]), a);
+    },
+    (t, l, a) => {
+      const w = P.mandan.words.map((x) => x.start);
+      line("Pero en el amor", 250, { size: 100, alpha: a, scale: punch(l) });
+      line("mandan", 370, { family: "Geist", size: 56, weight: 600, color: MUTED, alpha: a * shown(t, w[4]) });
+      for (const [name, label, x, at] of [["venus", "Venus", 320, w[5]], ["marte", "Marte", 760, w[7]]]) {
+        const pop = pops(t, at);
+        popPlanet(name, x, 590, 105, pop, a);
+        line(label, 780, { x, size: 92, italic: true, gradient: true, alpha: a * clamp(pop * 1.3), max: 400 });
+      }
+    },
+    // What each one says, one row each.
+    (t, l, a) => {
+      for (const [name, label, text, phrase, y] of [["venus", "VENUS", "cómo amas", P.venus, 330], ["marte", "MARTE", "qué te atrae", P.marte, 640]]) {
+        const on = phrase === P.venus ? 1 : shown(t, phrase.start, 0.25);
+        planet(name, 210, y, 85, { alpha: a * on });
+        line(label, y - 55, { x: 640, family: "Geist", size: 40, weight: 600, spacing: 10, color: GOLD, alpha: a * on, max: 620 });
+        line(text, y + 35, { x: 640, size: 108, italic: true, alpha: a * shown(t, phrase.words[2].start), max: 620 });
+      }
+    },
+    // Sun in Aries, Venus in Pisces: the same person.
+    (t, l, a) => {
+      const w = P.aries.words.map((x) => x.start);
+      line("Y pueden estar en otro signo.", 210, { size: 76, alpha: a, scale: punch(l) });
+      line("Puedes ser Aries", 360, { size: 112, alpha: a * shown(t, P.aries.start) });
+      goldLine("y amar como Piscis", 490, pops(t, w[6]), a, { size: 120 });
+      for (const [symbol, label, x, at] of [["♈", "tu Sol", 340, w[2]], ["♓", "tu Venus", 740, w[6]]]) {
+        const pop = clamp(pops(t, at));
+        glyph(t, 0.9 * a * pop, { symbol, x, y: 720, size: 150 * lerp(0.6, 1, pop) });
+        line(label, 840, { x, family: "Geist", size: 38, weight: 600, spacing: 6, color: MUTED, alpha: a * pop });
+      }
+    },
+    (t, l, a) => astramiaReads(t, l, a, {
+      phrase: P.astramia,
+      text: "Tu Sol es Aries, pero tu Venus es Piscis: por fuera vas rápido y por dentro",
+      hidden: "te enamoras despacio.",
+    }),
+    (t, l, a) => {
+      glyph(t, 0.1 * a);
+      line("Descubre cómo amas", 280, { size: 104, alpha: a, scale: punch(l) });
+      goldLine("de verdad", 420, pops(t, P.descubre.words[3].start), a);
+      cta(t, l, a, { at: P.empieza.start, url: P.empieza.words[3].start });
+    },
+  ],
+});
+</script>
+</html>

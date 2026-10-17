@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8" />
+<style>html, body { margin: 0; background: #000; } canvas { display: block; }</style>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script type="module">
+// "Si eres Libra, no pases este video" — ~21 s. Venus, Libra's ruler, goes
+// back into Libra on 24 Oct 2026 (13:00 in Lima) and turns direct on 13 Nov
+// (20:00 in Lima): post it in between.
+import { astramiaReads, cta, ctx, DURATION, font, GOLD, glyph, goldLine, ifYouAre, LEAD, line, P, pops, punch, retrogradeIn, shown, start, words } from "./kit.js";
+
+const cuts = [0, P.venus.start - LEAD, P.dudando.start - LEAD, P.vueltas.start - LEAD, P.astramia.start - LEAD, P.carta.start - LEAD, P.empieza.end + 0.25, DURATION];
+
+/** Libra's scales, never settling: doubt. */
+function scales(t, a, x = 540, y = 800) {
+  const tilt = Math.sin(t * 2.6) * 0.2;
+  const dx = Math.cos(tilt) * 170, dy = Math.sin(tilt) * 170, top = y - 80;
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.strokeStyle = GOLD; ctx.lineWidth = 5; ctx.lineCap = "round";
+  ctx.shadowColor = "rgba(233,196,106,0.7)"; ctx.shadowBlur = 20;
+  ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, y + 80); ctx.moveTo(x - 60, y + 80); ctx.lineTo(x + 60, y + 80); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x - dx, top - dy); ctx.lineTo(x + dx, top + dy); ctx.stroke();
+  for (const side of [-1, 1]) {
+    const px = x + side * dx, py = top + side * dy;
+    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(px - 45, py + 70); ctx.moveTo(px, py); ctx.lineTo(px + 45, py + 70); ctx.stroke();
+    ctx.beginPath(); ctx.arc(px, py + 70, 50, 0, Math.PI); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+/** A message typed and deleted, over and over. */
+function draft(t, a, y = 250) {
+  const text = "oye, ¿podemos hablar?";
+  const u = (t * 0.9) % 1;
+  const n = Math.round(text.length * (u < 0.6 ? u / 0.6 : u > 0.75 ? 1 - (u - 0.75) / 0.25 : 1));
+  ctx.save();
+  ctx.globalAlpha = a;
+  ctx.fillStyle = "rgba(255,255,255,0.08)"; ctx.strokeStyle = "rgba(255,255,255,0.18)"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(230, y - 42, 620, 84, 42); ctx.fill(); ctx.stroke();
+  ctx.font = font("Geist", 38, { weight: 500 }); ctx.fillStyle = "#e9e6f7"; ctx.textBaseline = "middle";
+  const shown = text.slice(0, n);
+  ctx.fillText(shown, 270, y + 2);
+  if (Math.sin(t * 16) > -0.2) { ctx.fillStyle = GOLD; ctx.fillRect(272 + ctx.measureText(shown).width, y - 22, 3, 44); }
+  ctx.restore();
+}
+
+start({
+  symbol: "♎",
+  constellation: "libra",
+  cuts,
+  goal: 5,
+  hook: ifYouAre("Libra"),
+  scenes: [
+    // Why now: Venus, their own planet, backwards in their sign.
+    (t, l, a) => retrogradeIn(t, l, a, {
+      from: cuts[1] + 0.2, to: cuts[2],
+      lead: "Venus, tu planeta,", word: P.entro.words[2].start,
+      sign: "en tu signo", signAt: P.entro.words[3].start,
+      until: "hasta el 13 de noviembre", untilAt: P.fecha.start,
+    }),
+    (t, l, a) => {
+      const w = P.dudando.words.map((x) => x.start);
+      words(["Por", "eso", "estás"], 280, [cuts[2], w[1], w[2]], { size: 100, alpha: a }, t);
+      words([{ text: "dudando", gold: true }], 400, [w[3]], { size: 130, italic: true, alpha: a }, t);
+      words(["de", "lo", "que", "dabas"], 520, w.slice(4, 8), { size: 100, alpha: a }, t);
+      words(["por", { text: "seguro", gold: true }], 630, w.slice(8), { size: 100, italic: true, alpha: a }, t);
+      scales(t, a * shown(t, w[3], 0.4));
+    },
+    // Things they do, not things they are.
+    (t, l, a) => {
+      draft(t, a);
+      line("Le das mil vueltas a un mensaje.", 400, { size: 92, alpha: a, scale: punch(l) });
+      const second = shown(t, P.cedes.start, 0.2);
+      line("Cedes para no pelear.", 530, { size: 92, alpha: a * second, dy: (1 - second) * 30 });
+      goldLine("Y no sabes qué quieres tú.", 675, pops(t, P.quieres.start), a, { size: 100 });
+    },
+    (t, l, a) => astramiaReads(t, l, a, {
+      phrase: P.astramia,
+      text: "No es que no sepas lo que quieres. Es que aprendiste a querer primero",
+      hidden: "lo que quiere la otra persona.",
+    }),
+    (t, l, a) => {
+      glyph(t, 0.1 * a);
+      line("Pregúntale a tu carta", 280, { size: 104, alpha: a, scale: punch(l) });
+      goldLine("qué persona te conviene", 420, pops(t, P.conviene.start), a, { size: 130 });
+      cta(t, l, a, { at: P.empieza.start, url: P.empieza.words[3].start });
+    },
+  ],
+});
+</script>
+</html>

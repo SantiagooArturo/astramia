@@ -1,0 +1,29 @@
+{
+    "phrases": [
+        { "id": "eres", "text": "Si eres Libra,", "maxTempo": 1.15 },
+        {
+            "id": "pases",
+            "text": "no pases este video.",
+            "maxTempo": 1.15,
+            "pause": 0.22
+        },
+        { "id": "venus", "text": "Venus es tu planeta.", "pause": 0.08 },
+        { "id": "entro", "text": "Y entró retrógrada a tu signo." },
+        { "id": "fecha", "text": "Hasta el trece de noviembre." },
+        {
+            "id": "dudando",
+            "text": "Por eso estás dudando de lo que dabas por seguro."
+        },
+        { "id": "vueltas", "text": "Le das mil vueltas a un mensaje." },
+        { "id": "cedes", "text": "Cedes para no pelear." },
+        { "id": "quieres", "text": "Y no sabes qué quieres tú." },
+        {
+            "id": "astramia",
+            "text": "Astramia lee el cielo del día que naciste.",
+            "pause": 0.6
+        },
+        { "id": "carta", "text": "Pregúntale a tu carta", "pause": 0.06 },
+        { "id": "conviene", "text": "qué persona te conviene." },
+        { "id": "empieza", "text": "Empieza gratis en astramia punto app." }
+    ]
+}

@@ -1,0 +1,42 @@
+{
+    "phrases": [
+        {
+            "id": "hook",
+            "text": "Los tres signos que siempre vuelven con su ex.",
+            "maxTempo": 1.15,
+            "pause": 0.22
+        },
+        { "id": "n3", "text": "Número tres:", "pause": 0.08 },
+        { "id": "tauro", "text": "Tauro." },
+        { "id": "amor", "text": "No vuelve por amor.", "pause": 0.08 },
+        { "id": "costumbre", "text": "Vuelve por costumbre." },
+        { "id": "n2", "text": "Número dos:", "pause": 0.08 },
+        { "id": "cancer", "text": "Cáncer." },
+        {
+            "id": "recuerdo",
+            "text": "Guarda todos los recuerdos,",
+            "pause": 0.06
+        },
+        { "id": "abrir", "text": "y un día los vuelve a abrir." },
+        { "id": "n1", "text": "Y el número uno:", "pause": 0.08 },
+        { "id": "escorpio", "text": "Escorpio." },
+        { "id": "supero", "text": "Dice que ya lo superó.", "pause": 0.1 },
+        { "id": "cierto", "text": "No es cierto." },
+        {
+            "id": "signo",
+            "text": "Pero aquí no manda tu signo.",
+            "pause": 0.08
+        },
+        { "id": "manda", "text": "Manda tu Venus." },
+        {
+            "id": "astramia",
+            "text": "Astramia lee el cielo del día que naciste.",
+            "pause": 0.6
+        },
+        {
+            "id": "vuelven",
+            "text": "Descubre gratis si tu Venus es de las que vuelven."
+        },
+        { "id": "empieza", "text": "Entra a astramia punto app." }
+    ]
+}

@@ -38,6 +38,7 @@ function file(path) {
 
 const TYPES = {
     html: "text/html",
+    js: "text/javascript",
     woff2: "font/woff2",
     ttf: "font/ttf",
     webp: "image/webp",
@@ -65,6 +66,8 @@ await page.route("http://video.local/**", (route) => {
     });
 });
 const voice = await fitVoice(name, { audio: !stills });
+if (voice?.estimated)
+    console.log(`${name}: no take yet, timing estimated from the text`);
 if (voice)
     await page.addInitScript((timing) => {
         window.VOICE = timing;
@@ -94,7 +97,7 @@ if (stills) {
     const target = resolve(out, `${name}.mp4`);
     // H.264 high, yuv420p, the voice or a silent track (some apps want one),
     // fast start.
-    const sound = voice
+    const sound = voice?.file
         ? ["-i", voice.file, "-af", "apad"]
         : [
               ...["-f", "lavfi", "-i"],

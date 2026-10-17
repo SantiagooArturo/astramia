@@ -7,7 +7,9 @@
 // videos/<name>.voice.json lists the phrases in the take, in order, one per
 // stretch of speech between pauses: { id, text, pause?, maxTempo?, until?,
 // drop? }. `until` cuts a phrase short (seconds in the take), `drop` leaves it
-// out. render.mjs calls fitVoice() and hands the timing to the page.
+// out. render.mjs calls fitVoice() and hands the timing to the page. Before
+// there's a take (no `source`, or no such file), the timing is estimated from
+// the text at the target pace, for a silent preview.
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -79,13 +81,12 @@ export async function fitVoice(name, { audio = false } = {}) {
     const configFile = resolve(here, "videos", `${name}.voice.json`);
     if (!existsSync(configFile)) return null;
     const config = JSON.parse(readFileSync(configFile, "utf8"));
-    const source = resolve(here, "videos", config.source);
-    const stretches = await speech(
-        source,
-        config.noise ?? -38,
-        config.minPause ?? 0.18,
-    );
-    if (stretches.length !== config.phrases.length) {
+    const source = config.source && resolve(here, "videos", config.source);
+    const take = Boolean(source && existsSync(source));
+    const stretches = take
+        ? await speech(source, config.noise ?? -38, config.minPause ?? 0.18)
+        : null;
+    if (take && stretches.length !== config.phrases.length) {
         const found = stretches
             .map((s) => `  ${s.start.toFixed(2)}–${s.end.toFixed(2)}`)
             .join("\n");
@@ -98,14 +99,17 @@ export async function fitVoice(name, { audio = false } = {}) {
     const EDGE = 0.03;
     const phrases = {};
     const parts = [];
+    const pace = config.rate ?? 6.8;
     let at = 0;
     config.phrases.forEach((phrase, i) => {
         if (phrase.drop) return;
-        const from = Math.max(0, stretches[i].start - EDGE);
-        const to = phrase.until ?? stretches[i].end + EDGE;
+        const from = take ? Math.max(0, stretches[i].start - EDGE) : 0;
+        const to = take
+            ? (phrase.until ?? stretches[i].end + EDGE)
+            : syllables(phrase.text) / pace;
         const rate = syllables(phrase.text) / (to - from);
         const tempo = Math.min(
-            Math.max((config.rate ?? 6.8) / rate, 1),
+            Math.max(pace / rate, 1),
             phrase.maxTempo ?? config.maxTempo ?? 1.35,
         );
         const length = (to - from) / tempo;
@@ -142,7 +146,7 @@ export async function fitVoice(name, { audio = false } = {}) {
     const duration = at + (config.tail ?? 0.6);
 
     let file = null;
-    if (audio) {
+    if (audio && take) {
         file = resolve(here, "out", `${name}.voice.wav`);
         const chains = parts.map(
             (p, i) =>
@@ -159,7 +163,7 @@ export async function fitVoice(name, { audio = false } = {}) {
             ...["-map", "[voice]", "-ar", "44100", "-ac", "1", file],
         ]);
     }
-    return { timing: { duration, phrases }, parts, file };
+    return { timing: { duration, phrases }, parts, file, estimated: !take };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -174,6 +178,8 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
             `${phrase.start.toFixed(2).padStart(6)}  ×${p.tempo.toFixed(2)}  ${(p.to - p.from).toFixed(2)}→${p.length.toFixed(2)} s  ${phrase.text}`,
         );
     }
-    console.log(`duration ${voice.timing.duration.toFixed(2)} s`);
+    console.log(
+        `duration ${voice.timing.duration.toFixed(2)} s${voice.estimated ? " (estimated: no take yet)" : ""}`,
+    );
     if (voice.file) console.log(`→ ${voice.file}`);
 }
