@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<style>
+  @font-face { font-family: "Instrument"; src: url(/assets/instrument-serif.woff2); }
+  @font-face { font-family: "Instrument"; font-style: italic; src: url(/assets/instrument-serif-italic.woff2); }
+  @font-face { font-family: "Geist"; src: url(/assets/geist.woff2); font-weight: 100 900; }
+  @font-face { font-family: "Glyphs"; src: url(/assets/DejaVuSans.ttf); }
+  html, body { margin: 0; background: #000; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+// "Si eres Escorpio, no pases este video" — 15 s, 1080×1920, split screen.
+// Top: the hook and the words, over the sky. Bottom: a star hopping from
+// planet to planet, landing on Scorpio's glyph when the call to action
+// comes. Everything is a function of t, so any frame renders alike.
+const W = 1080, H = 1920, HALF = 960, DURATION = 15;
+const canvas = document.getElementById("c");
+const ctx = canvas.getContext("2d");
+
+const GOLD = "#e9c46a", GOLD_DEEP = "#c9973a", INK = "#f6f2ff", MUTED = "#b9b3d6";
+const BG_TOP = "#070614", BG_BOTTOM = "#0b0820";
+
+// ---------- helpers ----------
+function rng(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a |= 0; a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const clamp = (x, a = 0, b = 1) => Math.min(Math.max(x, a), b);
+const lerp = (a, b, u) => a + (b - a) * u;
+const ease = {
+  out: (u) => 1 - (1 - u) ** 3,
+  inOut: (u) => (u < 0.5 ? 4 * u * u * u : 1 - (-2 * u + 2) ** 3 / 2),
+  back: (u) => { const c = 1.9; return 1 + (c + 1) * (u - 1) ** 3 + c * (u - 1) ** 2; },
+};
+/** 0→1 between a and b. */
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+
+const images = {};
+function load(name) {
+  return new Promise((ok) => {
+    const img = new Image();
+    img.onload = () => { images[name] = img; ok(); };
+    img.src = `/planets/sprites/${name}.webp`;
+  });
+}
+
+// ---------- starfields ----------
+const topStars = (() => { const r = rng(7); return Array.from({ length: 260 }, () => ({ x: r() * W, y: r() * HALF, s: 0.6 + r() * 2.2, p: r() * 6.28, sp: 0.5 + r() * 2 })); })();
+const farStars = (() => { const r = rng(11); return Array.from({ length: 220 }, () => ({ x: r() * 4000, y: HALF + r() * HALF, s: 0.5 + r() * 1.6, p: r() * 6.28 })); })();
+const dust = (() => { const r = rng(13); return Array.from({ length: 60 }, () => ({ x: r() * 3000, y: HALF + 60 + r() * (HALF - 120), s: 1 + r() * 2.5 })); })();
+
+function drawStars(list, t, ox = 0, wrap = 0) {
+  for (const s of list) {
+    const tw = 0.45 + 0.55 * Math.abs(Math.sin(t * (s.sp ?? 1.2) + s.p));
+    let x = s.x - ox;
+    if (wrap) x = ((x % wrap) + wrap) % wrap;
+    ctx.globalAlpha = tw;
+    ctx.fillStyle = "#fff";
+    ctx.beginPath(); ctx.arc(x, s.y, s.s, 0, 6.283); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function glow(x, y, r, color, alpha) {
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, color.replace("ALPHA", alpha));
+  g.addColorStop(1, color.replace("ALPHA", 0));
+  ctx.fillStyle = g;
+  ctx.fillRect(x - r, y - r, r * 2, r * 2);
+}
+
+// ---------- text ----------
+function font(family, size, { italic = false, weight = 400 } = {}) {
+  return `${italic ? "italic " : ""}${weight} ${size}px ${family}`;
+}
+/** A line, centered, shrunk to fit `max` width; returns its width. */
+function line(text, y, { family = "Instrument", size = 100, italic = false, weight = 400, color = INK, alpha = 1, scale = 1, dy = 0, blur = 0, glowColor = null, spacing = 0, max = 900, gradient = false } = {}) {
+  if (alpha <= 0) return 0;
+  ctx.save();
+  ctx.font = font(family, size, { italic, weight });
+  ctx.letterSpacing = `${spacing}px`;
+  const w = ctx.measureText(text).width;
+  const fit = w > max ? max / w : 1;
+  ctx.translate(540, y + dy);
+  ctx.scale(scale * fit, scale * fit);
+  ctx.globalAlpha = alpha;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  if (blur) ctx.filter = `blur(${blur}px)`;
+  if (glowColor) { ctx.shadowColor = glowColor; ctx.shadowBlur = 40; }
+  if (gradient) {
+    const g = ctx.createLinearGradient(-w / 2, -size / 2, w / 2, size / 2);
+    g.addColorStop(0, "#fff4d6"); g.addColorStop(0.5, GOLD); g.addColorStop(1, GOLD_DEEP);
+    ctx.fillStyle = g;
+  } else ctx.fillStyle = color;
+  ctx.fillText(text, 0, 0);
+  ctx.restore();
+  return w * fit;
+}
+/** Words that land one after another, centered as a line. */
+function words(list, y, start, gap, style, t) {
+  ctx.save();
+  ctx.font = font(style.family ?? "Instrument", style.size, style);
+  const space = ctx.measureText(" ").width;
+  const widths = list.map((w) => ctx.measureText(w.text ?? w).width);
+  ctx.restore();
+  const total = widths.reduce((a, b) => a + b, 0) + space * (list.length - 1);
+  let x = 540 - total / 2;
+  list.forEach((w, i) => {
+    const word = w.text ?? w;
+    const u = prog(t, start + i * gap, start + i * gap + 0.28);
+    const a = ease.out(u);
+    ctx.save();
+    ctx.font = font(style.family ?? "Instrument", style.size, style);
+    ctx.textBaseline = "middle";
+    ctx.globalAlpha = a * (style.alpha ?? 1);
+    const blur = w.blurUntil ? lerp(18, 0, ease.out(prog(t, w.blurUntil, w.blurUntil + 0.35))) : 0;
+    if (blur > 0.1) ctx.filter = `blur(${blur}px)`;
+    if (w.gold) { ctx.fillStyle = GOLD; ctx.shadowColor = "rgba(233,196,106,0.8)"; ctx.shadowBlur = 30; }
+    else ctx.fillStyle = style.color ?? INK;
+    ctx.fillText(word, x, y + (1 - a) * 40);
+    ctx.restore();
+    x += widths[i] + space;
+  });
+}
+
+// ---------- Scorpio ----------
+// Scorpius, roughly as seen: head (claws) top right, tail curling down left.
+const SCORPIUS = [
+  [0.80, 0.08], [0.83, 0.18], [0.78, 0.28], [0.70, 0.36], [0.63, 0.45],
+  [0.58, 0.56], [0.55, 0.68], [0.48, 0.78], [0.38, 0.84], [0.28, 0.82],
+  [0.22, 0.74], [0.26, 0.66],
+];
+function scorpius(t, alpha) {
+  const ox = 120, oy = 120, w = 840, h = 760;
+  const drawn = ease.inOut(prog(t, 0, 1.4));
+  const n = SCORPIUS.length;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = "rgba(233,196,106,0.35)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  const upto = drawn * (n - 1);
+  for (let i = 0; i <= Math.floor(upto) && i < n; i++) {
+    const [x, y] = SCORPIUS[i];
+    i === 0 ? ctx.moveTo(ox + x * w, oy + y * h) : ctx.lineTo(ox + x * w, oy + y * h);
+  }
+  const k = Math.floor(upto);
+  if (k < n - 1) {
+    const f = upto - k, [x1, y1] = SCORPIUS[k], [x2, y2] = SCORPIUS[k + 1];
+    ctx.lineTo(ox + lerp(x1, x2, f) * w, oy + lerp(y1, y2, f) * h);
+  }
+  ctx.stroke();
+  SCORPIUS.forEach(([x, y], i) => {
+    if (i > upto + 0.5) return;
+    const big = i === 5; // Antares, the heart
+    const r = big ? 7 : 3.5;
+    glow(ox + x * w, oy + y * h, big ? 50 : 22, big ? "rgba(255,120,80,ALPHA)" : "rgba(255,240,210,ALPHA)", 0.7 * alpha);
+    ctx.fillStyle = big ? "#ffb08a" : "#fff6e0";
+    ctx.beginPath(); ctx.arc(ox + x * w, oy + y * h, r, 0, 6.283); ctx.fill();
+  });
+  ctx.restore();
+}
+
+function glyph(t, alpha, x = 540, y = 520, size = 520) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.font = `${size}px Glyphs`;
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillStyle = GOLD;
+  ctx.shadowColor = "rgba(233,196,106,0.9)"; ctx.shadowBlur = 60;
+  const s = 1 + 0.03 * Math.sin(t * 3);
+  ctx.translate(x, y); ctx.scale(s, s);
+  ctx.fillText("♏︎", 0, 0);
+  ctx.restore();
+}
+
+function planet(name, x, y, r, { shade = true, alpha = 1 } = {}) {
+  const img = images[name];
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const half = r / 0.86;
+  ctx.drawImage(img, x - half, y - half, half * 2, half * 2);
+  if (shade) {
+    const g = ctx.createRadialGradient(x - r * 0.4, y - r * 0.45, r * 0.1, x, y, r * 1.05);
+    g.addColorStop(0, "rgba(0,0,0,0)");
+    g.addColorStop(0.65, "rgba(3,3,12,0.15)");
+    g.addColorStop(1, "rgba(3,3,12,0.75)");
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// ---------- the top half ----------
+// Scene boundaries; the star below lands on each of them.
+const CUTS = [0, 2.2, 5.0, 8.0, 9.4, 10.8, 14.0, 15.0];
+
+/** A scene leaving: a hard cut, the words stay until the next ones land. */
+function out(t, end) { return 1 - prog(t, end - 0.04, end); }
+/** A scene coming in: never from nothing (the top is never empty), with a punch. */
+function enter(l) { return 0.4 + 0.6 * ease.out(prog(l, 0, 0.18)); }
+function punch(l) { return 1 + 0.07 * (1 - ease.out(prog(l, 0, 0.3))); }
+
+function hook(t, local) {
+  // On screen from the very first frame: the feed shows frame 0.
+  const leave = local === undefined ? 1 : out(local, 2.2);
+  const flash = 1 - ease.out(prog(t % DURATION, 0, 0.5));
+  glyph(t, 0.16 * leave);
+  line("SI ERES", 330, { family: "Geist", size: 54, weight: 600, spacing: 16, color: GOLD, alpha: leave, dy: (1 - leave) * -30 });
+  line("ESCORPIO", 455, { size: 200, gradient: true, glowColor: "rgba(233,196,106,0.55)", alpha: leave, scale: 1 + 0.06 * flash, dy: (1 - leave) * -30, max: 940 });
+  // Already there on frame 0 (it's the cover); a punch-in gives it motion.
+  const punch = 1 + 0.08 * Math.max(0, Math.sin(Math.min((t % DURATION) / 0.5, 1) * Math.PI));
+  line("no pases este video", 590, { size: 96, italic: true, alpha: leave, scale: punch, dy: (1 - leave) * -30 });
+}
+
+function drawTop(t) {
+  // Sky.
+  const g = ctx.createLinearGradient(0, 0, 0, HALF);
+  g.addColorStop(0, BG_TOP); g.addColorStop(1, "#140a2c");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, HALF);
+  glow(820, 260, 520, "rgba(122,72,200,ALPHA)", 0.35);
+  glow(220, 720, 460, "rgba(201,151,58,ALPHA)", 0.16);
+  drawStars(topStars, t);
+  scorpius(t, 0.9);
+
+  // Frame 0 flash: a burst of gold that stops the thumb.
+  // A burst of gold behind the title on the first frames: it stops the
+  // thumb without washing out the words.
+  const flash = 1 - ease.out(prog(t, 0, 0.6));
+  if (flash > 0) glow(540, 455, 620, "rgba(255,214,120,ALPHA)", 0.35 * flash);
+
+  if (t < CUTS[1]) hook(t, t);
+  else if (t < CUTS[2]) {
+    const l = t - CUTS[1];
+    const a = enter(l) * out(t, CUTS[2]);
+    glyph(t, 0.12 * a);
+    line("Venus está", 330, { family: "Geist", size: 60, weight: 600, alpha: a, scale: punch(l) });
+    const pop = ease.back(prog(l, 0.1, 0.5));
+    line("retrógrada", 470, { size: 190, italic: true, gradient: true, glowColor: "rgba(233,196,106,0.5)", alpha: a * clamp(pop * 1.3), scale: lerp(0.7, 1, clamp(pop)) });
+    line("justo en tu signo", 600, { size: 84, alpha: a * ease.out(prog(l, 0.7, 1.0)) });
+    // Venus walking backwards over Scorpio, a little loop in its path.
+    const u = ease.inOut(prog(l, 0.2, 2.6));
+    const vx = lerp(820, 300, u) + Math.sin(u * Math.PI * 2) * 60;
+    const vy = 760 - Math.sin(u * Math.PI) * 40 - Math.sin(u * Math.PI * 2) * 30;
+    for (let k = 1; k <= 14; k++) {
+      const uk = clamp(u - k * 0.02);
+      const tx = lerp(820, 300, uk) + Math.sin(uk * Math.PI * 2) * 60;
+      const ty = 760 - Math.sin(uk * Math.PI) * 40 - Math.sin(uk * Math.PI * 2) * 30;
+      ctx.globalAlpha = a * (1 - k / 15) * 0.5;
+      ctx.fillStyle = GOLD; ctx.beginPath(); ctx.arc(tx, ty, 7 - k * 0.35, 0, 6.283); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    glow(vx, vy, 120, "rgba(255,230,170,ALPHA)", 0.5 * a);
+    planet("venus", vx, vy, 48, { alpha: a });
+  } else if (t < CUTS[3]) {
+    const l = t - CUTS[2];
+    const a = enter(l) * out(t, CUTS[3]);
+    glyph(t, 0.1 * a);
+    words(["por", "eso", "alguien"], 330, -0.2, 0.1, { size: 104, alpha: a }, l);
+    words([{ text: "que", gold: false }, { text: "ya", gold: true }, { text: "se", gold: true }, { text: "fue", gold: true }], 460, 0.55, 0.16, { size: 104, italic: true, alpha: a }, l);
+    words(["sigue", "en", "tu", { text: "cabeza", gold: true, blurUntil: 1.95 }], 600, 1.15, 0.16, { size: 104, alpha: a }, l);
+  } else if (t < CUTS[4]) {
+    const l = t - CUTS[3];
+    const a = enter(l) * out(t, CUTS[4]);
+    line("Pero eso", 400, { size: 130, alpha: a, scale: punch(l) });
+    line("es tu signo.", 540, { size: 130, alpha: a * ease.out(prog(l, 0.2, 0.45)) });
+  } else if (t < CUTS[5]) {
+    const l = t - CUTS[4];
+    const a = enter(l) * out(t, CUTS[5]);
+    line("Cómo amas", 360, { family: "Geist", size: 62, weight: 600, alpha: a, scale: punch(l) });
+    const pop = ease.back(prog(l, 0.15, 0.55));
+    line("lo dice tu Venus", 500, { size: 150, italic: true, gradient: true, glowColor: "rgba(233,196,106,0.5)", alpha: a * clamp(pop * 1.3), scale: lerp(0.75, 1, clamp(pop)), max: 960 });
+    glow(540, 700, 160, "rgba(255,230,170,ALPHA)", 0.45 * a);
+    planet("venus", 540, 700, 62, { alpha: a * ease.out(prog(l, 0.3, 0.7)) });
+  } else if (t < CUTS[6]) {
+    const l = t - CUTS[5];
+    const a = enter(l) * out(t, CUTS[6]);
+    glyph(t, 0.1 * a);
+    line("¿En qué signo", 330, { size: 120, alpha: a, scale: punch(l) });
+    line("está la tuya?", 460, { size: 120, italic: true, alpha: a * ease.out(prog(l, 0.2, 0.45)) });
+    // The button: gold pill with a sheen passing over it.
+    const pop = ease.back(prog(l, 0.6, 1.0));
+    if (pop > 0) {
+      ctx.save();
+      ctx.globalAlpha = a * clamp(pop * 1.3);
+      ctx.translate(540, 630);
+      const s = lerp(0.6, 1, clamp(pop)) * (1 + 0.025 * Math.sin(l * 6));
+      ctx.scale(s, s);
+      const bw = 560, bh = 112;
+      ctx.shadowColor = "rgba(233,196,106,0.8)"; ctx.shadowBlur = 50;
+      const bg = ctx.createLinearGradient(-bw / 2, 0, bw / 2, 0);
+      bg.addColorStop(0, "#f7dc95"); bg.addColorStop(1, GOLD_DEEP);
+      ctx.fillStyle = bg;
+      ctx.beginPath(); ctx.roundRect(-bw / 2, -bh / 2, bw, bh, bh / 2); ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.save();
+      ctx.beginPath(); ctx.roundRect(-bw / 2, -bh / 2, bw, bh, bh / 2); ctx.clip();
+      const sx = lerp(-bw, bw, (l * 0.7) % 1);
+      const sh = ctx.createLinearGradient(sx - 80, 0, sx + 80, 0);
+      sh.addColorStop(0, "rgba(255,255,255,0)"); sh.addColorStop(0.5, "rgba(255,255,255,0.55)"); sh.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = sh; ctx.fillRect(-bw / 2, -bh / 2, bw, bh);
+      ctx.restore();
+      ctx.font = font("Geist", 46, { weight: 650 });
+      ctx.fillStyle = "#1a1030"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("Descúbrela gratis", 0, 3);
+      ctx.restore();
+    }
+    line("astramia.app", 760, { family: "Geist", size: 44, weight: 500, spacing: 4, color: MUTED, alpha: a * ease.out(prog(l, 1.0, 1.3)) });
+  } else {
+    // Back to the hook, so the loop runs on without a seam.
+    const l = prog(t, CUTS[6], CUTS[7]);
+    const flash = Math.sin(l * Math.PI);
+    glow(540, 460, 900, "rgba(255,226,150,ALPHA)", 0.35 * flash);
+    ctx.globalAlpha = ease.out(prog(t, CUTS[6] + 0.1, CUTS[7]));
+    hook(t, undefined);
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ---------- the bottom half: a star hopping planet to planet ----------
+const NAMES = ["luna", "marte", "tierra", "venus"];
+// Landing times: each scene split into even hops, landing on every cut.
+const LANDINGS = (() => {
+  const out = [];
+  for (let i = 0; i < CUTS.length - 1; i++) {
+    const a = CUTS[i], b = CUTS[i + 1];
+    const n = Math.max(1, Math.round((b - a) / 0.5));
+    for (let k = 0; k < n; k++) out.push(a + ((b - a) * k) / n);
+  }
+  out.push(CUTS[CUTS.length - 1]);
+  return out;
+})();
+const GOAL = LANDINGS.indexOf(CUTS[5]); // lands on Scorpio with the call to action
+const PLATFORMS = (() => {
+  const r = rng(21);
+  let x = 380;
+  const list = [];
+  LANDINGS.forEach((_, i) => {
+    // After landing on Scorpio, one hop in place: the moment of the button.
+    if (i === GOAL + 1) { list.push(list[GOAL]); return; }
+    const big = i === GOAL;
+    const p = { x, y: big ? 1380 : 1320 + r() * 150, r: big ? 150 : 70 + r() * 50, name: NAMES[i % NAMES.length], goal: big, ph: r() * 6.28 };
+    if (i === GOAL) p.x = x + 60;
+    x = p.x + 330 + r() * 120 + (big || i + 1 === GOAL ? 120 : 0);
+    list.push(p);
+  });
+  return list;
+})();
+
+function platformY(p, t) { return p.y + Math.sin(t * 2.2 + p.ph) * 7; }
+/** Where the star is at t: on a parabola from one landing to the next. */
+function star(t) {
+  let i = 0;
+  while (i < LANDINGS.length - 2 && t >= LANDINGS[i + 1]) i++;
+  const a = PLATFORMS[i], b = PLATFORMS[i + 1];
+  const u = clamp((t - LANDINGS[i]) / (LANDINGS[i + 1] - LANDINGS[i]));
+  const ya = platformY(a, t) - a.r - 34, yb = platformY(b, t) - b.r - 34;
+  // Never above the bottom half's top edge.
+  const wanted = a === b ? 150 : 170 + Math.abs(b.x - a.x) * 0.22 + (b.goal ? 110 : 0);
+  const height = Math.min(wanted, Math.min(ya, yb) - (HALF + 90));
+  return { x: lerp(a.x, b.x, u), y: lerp(ya, yb, u) - height * 4 * u * (1 - u), u, i };
+}
+
+function drawStarShape(x, y, r, rot, sx = 1, sy = 1) {
+  ctx.save();
+  ctx.translate(x, y); ctx.rotate(rot); ctx.scale(sx, sy);
+  ctx.beginPath();
+  for (let k = 0; k < 10; k++) {
+    const rr = k % 2 ? r * 0.45 : r;
+    const ang = -Math.PI / 2 + (k * Math.PI) / 5;
+    ctx.lineTo(Math.cos(ang) * rr, Math.sin(ang) * rr);
+  }
+  ctx.closePath();
+  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+  g.addColorStop(0, "#ffffff"); g.addColorStop(0.45, "#fff0c2"); g.addColorStop(1, GOLD);
+  ctx.fillStyle = g;
+  ctx.shadowColor = "rgba(255,220,140,1)"; ctx.shadowBlur = 40;
+  ctx.fill();
+  ctx.restore();
+}
+
+/** A gas giant rising from the bottom edge, its bands drifting slowly. */
+function horizon(t, cam) {
+  const cx = 540, cy = 2620, R = 1020;
+  ctx.save();
+  glow(cx, cy - R + 40, 520, "rgba(150,110,255,ALPHA)", 0.28);
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, 6.283); ctx.clip();
+  const g = ctx.createLinearGradient(0, cy - R, 0, cy - R + 420);
+  g.addColorStop(0, "#5b3f9e"); g.addColorStop(0.4, "#2a1b55"); g.addColorStop(1, "#0b0820");
+  ctx.fillStyle = g; ctx.fillRect(0, cy - R, W, 600);
+  ctx.filter = "blur(6px)";
+  for (let k = 0; k < 9; k++) {
+    const y = cy - R + 30 + k * 46;
+    ctx.globalAlpha = 0.1;
+    ctx.fillStyle = k % 2 ? "#e9c46a" : "#b79cff";
+    const off = ((cam * 0.08 + k * 140) % 400) - 200;
+    ctx.beginPath(); ctx.ellipse(cx + off, y, R * 1.1, 10 + (k % 3) * 6, 0, 0, 6.283); ctx.fill();
+  }
+  ctx.filter = "none";
+  ctx.globalAlpha = 1;
+  // Night side toward the bottom edge.
+  const night = ctx.createLinearGradient(0, cy - R + 120, 0, cy - R + 520);
+  night.addColorStop(0, "rgba(5,4,13,0)"); night.addColorStop(1, "rgba(5,4,13,0.85)");
+  ctx.fillStyle = night; ctx.fillRect(0, cy - R, W, 600);
+  ctx.restore();
+  // The rim, lit from above, and a ring crossing in front.
+  ctx.save();
+  ctx.strokeStyle = "rgba(220,200,255,0.55)"; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.arc(cx, cy, R, Math.PI * 1.15, Math.PI * 1.85); ctx.stroke();
+  ctx.strokeStyle = "rgba(233,196,106,0.35)"; ctx.lineWidth = 10;
+  ctx.beginPath(); ctx.ellipse(cx, cy - R + 90, 760, 70, -0.08, Math.PI * 1.02, Math.PI * 1.98); ctx.stroke();
+  ctx.restore();
+}
+
+function drawBottom(t) {
+  ctx.save();
+  ctx.beginPath(); ctx.rect(0, HALF, W, HALF); ctx.clip();
+  const g = ctx.createLinearGradient(0, HALF, 0, H);
+  g.addColorStop(0, BG_BOTTOM); g.addColorStop(1, "#05040d");
+  ctx.fillStyle = g; ctx.fillRect(0, HALF, W, HALF);
+
+  const s = star(t);
+  const cam = s.x - 400;
+  glow(700, 1180, 600, "rgba(90,60,170,ALPHA)", 0.25);
+  drawStars(farStars, t, cam * 0.25, 4000);
+  horizon(t, cam);
+
+  // Planets.
+  PLATFORMS.forEach((p, i) => {
+    const x = p.x - cam;
+    if (x < -300 || x > W + 300) return;
+    const y = platformY(p, t);
+    // Squash a little when the star lands on it.
+    const since = t - LANDINGS[i];
+    const squash = since >= 0 && since < 0.25 ? Math.sin((since / 0.25) * Math.PI) * 0.06 : 0;
+    if (p.goal) {
+      glow(x, y, p.r * 2.6, "rgba(233,196,106,ALPHA)", 0.45 + 0.25 * Math.sin(t * 4));
+      ctx.save();
+      ctx.translate(x, y); ctx.scale(1 + squash, 1 - squash);
+      const pg = ctx.createRadialGradient(-p.r * 0.35, -p.r * 0.4, p.r * 0.1, 0, 0, p.r);
+      pg.addColorStop(0, "#fff1c8"); pg.addColorStop(0.55, GOLD); pg.addColorStop(1, "#7a5418");
+      ctx.fillStyle = pg; ctx.beginPath(); ctx.arc(0, 0, p.r, 0, 6.283); ctx.fill();
+      ctx.font = `${p.r * 1.25}px Glyphs`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillStyle = "#2a1a40"; ctx.fillText("♏︎", 0, 6);
+      ctx.strokeStyle = "rgba(255,236,190,0.6)"; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.ellipse(0, 0, p.r * 1.6, p.r * 0.38, -0.25, 0, 6.283); ctx.stroke();
+      ctx.restore();
+    } else {
+      ctx.save();
+      ctx.translate(x, y); ctx.scale(1 + squash, 1 - squash);
+      planet(p.name, 0, 0, p.r);
+      ctx.restore();
+    }
+  });
+
+  // Landing bursts: a ring and gold dust, every time it touches down.
+  LANDINGS.forEach((lt, i) => {
+    const since = t - lt;
+    if (since < 0 || since > 0.7) return;
+    const p = PLATFORMS[i];
+    const x = p.x - cam, y = platformY(p, lt) - p.r - 4;
+    const big = p.goal ? 2 : 1;
+    const u = since / 0.7;
+    ctx.save();
+    ctx.globalAlpha = (1 - u) * 0.9;
+    ctx.strokeStyle = GOLD; ctx.lineWidth = 4 * big;
+    ctx.beginPath(); ctx.ellipse(x, y + 8, 30 + u * 140 * big, (30 + u * 140 * big) * 0.28, 0, 0, 6.283); ctx.stroke();
+    const r = rng(1000 + i);
+    for (let k = 0; k < 16 * big; k++) {
+      const ang = -Math.PI * (0.1 + 0.8 * r());
+      const v = (220 + r() * 380) * big;
+      const px = x + Math.cos(ang) * v * since;
+      const py = y + Math.sin(ang) * v * since + 900 * since * since;
+      ctx.fillStyle = k % 3 ? GOLD : "#fff";
+      ctx.beginPath(); ctx.arc(px, py, (3 + r() * 4) * (1 - u), 0, 6.283); ctx.fill();
+    }
+    ctx.restore();
+  });
+
+  // Trail, then the star itself: spinning in the air, squashed on landing.
+  for (let k = 14; k >= 1; k--) {
+    const p = star(Math.max(0, t - k * 0.018));
+    ctx.globalAlpha = (1 - k / 15) * 0.55;
+    ctx.fillStyle = k % 2 ? GOLD : "#fff3cf";
+    ctx.beginPath(); ctx.arc(p.x - cam, p.y, 18 - k * 0.9, 0, 6.283); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  const landed = LANDINGS[s.i];
+  const since = t - landed;
+  const sq = since >= 0 && since < 0.14 ? Math.sin((since / 0.14) * Math.PI) : 0;
+  glow(s.x - cam, s.y, 110, "rgba(255,226,150,ALPHA)", 0.55);
+  drawStarShape(s.x - cam, s.y, 48, ease.inOut(s.u) * Math.PI * 2, 1 + sq * 0.35, 1 - sq * 0.3);
+
+  // Near dust, faster than the rest: depth.
+  for (const d of dust) {
+    const x = ((((d.x - cam * 1.6) % 3000) + 3000) % 3000) - 500;
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = "#cfc6ff";
+    ctx.beginPath(); ctx.arc(x, d.y, d.s, 0, 6.283); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  ctx.restore();
+}
+
+function divider(t) {
+  const g = ctx.createLinearGradient(0, 0, W, 0);
+  g.addColorStop(0, "rgba(233,196,106,0)"); g.addColorStop(0.5, "rgba(233,196,106,0.9)"); g.addColorStop(1, "rgba(233,196,106,0)");
+  ctx.fillStyle = g; ctx.fillRect(0, HALF - 1.5, W, 3);
+  glow(540, HALF, 260, "rgba(233,196,106,ALPHA)", 0.18);
+}
+
+window.renderFrame = (t) => {
+  ctx.clearRect(0, 0, W, H);
+  drawTop(t);
+  drawBottom(t);
+  divider(t);
+};
+
+window.ready = (async () => {
+  await Promise.all([...NAMES, "sol"].map(load));
+  await Promise.all([
+    document.fonts.load("400 100px Instrument"),
+    document.fonts.load("italic 400 100px Instrument"),
+    document.fonts.load("600 60px Geist"),
+    document.fonts.load("100px Glyphs", "♏"),
+  ]);
+  renderFrame(0);
+  return true;
+})();
+</script>
+</body>
+</html>

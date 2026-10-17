@@ -32,3 +32,6 @@ drizzle/**/*.sql.bak
 
 # Analytics dumps (pnpm analytics:export): real people's data, never committed.
 .analytics/
+
+# Rendered videos (pnpm video): regenerate, never commit.
+marketing/tiktok/out/
