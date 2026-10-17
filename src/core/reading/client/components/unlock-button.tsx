@@ -3,6 +3,7 @@
 import { Lock } from "lucide-react";
 import { useEffect } from "react";
 import { toast } from "sonner";
+import { metaEvent, READING_VALUE } from "@/core/analytics/client/meta-pixel";
 import { flush, track } from "@/core/analytics/client/track";
 import { GoldButton } from "@/core/landing/client/effects";
 import { Spinner } from "@/frontend/components/ui/spinner";
@@ -32,6 +33,7 @@ export function UnlockButton({
 
     async function start() {
         track("checkout_click", { label }, readingId);
+        metaEvent("InitiateCheckout", READING_VALUE);
         try {
             const result = await checkout.mutateAsync(undefined);
             const target = new URL(

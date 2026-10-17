@@ -105,6 +105,7 @@ const SECTIONS: LegalSection[] = [
                         items={[
                             "Dispositivo y red: dirección IP, tipo de dispositivo, sistema operativo, navegador y zona horaria.",
                             "Registros técnicos: fecha y hora de las solicitudes, errores y métricas de rendimiento.",
+                            "Uso del sitio: páginas vistas, tiempo en pantalla, botones tocados, avance en el cuestionario y en la lectura, y de qué sitio o anuncio llegaste.",
                         ]}
                     />
                 </SubClause>
@@ -190,16 +191,29 @@ const SECTIONS: LegalSection[] = [
                             "Recordar preferencias de visualización",
                             "Sí",
                         ],
+                        [
+                            "Medición propia",
+                            "Saber cómo se usa el sitio para mejorarlo (queda en nuestros servidores)",
+                            "Sí, borrando los datos del sitio en tu navegador",
+                        ],
+                        [
+                            "Publicidad (píxel de Meta)",
+                            "Medir qué anuncios en Facebook e Instagram traen visitas y compras",
+                            "Sí, desde tu navegador o la configuración de anuncios de tu cuenta de Meta",
+                        ],
                     ]}
                 />
                 <p>
-                    Actualmente <strong>no usamos</strong> herramientas de
-                    analítica ni píxeles publicitarios de terceros. Si los
-                    incorporamos, actualizaremos esta política indicando cada
-                    herramienta y su propia política de privacidad, y te
-                    pediremos consentimiento cuando corresponda. Puedes
-                    gestionar las cookies desde la configuración de tu
-                    navegador.
+                    Usamos el <strong>píxel de Meta</strong> (Meta Platforms)
+                    para medir nuestros anuncios: registra las páginas que
+                    visitas en el sitio y acciones como empezar una lectura,
+                    iniciar un pago o completarlo, y Meta las trata según su
+                    propia política de privacidad. No le enviamos tus
+                    respuestas, tus datos de nacimiento ni tus conversaciones.
+                    Si incorporamos otra herramienta, actualizaremos esta
+                    política indicándola y te pediremos consentimiento cuando
+                    corresponda. Puedes gestionar las cookies desde la
+                    configuración de tu navegador.
                 </p>
             </>
         ),
@@ -240,6 +254,13 @@ const SECTIONS: LegalSection[] = [
                             <strong>Infraestructura:</strong> proveedores de
                             alojamiento, base de datos y envío de correos,
                             obligados por contratos de confidencialidad.
+                        </>,
+                        <>
+                            <strong>Publicidad:</strong> Meta Platforms recibe,
+                            mediante su píxel, las páginas que visitas y si
+                            empiezas una lectura o un pago, para medir nuestros
+                            anuncios. Nunca tus respuestas, datos de nacimiento
+                            ni conversaciones.
                         </>,
                         <>
                             <strong>Requerimientos legales:</strong> cuando lo

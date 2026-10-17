@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { metaEvent } from "@/core/analytics/client/meta-pixel";
 import { track } from "@/core/analytics/client/track";
 import { GoldButton } from "@/core/landing/client/effects";
 import { MONTHS_ES } from "@/core/landing/domain/zodiac";
@@ -199,6 +200,8 @@ export function QuizFlow({
             const { response } = z
                 .object({ response: createdReadingSchema })
                 .parse(await create.mutateAsync(parsed.data));
+            // A reading started: the lead the ads are after.
+            metaEvent("Lead", { content_name: topic }, `lead-${response.id}`);
             router.push(`/lectura/r/${response.id}`);
         } catch {
             track("quiz_fail");

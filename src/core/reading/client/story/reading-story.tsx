@@ -9,6 +9,7 @@ import {
 } from "motion/react";
 import Link from "next/link";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { metaEvent, READING_VALUE } from "@/core/analytics/client/meta-pixel";
 import { track } from "@/core/analytics/client/track";
 import { Starfield } from "@/core/landing/client/effects";
 import { AstramiaLogo } from "@/core/landing/client/sections/astramia-logo";
@@ -349,9 +350,26 @@ export function ReadingStory({
     // Just bought: the story may land after the "being written" screen,
     // when the browser already gave up on the #sigue it came with.
     useEffect(() => {
-        if (content && window.location.hash === `#${CONTINUE_ANCHOR}`)
+        if (content && window.location.hash === `#${CONTINUE_ANCHOR}`) {
             document.getElementById(CONTINUE_ANCHOR)?.scrollIntoView();
-    }, [content]);
+            // Back from paying: the purchase, once per reading even on
+            // reloads, and only on a real reading (not the example's page).
+            const key = `astramia:purchase:${reading.id}`;
+            if (!window.location.pathname.startsWith("/lectura/r/")) return;
+            try {
+                if (!localStorage.getItem(key)) {
+                    metaEvent(
+                        "Purchase",
+                        READING_VALUE,
+                        `purchase-${reading.id}`,
+                    );
+                    localStorage.setItem(key, "1");
+                }
+            } catch {
+                metaEvent("Purchase", READING_VALUE, `purchase-${reading.id}`);
+            }
+        }
+    }, [content, reading.id]);
 
     // Once the chat is on screen, "Ir al chat" has nothing left to do. The
     // chat may arrive later, with the paid text, on a page already open.
