@@ -1,4 +1,5 @@
 {
+    "source": "tres-signos.voice.mp3",
     "phrases": [
         {
             "id": "hook",
@@ -6,28 +7,78 @@
             "maxTempo": 1.15,
             "pause": 0.22
         },
-        { "id": "n3", "text": "Número tres:", "pause": 0.08 },
-        { "id": "tauro", "text": "Tauro." },
-        { "id": "amor", "text": "No vuelve por amor.", "pause": 0.08 },
-        { "id": "costumbre", "text": "Vuelve por costumbre." },
-        { "id": "n2", "text": "Número dos:", "pause": 0.08 },
-        { "id": "cancer", "text": "Cáncer." },
+        {
+            "id": "n3",
+            "text": "Número tres:",
+            "pause": 0.08
+        },
+        {
+            "id": "tauro",
+            "text": "Tauro.",
+            "maxTempo": 1.1
+        },
+        {
+            "id": "amor",
+            "text": "No vuelve por amor.",
+            "pause": 0.08
+        },
+        {
+            "id": "costumbre",
+            "text": "Vuelve por costumbre."
+        },
+        {
+            "id": "n2",
+            "text": "Número dos:",
+            "pause": 0.08
+        },
+        {
+            "id": "cancer",
+            "text": "Cáncer.",
+            "maxTempo": 1.1
+        },
         {
             "id": "recuerdo",
             "text": "Guarda todos los recuerdos,",
             "pause": 0.06
         },
-        { "id": "abrir", "text": "y un día los vuelve a abrir." },
-        { "id": "n1", "text": "Y el número uno:", "pause": 0.08 },
-        { "id": "escorpio", "text": "Escorpio." },
-        { "id": "supero", "text": "Dice que ya lo superó.", "pause": 0.1 },
-        { "id": "cierto", "text": "No es cierto." },
+        {
+            "id": "abrir",
+            "text": "y un día",
+            "pause": 0.08
+        },
+        {
+            "id": "abrir2",
+            "text": "los vuelve a abrir."
+        },
+        {
+            "id": "n1",
+            "text": "Y el número uno:",
+            "pause": 0.35
+        },
+        {
+            "id": "escorpio",
+            "text": "Escorpio.",
+            "maxTempo": 1.1
+        },
+        {
+            "id": "supero",
+            "text": "Dice que ya lo superó.",
+            "pause": 0.25
+        },
+        {
+            "id": "cierto",
+            "text": "No es cierto.",
+            "maxTempo": 1.15
+        },
         {
             "id": "signo",
             "text": "Pero aquí no manda tu signo.",
             "pause": 0.08
         },
-        { "id": "manda", "text": "Manda tu Venus." },
+        {
+            "id": "manda",
+            "text": "Manda tu Venus."
+        },
         {
             "id": "astramia",
             "text": "Astramia lee el cielo del día que naciste.",
@@ -37,6 +88,9 @@
             "id": "vuelven",
             "text": "Descubre gratis si tu Venus es de las que vuelven."
         },
-        { "id": "empieza", "text": "Entra a astramia punto app." }
+        {
+            "id": "empieza",
+            "text": "Entra a astramia punto app."
+        }
     ]
 }

@@ -83,7 +83,7 @@ start({
     (t, l, a) => {
       glyph(t, 0.1 * a);
       line("Pregúntale a tu carta", 280, { size: 104, alpha: a, scale: punch(l) });
-      goldLine("qué persona te conviene", 420, pops(t, P.conviene.start), a, { size: 130 });
+      goldLine("qué persona te conviene", 420, pops(t, P.carta.words[4].start), a, { size: 130 });
       cta(t, l, a, { at: P.empieza.start, url: P.empieza.words[3].start });
     },
   ],

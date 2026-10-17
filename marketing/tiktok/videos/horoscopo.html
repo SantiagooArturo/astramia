@@ -103,8 +103,7 @@ start({
     },
     // Sun in Aries, Venus in Pisces: the same person.
     (t, l, a) => {
-      // A beat between the two: "Puedes ser Aries… y amar como Piscis."
-      const [aries, piscis] = [P.aries.words[2].start, P.piscis.words[3].start];
+      const [aries, piscis] = [P.aries.words[2].start, P.aries.words[6].start];
       line("Y pueden estar en otro signo.", 210, { size: 76, alpha: a, scale: punch(l) });
       line("Puedes ser Aries", 360, { size: 112, alpha: a * shown(t, P.aries.start) });
       goldLine("y amar como Piscis", 490, pops(t, piscis), a, { size: 120 });

@@ -1,4 +1,5 @@
 {
+    "source": "horoscopo.voice.mp3",
     "phrases": [
         {
             "id": "acierta",
@@ -10,23 +11,44 @@
             "id": "millones",
             "text": "Porque le habla a más de seiscientos millones de personas a la vez."
         },
-        { "id": "sol", "text": "Y solo mira tu Sol." },
-        { "id": "mandan", "text": "Pero en el amor mandan Venus y Marte." },
-        { "id": "venus", "text": "Venus dice cómo amas.", "pause": 0.08 },
-        { "id": "marte", "text": "Marte dice qué te atrae." },
+        {
+            "id": "sol",
+            "text": "Y solo mira tu Sol."
+        },
+        {
+            "id": "mandan",
+            "text": "Pero en el amor mandan Venus y Marte."
+        },
+        {
+            "id": "venus",
+            "text": "Venus dice cómo amas.",
+            "pause": 0.08
+        },
+        {
+            "id": "marte",
+            "text": "Marte dice qué te atrae."
+        },
         {
             "id": "distintos",
             "text": "Y pueden estar en otro signo.",
             "pause": 0.08
         },
-        { "id": "aries", "text": "Puedes ser Aries", "pause": 0.12 },
-        { "id": "piscis", "text": "y amar como Piscis." },
+        {
+            "id": "aries",
+            "text": "Puedes ser Aries y amar como Piscis."
+        },
         {
             "id": "astramia",
             "text": "Astramia lee el cielo del día que naciste.",
             "pause": 0.6
         },
-        { "id": "descubre", "text": "Descubre cómo amas de verdad." },
-        { "id": "empieza", "text": "Empieza gratis en astramia punto app." }
+        {
+            "id": "descubre",
+            "text": "Descubre cómo amas de verdad."
+        },
+        {
+            "id": "empieza",
+            "text": "Empieza gratis en astramia punto app."
+        }
     ]
 }
